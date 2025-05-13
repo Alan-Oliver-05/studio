@@ -35,7 +35,9 @@ const AIGuidedStudySessionInputSchema = z.object({
       }).optional(),
     }).describe('The student\'s educational background.'),
   }).describe('The student profile information from the onboarding form.'),
-  topic: z.string().describe('The topic for the study session.'),
+  subject: z.string().optional().describe('The main subject of study (e.g., Mathematics).'),
+  lesson: z.string().optional().describe('The lesson within the subject (e.g., Algebra).'),
+  specificTopic: z.string().describe('The specific topic of focus (e.g., Linear Equations, or "General Discussion" for general tutor).'),
   question: z.string().describe('The student\'s question or request for the study session.'),
 });
 export type AIGuidedStudySessionInput = z.infer<typeof AIGuidedStudySessionInputSchema>;
@@ -65,11 +67,20 @@ const prompt = ai.definePrompt({
   Preferred Language: {{{studentProfile.preferredLanguage}}}
   Education Qualification: {{studentProfile.educationQualification}}
 
-  The student is currently studying the topic: {{{topic}}}
+  The student is currently focusing on:
+  {{#if subject}}Subject: {{{subject}}}{{/if}}
+  {{#if lesson}}Lesson: {{{lesson}}}{{/if}}
+  Topic: {{{specificTopic}}}
+
   The student's question/request is: {{{question}}}
 
-  Provide a comprehensive and personalized response to the student, including relevant study materials and suggestions for further learning. Also include real-time external source suggestions.
+  Provide a comprehensive and personalized response to the student in their preferred language ({{{studentProfile.preferredLanguage}}}). Include relevant study materials and suggestions for further learning. Also include real-time external source suggestions.
   Format your response as a JSON object with "response" and "suggestions" fields.
+  If the question is a greeting or very general, provide a welcoming response and ask how you can help with the specified topic.
+  If the question is about a specific concept within the topic, explain it clearly and provide examples.
+  If the student asks for problems or exercises, provide a few relevant ones.
+  If the student seems stuck, offer hints or break down the problem.
+  Maintain a supportive and encouraging tone.
   `,
 });
 
@@ -81,6 +92,15 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    // Ensure a valid output structure even if AI fails to provide one
+    if (output && output.response && Array.isArray(output.suggestions)) {
+        return output;
+    }
+    // Fallback response if AI output is malformed
+    return {
+        response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else about the topic?",
+        suggestions: []
+    };
   }
 );
+

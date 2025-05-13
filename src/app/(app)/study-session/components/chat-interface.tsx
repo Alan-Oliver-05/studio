@@ -21,11 +21,11 @@ import {
 
 interface ChatInterfaceProps {
   userProfile: UserProfile | null;
-  topic: string; // This will be the most specific topic (e.g., "Linear Equations")
+  topic: string; // This will be the most specific topic (e.g., "Linear Equations", "General AI Tutor")
   conversationId: string; 
   initialSystemMessage?: string; 
   placeholderText?: string;
-  context?: { // Optional broader context
+  context?: { // Optional broader context for specific study sessions
     subject: string;
     lesson: string;
   };
@@ -33,11 +33,11 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({
   userProfile,
-  topic,
+  topic, // This is the specificTopic for the AI flow
   conversationId,
   initialSystemMessage,
   placeholderText = "Ask your question...",
-  context,
+  context, // Contains subject and lesson if applicable
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [input, setInput] = useState("");
@@ -98,9 +98,6 @@ export function ChatInterface({
     setIsLoading(true);
 
     try {
-      // The AI input will use the specific 'topic' for the 'question' context
-      // The broader subject and lesson context is now part of the conversation record
-      // but aiGuidedStudySession's `topic` field should be the specific topic of discussion.
       const aiInput: AIGuidedStudySessionInput = {
         studentProfile: {
           name: userProfile.name,
@@ -115,7 +112,9 @@ export function ChatInterface({
             universityExam: userProfile.educationCategory === 'university' ? userProfile.educationQualification.universityExams : undefined,
           }
         },
-        topic: `${context ? `${context.subject} > ${context.lesson} > ` : ''}${topic}`, // Provide full context in topic for AI
+        subject: context?.subject, // Will be undefined for General Tutor / Homework Assistant
+        lesson: context?.lesson,   // Will be undefined for General Tutor / Homework Assistant
+        specificTopic: topic,    // The 'topic' prop of ChatInterface becomes 'specificTopic'
         question: userMessage.text,
       };
       
