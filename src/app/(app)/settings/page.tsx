@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, BookCopy, Edit3 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES } from "@/lib/constants";
 import Link from "next/link";
@@ -55,7 +54,7 @@ export default function SettingsPage() {
 
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto pb-8">
        <div className="mb-8 flex flex-col sm:flex-row justify-between items-center">
           <div className="mb-4 sm:mb-0 text-center sm:text-left">
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center">

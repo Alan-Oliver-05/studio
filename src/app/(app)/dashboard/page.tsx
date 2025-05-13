@@ -5,7 +5,7 @@ from "react";
 import Link from "next/link";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { generatePersonalizedSubjects, GeneratePersonalizedSubjectsInput } from "@/ai/flows/generate-personalized-subjects";
-import type { Subject, UserProfile as UserProfileType } from "@/types";
+import type { Subject } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -96,7 +96,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto pb-8">
       <div className="mb-8 text-center">
         <h1 className="text-4xl font-bold tracking-tight text-primary">Welcome, {profile.name}!</h1>
         <p className="text-xl text-muted-foreground mt-2">Here are your personalized study recommendations.</p>

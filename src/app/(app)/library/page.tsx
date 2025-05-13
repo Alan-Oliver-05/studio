@@ -30,6 +30,13 @@ export default function LibraryPage() {
     try {
       const convos = getConversations();
       setConversations(convos);
+      // Initialize timeAgo with 'Loading...' to prevent hydration mismatch
+      const initialTimeAgo: Record<string, string> = {};
+      convos.forEach(convo => {
+        initialTimeAgo[convo.id] = 'Calculating...';
+      });
+      setTimeAgo(initialTimeAgo);
+
     } catch (e) {
       console.error("Failed to load conversations:", e);
       setError("Failed to load conversation history.");
@@ -47,7 +54,8 @@ export default function LibraryPage() {
         });
         setTimeAgo(updatedTimeAgo);
       };
-      calculateTimes(); // Initial calculation
+      
+      calculateTimes(); // Initial calculation after conversations are loaded
       const intervalId = setInterval(calculateTimes, 60000); // Update every minute
       return () => clearInterval(intervalId);
     }
@@ -97,7 +105,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto pb-8">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-center">
         <div className="mb-4 sm:mb-0 text-center sm:text-left">
           <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center">
