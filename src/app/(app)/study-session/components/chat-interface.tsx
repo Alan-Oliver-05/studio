@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from "react";
@@ -5,7 +6,7 @@ import type { UserProfile, Message as MessageType } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SendHorizonal, Bot, User, Loader2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from "@/ai/flows/ai-guided-study-session";
@@ -15,14 +16,19 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider
 } from "@/components/ui/tooltip";
 
 interface ChatInterfaceProps {
   userProfile: UserProfile | null;
-  topic: string; // e.g., Subject name, "Homework Help", "General Tutor"
-  conversationId: string; // Unique ID for this chat session
-  initialSystemMessage?: string; // Optional initial message from AI
+  topic: string; // This will be the most specific topic (e.g., "Linear Equations")
+  conversationId: string; 
+  initialSystemMessage?: string; 
   placeholderText?: string;
+  context?: { // Optional broader context
+    subject: string;
+    lesson: string;
+  };
 }
 
 export function ChatInterface({
@@ -31,6 +37,7 @@ export function ChatInterface({
   conversationId,
   initialSystemMessage,
   placeholderText = "Ask your question...",
+  context,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [input, setInput] = useState("");
@@ -39,7 +46,6 @@ export function ChatInterface({
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load existing conversation
     const existingConversation = getConversationById(conversationId);
     if (existingConversation) {
       setMessages(existingConversation.messages);
@@ -51,9 +57,16 @@ export function ChatInterface({
         timestamp: Date.now(),
       };
       setMessages([firstAIMessage]);
-      addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined);
+      addMessageToConversation(
+        conversationId, 
+        topic, // Specific topic
+        firstAIMessage, 
+        userProfile || undefined,
+        context?.subject, // Broader subject context
+        context?.lesson // Broader lesson context
+      );
     }
-  }, [conversationId, initialSystemMessage, topic, userProfile]);
+  }, [conversationId, initialSystemMessage, topic, userProfile, context]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -73,11 +86,21 @@ export function ChatInterface({
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    addMessageToConversation(conversationId, topic, userMessage, userProfile);
+    addMessageToConversation(
+        conversationId, 
+        topic, 
+        userMessage, 
+        userProfile,
+        context?.subject,
+        context?.lesson
+    );
     setInput("");
     setIsLoading(true);
 
     try {
+      // The AI input will use the specific 'topic' for the 'question' context
+      // The broader subject and lesson context is now part of the conversation record
+      // but aiGuidedStudySession's `topic` field should be the specific topic of discussion.
       const aiInput: AIGuidedStudySessionInput = {
         studentProfile: {
           name: userProfile.name,
@@ -86,13 +109,13 @@ export function ChatInterface({
           country: userProfile.country,
           state: userProfile.state,
           preferredLanguage: userProfile.preferredLanguage,
-          educationQualification: { // Map education details
+          educationQualification: { 
             boardExam: userProfile.educationCategory === 'board' ? userProfile.educationQualification.boardExams : undefined,
             competitiveExam: userProfile.educationCategory === 'competitive' ? userProfile.educationQualification.competitiveExams : undefined,
             universityExam: userProfile.educationCategory === 'university' ? userProfile.educationQualification.universityExams : undefined,
           }
         },
-        topic: topic,
+        topic: `${context ? `${context.subject} > ${context.lesson} > ` : ''}${topic}`, // Provide full context in topic for AI
         question: userMessage.text,
       };
       
@@ -107,7 +130,14 @@ export function ChatInterface({
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, aiMessage]);
-        addMessageToConversation(conversationId, topic, aiMessage, userProfile);
+        addMessageToConversation(
+            conversationId, 
+            topic, 
+            aiMessage, 
+            userProfile,
+            context?.subject,
+            context?.lesson
+        );
       } else {
         throw new Error("AI response was empty or invalid.");
       }
@@ -118,7 +148,6 @@ export function ChatInterface({
         description: "Failed to get a response from AI. Please try again.",
         variant: "destructive",
       });
-      // Optionally add an error message to chat
       const errorMessage: MessageType = {
         id: crypto.randomUUID(),
         sender: "ai",
@@ -126,7 +155,14 @@ export function ChatInterface({
         timestamp: Date.now(),
       };
        setMessages((prev) => [...prev, errorMessage]);
-       addMessageToConversation(conversationId, topic, errorMessage, userProfile);
+       addMessageToConversation(
+           conversationId, 
+           topic, 
+           errorMessage, 
+           userProfile,
+           context?.subject,
+           context?.lesson
+        );
     } finally {
       setIsLoading(false);
     }
@@ -138,7 +174,7 @@ export function ChatInterface({
 
   return (
     <div className="flex flex-col h-full bg-card rounded-lg shadow-xl border">
-      <ScrollArea className="flex-grow p-6" ref={scrollAreaRef}>
+      <ScrollArea className="flex-grow p-4 md:p-6" ref={scrollAreaRef}>
         <div className="space-y-6">
           {messages.map((message) => (
             <div
@@ -215,17 +251,20 @@ export function ChatInterface({
           className="flex-grow text-sm"
           disabled={isLoading}
         />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-              <SendHorizonal className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Send message</p>
-          </TooltipContent>
-        </Tooltip>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+                <SendHorizonal className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Send message</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </form>
     </div>
   );
 }
+

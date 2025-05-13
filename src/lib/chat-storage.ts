@@ -28,7 +28,7 @@ export const saveConversation = (conversation: Conversation): void => {
   if (existingIndex > -1) {
     conversations[existingIndex] = conversation;
   } else {
-    conversations.unshift(conversation); // Add new conversations to the beginning
+    conversations.unshift(conversation); 
   }
   try {
     localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(conversations));
@@ -39,24 +39,35 @@ export const saveConversation = (conversation: Conversation): void => {
 
 export const addMessageToConversation = (
   conversationId: string,
-  topic: string,
+  topic: string, // Specific topic of this message exchange
   message: Message,
-  profile?: UserProfile
+  profile?: UserProfile,
+  subjectContext?: string, // Broader subject
+  lessonContext?: string // Broader lesson
 ): Conversation => {
   let conversation = getConversationById(conversationId);
   if (!conversation) {
     conversation = {
       id: conversationId,
-      topic: topic,
+      topic: topic, // Store specific topic
+      subjectContext: subjectContext,
+      lessonContext: lessonContext,
       messages: [],
       lastUpdatedAt: Date.now(),
-      studentProfile: profile, // Store profile with new conversation
+      studentProfile: profile,
     };
   }
   conversation.messages.push(message);
   conversation.lastUpdatedAt = Date.now();
-  if (profile && !conversation.studentProfile) { // Update profile if it was missing
+  if (profile && !conversation.studentProfile) { 
     conversation.studentProfile = profile;
+  }
+  // Ensure context is updated if it wasn't there initially or changed
+  if (subjectContext && conversation.subjectContext !== subjectContext) {
+    conversation.subjectContext = subjectContext;
+  }
+  if (lessonContext && conversation.lessonContext !== lessonContext) {
+    conversation.lessonContext = lessonContext;
   }
   saveConversation(conversation);
   return conversation;
@@ -67,3 +78,4 @@ export const formatConversationForAI = (messages: Message[]): string => {
     .map(msg => `${msg.sender === 'user' ? 'Student' : 'AI Tutor'}: ${msg.text}`)
     .join('\n');
 };
+

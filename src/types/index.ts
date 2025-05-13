@@ -39,7 +39,17 @@ export interface UserProfile {
 export interface Subject {
   name: string;
   description: string;
-  studyMaterials: string[];
+  studyMaterials: string[]; // These can be interpreted as high-level topics or key areas
+}
+
+export interface Lesson {
+  name: string;
+  description?: string;
+}
+
+export interface Topic {
+  name: string;
+  description?: string;
 }
 
 export interface Message {
@@ -52,9 +62,12 @@ export interface Message {
 
 export interface Conversation {
   id: string; 
-  topic: string;
-  studentProfile?: UserProfile; // Make optional if not always available or needed for summary list
+  topic: string; // This will store the most specific topic of conversation
+  subjectContext?: string; // General subject for context
+  lessonContext?: string; // Lesson for context
+  studentProfile?: UserProfile; 
   messages: Message[];
   summary?: string;
   lastUpdatedAt: number;
 }
+
