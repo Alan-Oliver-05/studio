@@ -20,31 +20,31 @@ const GeneratePersonalizedSubjectsInputSchema = z.object({
   preferredLanguage: z.string().describe('The preferred language of the student.'),
   educationQualification: z.object({
     boardExams: z.object({
-      board: z.string().optional(),
-      standard: z.string().optional(),
+      board: z.string().optional().describe('The specific education board (e.g., CBSE, State Board Name).'),
+      standard: z.string().optional().describe('The student\'s current standard or grade (e.g., 10th, 12th).'),
     }).optional(),
     competitiveExams: z.object({
-      examType: z.string().optional(),
-      specificExam: z.string().optional(),
+      examType: z.string().optional().describe('The category of competitive exam (e.g., Engineering Entrance, Civil Services).'),
+      specificExam: z.string().optional().describe('The name of the specific competitive exam (e.g., JEE Main, UPSC CSE).'),
     }).optional(),
     universityExams: z.object({
-      universityName: z.string().optional(),
-      collegeName: z.string().optional(),
-      course: z.string().optional(),
-      currentYear: z.string().optional(),
+      universityName: z.string().optional().describe('The name of the university.'),
+      collegeName: z.string().optional().describe('The name of the college, if applicable.'),
+      course: z.string().optional().describe('The student\'s course or major (e.g., Bachelor of Science in Computer Science).'),
+      currentYear: z.string().optional().describe('The student\'s current year of university study (e.g., 1st, 2nd).'),
     }).optional(),
-  }).describe('The education qualification of the student.'),
+  }).describe('The education qualification of the student, detailing their specific area of study.'),
 });
 export type GeneratePersonalizedSubjectsInput = z.infer<typeof GeneratePersonalizedSubjectsInputSchema>;
 
 const GeneratePersonalizedSubjectsOutputSchema = z.object({
   subjects: z.array(
     z.object({
-      name: z.string().describe('The name of the subject.'),
-      description: z.string().describe('A brief description of the subject.'),
-      studyMaterials: z.array(z.string()).describe('A list of study materials for the subject (can be interpreted as key topics or areas).'),
+      name: z.string().describe('The name of the subject (e.g., Physics, Algebra, Indian History).'),
+      description: z.string().describe('A brief description of the subject tailored to the student\'s context.'),
+      studyMaterials: z.array(z.string()).describe('A list of key topics or areas within the subject, suitable for the student\'s level and educational context.'),
     })
-  ).describe('A list of personalized subjects and study materials.'),
+  ).describe('A list of personalized subjects and study materials, highly relevant to the student\'s specific educational background and syllabus.'),
 });
 export type GeneratePersonalizedSubjectsOutput = z.infer<typeof GeneratePersonalizedSubjectsOutputSchema>;
 
@@ -56,23 +56,48 @@ const prompt = ai.definePrompt({
   name: 'generatePersonalizedSubjectsPrompt',
   input: {schema: GeneratePersonalizedSubjectsInputSchema},
   output: {schema: GeneratePersonalizedSubjectsOutputSchema},
-  prompt: `You are an AI education platform that provides personalized subjects and study materials for students based on their profile.
-
-  Based on the following student profile, generate a list of subjects and study materials that would be relevant to them.
-  It is important that for the exact same student profile input, you consistently return the same list of subjects. Avoid variations unless the input profile itself changes.
+  prompt: `You are an AI education platform. Your task is to generate a list of highly relevant academic subjects and key study topics for a student based on their detailed profile.
+  The subjects should align with typical official curricula or syllabuses for the student's specific educational context (country, state, language, board, standard, exam type, or university course).
+  Ensure that for the exact same student profile input, you consistently return the same list of subjects and their descriptions. Avoid variations unless the input profile itself changes.
 
   Student Profile:
   Name: {{{name}}}
   Age: {{{age}}}
   Gender: {{{gender}}}
   Country: {{{country}}}
-  State: {{{state}}}
-  Preferred Language: {{{preferredLanguage}}}
-  Education Qualification: {{{educationQualification}}}
+  State/Province: {{{state}}}
+  Preferred Language for Study: {{{preferredLanguage}}}
 
-  Subjects and Study Materials:`,
+  Education Qualification Details:
+  {{#if educationQualification.boardExams.board}}
+  Board: {{{educationQualification.boardExams.board}}}
+  Standard/Grade: {{{educationQualification.boardExams.standard}}}
+  Focus: School curriculum (Board Exams)
+  {{/if}}
+  {{#if educationQualification.competitiveExams.examType}}
+  Competitive Exam Category: {{{educationQualification.competitiveExams.examType}}}
+  Specific Exam: {{{educationQualification.competitiveExams.specificExam}}}
+  Focus: Competitive Exam Preparation
+  {{/if}}
+  {{#if educationQualification.universityExams.universityName}}
+  University: {{{educationQualification.universityExams.universityName}}}
+  {{#if educationQualification.universityExams.collegeName}}College: {{{educationQualification.universityExams.collegeName}}}{{/if}}
+  Course/Major: {{{educationQualification.universityExams.course}}}
+  Current Year: {{{educationQualification.universityExams.currentYear}}}
+  Focus: University Curriculum
+  {{/if}}
+
+  Based on this precise profile, generate a list of subjects. For each subject:
+  1.  Provide a "name" (e.g., "Physics for 12th Standard CBSE", "Quantitative Aptitude for Banking Exams", "Thermodynamics for Mechanical Engineering Year 2").
+  2.  Provide a "description" tailored to this student.
+  3.  List key "studyMaterials" (which are core topics or chapters) relevant to their specific syllabus or exam pattern.
+
+  Output must be in the specified JSON format. If no specific education focus is clear, provide general knowledge subjects appropriate for the age and location.
+  Consider the student's country: {{{country}}} and state: {{{state}}} to infer regional curriculum variations if applicable (e.g., for state boards).
+  The output language for subject names and descriptions should be English, but the content focus should be based on the student's {{{preferredLanguage}}} learning context if specified for their curriculum.
+  `,
   config: {
-    temperature: 0.2, // Lower temperature for more deterministic/consistent output
+    temperature: 0.1, // Lower temperature for more deterministic/consistent and curriculum-focused output
   }
 });
 

@@ -9,7 +9,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import type { UserProfile } from '@/types'; // Assuming UserProfile type is defined
+// Assuming UserProfile type is defined elsewhere and matches this structure
+// import type { UserProfile } from '@/types'; 
 
 const UserProfileSchema = z.object({
   name: z.string(),
@@ -18,28 +19,39 @@ const UserProfileSchema = z.object({
   country: z.string(),
   state: z.string(),
   preferredLanguage: z.string(),
-  educationCategory: z.string(),
+  educationCategory: z.string().describe("The primary education focus, e.g., 'board', 'competitive', 'university'."),
   educationQualification: z.object({
-    boardExams: z.object({ board: z.string().optional(), standard: z.string().optional() }).optional(),
-    competitiveExams: z.object({ examType: z.string().optional(), specificExam: z.string().optional() }).optional(),
-    universityExams: z.object({ universityName: z.string().optional(), collegeName: z.string().optional(), course: z.string().optional(), currentYear: z.string().optional() }).optional(),
-  }),
+    boardExams: z.object({ 
+        board: z.string().optional().describe('The specific education board (e.g., CBSE, State Board Name).'), 
+        standard: z.string().optional().describe('The student\'s current standard or grade (e.g., 10th, 12th).') 
+    }).optional(),
+    competitiveExams: z.object({ 
+        examType: z.string().optional().describe('The category of competitive exam.'), 
+        specificExam: z.string().optional().describe('The name of the specific competitive exam.') 
+    }).optional(),
+    universityExams: z.object({ 
+        universityName: z.string().optional().describe('The name of the university.'), 
+        collegeName: z.string().optional().describe('The name of the college, if applicable.'), 
+        course: z.string().optional().describe('The student\'s course or major.'), 
+        currentYear: z.string().optional().describe('The student\'s current year of university study.') 
+    }).optional(),
+  }).describe('Detailed educational qualifications.'),
 });
 
 
 const GetLessonsForSubjectInputSchema = z.object({
-  subjectName: z.string().describe('The name of the subject for which lessons are requested.'),
-  studentProfile: UserProfileSchema.describe('The profile of the student.'),
+  subjectName: z.string().describe('The name of the subject for which lessons are requested (e.g., "Physics for 12th Standard CBSE").'),
+  studentProfile: UserProfileSchema.describe('The detailed profile of the student.'),
 });
 export type GetLessonsForSubjectInput = z.infer<typeof GetLessonsForSubjectInputSchema>;
 
 const LessonSchema = z.object({
-  name: z.string().describe('The name of the lesson or module.'),
-  description: z.string().optional().describe('A brief description of the lesson or module.'),
+  name: z.string().describe('The name of the lesson or module (e.g., "Optics", "Calculus", "Indian National Movement").'),
+  description: z.string().optional().describe('A brief description of what the lesson covers, relevant to the student\'s syllabus.'),
 });
 
 const GetLessonsForSubjectOutputSchema = z.object({
-  lessons: z.array(LessonSchema).describe('A list of lessons or modules relevant to the subject and student profile.'),
+  lessons: z.array(LessonSchema).describe('A list of lessons or modules for the given subject, tailored to the student\'s specific educational context and syllabus (e.g., based on their board, standard, country, or exam type).'),
 });
 export type GetLessonsForSubjectOutput = z.infer<typeof GetLessonsForSubjectOutputSchema>;
 
@@ -51,22 +63,51 @@ const prompt = ai.definePrompt({
   name: 'getLessonsForSubjectPrompt',
   input: {schema: GetLessonsForSubjectInputSchema},
   output: {schema: GetLessonsForSubjectOutputSchema},
-  prompt: `You are an AI assistant helping a student find relevant lessons for a subject.
-  Based on the subject name: {{{subjectName}}}
-  And the student's profile:
+  prompt: `You are an AI curriculum specialist. Your task is to generate a list of relevant lessons (or modules/units) for a specific subject, tailored to a student's detailed educational profile.
+  These lessons should reflect what would typically be found in the official syllabus or curriculum for their context.
+
+  Subject: {{{subjectName}}}
+
+  Student Profile:
   Name: {{{studentProfile.name}}}
   Age: {{{studentProfile.age}}}
-  Educational Focus: {{{studentProfile.educationCategory}}}
-  Details: {{{studentProfile.educationQualification}}}
+  Country: {{{studentProfile.country}}}
+  State/Province: {{{studentProfile.state}}}
+  Preferred Language for Study: {{{studentProfile.preferredLanguage}}}
+  Primary Education Focus: {{{studentProfile.educationCategory}}}
 
-  Generate a list of key lessons or modules from the syllabus for the subject '{{{subjectName}}}' that are appropriate for this student.
-  Each lesson should have a 'name' and an optional 'description'.
+  Detailed Education Qualification:
+  {{#with studentProfile.educationQualification}}
+    {{#if boardExams.board}}
+    Board: {{{boardExams.board}}}
+    Standard/Grade: {{{boardExams.standard}}}
+    Context: School curriculum for {{{boardExams.standard}}} standard under {{{boardExams.board}}}.
+    {{/if}}
+    {{#if competitiveExams.examType}}
+    Competitive Exam Category: {{{competitiveExams.examType}}}
+    Specific Exam: {{{competitiveExams.specificExam}}}
+    Context: Syllabus for {{{competitiveExams.specificExam}}} ({{{competitiveExams.examType}}}).
+    {{/if}}
+    {{#if universityExams.universityName}}
+    University: {{{universityExams.universityName}}}
+    {{#if universityExams.collegeName}}College: {{{universityExams.collegeName}}}{{/if}}
+    Course/Major: {{{universityExams.course}}}
+    Current Year: {{{universityExams.currentYear}}}
+    Context: Curriculum for {{{universityExams.course}}}, year {{{universityExams.currentYear}}} at {{{universityExams.universityName}}}.
+    {{/if}}
+  {{/with}}
+
+  Based on the subject "{{{subjectName}}}" and the student's specific educational context (considering their board, standard, country, state, exam, or university course details), generate a list of 5-10 key lessons or modules.
+  Each lesson must have a 'name' and an optional 'description'.
+  For example, if subject is "Mathematics" for a "10th Standard" student under "CBSE" board in "India", lessons might include "Real Numbers", "Polynomials", "Pair of Linear Equations in Two Variables", "Quadratic Equations", "Arithmetic Progressions", "Triangles", "Coordinate Geometry", "Introduction to Trigonometry", "Circles", "Statistics", "Probability".
+  If the subject is "General Awareness" for "Banking" competitive exams, lessons could be "Indian Financial System", "Current Affairs (Last 6 months)", "Banking Terminology", "Static GK (India-focused)".
+
   Return the lessons as a JSON object with a "lessons" array.
-  If the subject is very broad, provide foundational lessons. If specific education details are available (like standard or course), tailor the lessons accordingly.
-  For example, for "Mathematics" for a 10th standard student, lessons might include "Algebra", "Geometry", "Trigonometry".
-  For "Physics" for a university student in "Mechanical Engineering", lessons might be "Thermodynamics", "Fluid Mechanics", "Statics and Dynamics".
-  Provide around 5-10 lessons.
+  Prioritize accuracy based on the provided educational details.
   `,
+  config: {
+    temperature: 0.2, 
+  }
 });
 
 const getLessonsForSubjectFlow = ai.defineFlow(
@@ -86,3 +127,4 @@ const getLessonsForSubjectFlow = ai.defineFlow(
     return output || { lessons: [] };
   }
 );
+
