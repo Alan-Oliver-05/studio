@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, FormEvent } from "react";
@@ -138,7 +137,7 @@ export function ChatInterface({
   }
 
   return (
-    <div className="flex flex-col h-full max-h-[calc(100vh-10rem)] bg-card rounded-lg shadow-xl border">
+    <div className="flex flex-col h-full bg-card rounded-lg shadow-xl border">
       <ScrollArea className="flex-grow p-6" ref={scrollAreaRef}>
         <div className="space-y-6">
           {messages.map((message) => (
