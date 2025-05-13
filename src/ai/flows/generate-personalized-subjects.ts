@@ -42,7 +42,7 @@ const GeneratePersonalizedSubjectsOutputSchema = z.object({
     z.object({
       name: z.string().describe('The name of the subject.'),
       description: z.string().describe('A brief description of the subject.'),
-      studyMaterials: z.array(z.string()).describe('A list of study materials for the subject.'),
+      studyMaterials: z.array(z.string()).describe('A list of study materials for the subject (can be interpreted as key topics or areas).'),
     })
   ).describe('A list of personalized subjects and study materials.'),
 });
@@ -59,6 +59,7 @@ const prompt = ai.definePrompt({
   prompt: `You are an AI education platform that provides personalized subjects and study materials for students based on their profile.
 
   Based on the following student profile, generate a list of subjects and study materials that would be relevant to them.
+  It is important that for the exact same student profile input, you consistently return the same list of subjects. Avoid variations unless the input profile itself changes.
 
   Student Profile:
   Name: {{{name}}}
@@ -70,6 +71,9 @@ const prompt = ai.definePrompt({
   Education Qualification: {{{educationQualification}}}
 
   Subjects and Study Materials:`,
+  config: {
+    temperature: 0.2, // Lower temperature for more deterministic/consistent output
+  }
 });
 
 const generatePersonalizedSubjectsFlow = ai.defineFlow(
@@ -80,6 +84,12 @@ const generatePersonalizedSubjectsFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    // Ensure a valid output structure, returning empty subjects if AI fails or output is malformed
+    if (output && Array.isArray(output.subjects)) {
+        return output;
+    }
+    // Fallback if output is not as expected
+    return { subjects: [] };
   }
 );
+
