@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState }
@@ -133,10 +132,10 @@ export default function DashboardPage() {
               <CardHeader className="pb-2">
                 <div className="relative h-40 w-full mb-4 rounded-md overflow-hidden">
                   <Image 
-                    src={`https://picsum.photos/seed/${subject.name.replace(/\s/g, '')}/400/200`} // Generate consistent image based on subject name
+                    src={`https://picsum.photos/seed/${subject.name.replace(/\s/g, '')}/400/200`} 
                     alt={subject.name} 
-                    layout="fill" 
-                    objectFit="cover"
+                    fill
+                    style={{ objectFit: "cover" }}
                     data-ai-hint="education abstract"
                   />
                 </div>

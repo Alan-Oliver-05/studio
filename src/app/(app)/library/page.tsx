@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -24,6 +23,7 @@ export default function LibraryPage() {
   const [error, setError] = useState<string | null>(null);
   const [summaries, setSummaries] = useState<Record<string, string>>({});
   const [loadingSummary, setLoadingSummary] = useState<Record<string, boolean>>({});
+  const [timeAgo, setTimeAgo] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -37,6 +37,21 @@ export default function LibraryPage() {
       setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (conversations.length > 0) {
+      const calculateTimes = () => {
+        const updatedTimeAgo: Record<string, string> = {};
+        conversations.forEach(convo => {
+          updatedTimeAgo[convo.id] = formatDistanceToNow(new Date(convo.lastUpdatedAt), { addSuffix: true });
+        });
+        setTimeAgo(updatedTimeAgo);
+      };
+      calculateTimes(); // Initial calculation
+      const intervalId = setInterval(calculateTimes, 60000); // Update every minute
+      return () => clearInterval(intervalId);
+    }
+  }, [conversations]);
 
   const handleGenerateSummary = async (conversation: Conversation) => {
     if (!conversation.messages || conversation.messages.length === 0) {
@@ -127,7 +142,7 @@ export default function LibraryPage() {
                     <h3 className="text-lg font-semibold text-primary">{convo.topic}</h3>
                     <p className="text-xs text-muted-foreground flex items-center">
                       <CalendarDays className="mr-1.5 h-3 w-3" />
-                      Last activity: {formatDistanceToNow(new Date(convo.lastUpdatedAt), { addSuffix: true })}
+                      Last activity: {timeAgo[convo.id] || 'Calculating...'}
                        <span className="mx-1.5">·</span> 
                        {convo.messages.length} messages
                     </p>
