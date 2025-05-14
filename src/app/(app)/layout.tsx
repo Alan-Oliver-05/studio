@@ -1,3 +1,4 @@
+
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { AppHeader } from "@/components/layout/app-header";
@@ -10,7 +11,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <SidebarNav />
         <div className="flex flex-col flex-1 md:pl-[calc(var(--sidebar-width-icon))] group-data-[sidebar-state=expanded]/sidebar-wrapper:md:pl-[var(--sidebar-width)] transition-[padding-left] duration-300 ease-in-out">
           <AppHeader />
-          <main className="flex-1 p-2 sm:p-3 md:p-4 overflow-auto"> {/* Adjusted padding */}
+          <main className="flex-1 px-2 sm:px-3 md:px-4 pb-2 sm:pb-3 md:pb-4 pt-0 overflow-auto">
             {children}
           </main>
         </div>
@@ -18,4 +19,3 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-
