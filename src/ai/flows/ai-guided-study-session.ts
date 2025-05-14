@@ -65,6 +65,7 @@ const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
   input: {schema: AIGuidedStudySessionInputSchema},
   output: {schema: AIGuidedStudySessionOutputSchema},
+  model: 'googleai/gemini-1.5-flash-latest', // Specify a multimodal model
   prompt: `You are an expert AI Tutor and Learning Assistant. Your goal is to provide a personalized and effective study session for a student based on their detailed profile and specific query.
   Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, and preferred language.
 
