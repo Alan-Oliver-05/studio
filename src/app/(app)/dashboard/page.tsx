@@ -1,4 +1,4 @@
- 
+
  "use client";
 
 import { useEffect, useState }
@@ -57,10 +57,7 @@ export default function DashboardPage() {
       };
       fetchSubjects();
     } else if (!profileLoading) {
-      // Handle case where profile is not available after loading (e.g. user navigated here directly without onboarding)
-      // This should ideally be handled by a redirect in a higher-level component or _app/page logic
       setIsLoadingSubjects(false);
-      // setError("User profile not found. Please complete onboarding.");
     }
   }, [profile, profileLoading]);
 
@@ -97,7 +94,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="pb-8">
+    <div> {/* Removed pb-8, main layout handles all padding including bottom */}
       <div className="mb-6 text-center pt-0">
         <h1 className="text-4xl font-bold tracking-tight text-primary mt-0">Welcome, {profile.name}!</h1>
         <p className="text-xl text-muted-foreground mt-2">Here are your personalized study recommendations.</p>
