@@ -156,7 +156,7 @@ export function ChatInterface({
         context?.lesson
     );
     
-    const imageToSend = uploadedImage; // Capture current image for the AI call
+    const imageToSend = uploadedImage; 
     setInput("");
     setUploadedImage(null); 
     setUploadedImageName(null);
@@ -180,11 +180,11 @@ export function ChatInterface({
             universityExam: userProfile.educationCategory === 'university' ? userProfile.educationQualification.universityExams : undefined,
           }
         },
-        subject: context?.subject, 
-        lesson: context?.lesson,   
+        subject: context?.subject || undefined, 
+        lesson: context?.lesson || undefined,   
         specificTopic: topic,    
-        question: userMessage.text.replace(`(See attached image: ${uploadedImageName})`, '').trim(), // Cleaned text for AI
-        photoDataUri: imageToSend, // Pass the data URI of the image
+        question: userMessage.text.replace(`(See attached image: ${uploadedImageName})`, '').trim(),
+        photoDataUri: imageToSend ? imageToSend : undefined, // Ensure undefined if no image
       };
       
       const aiResponse = await aiGuidedStudySession(aiInput);
