@@ -21,18 +21,18 @@ const AIGuidedStudySessionInputSchema = z.object({
     preferredLanguage: z.string().describe('The student\'s preferred language for learning.'),
     educationQualification: z.object({
       boardExam: z.object({
-        board: z.string().describe('The board exam name (e.g., CBSE, State Board Name).'),
-        standard: z.string().describe('The student\'s current standard (e.g., 10th, 12th).'),
+        board: z.string().optional().describe('The board exam name (e.g., CBSE, State Board Name).'),
+        standard: z.string().optional().describe('The student\'s current standard (e.g., 10th, 12th).'),
       }).optional(),
       competitiveExam: z.object({
-        examType: z.string().describe('The type of competitive exam (e.g., JEE, NEET, UPSC).'),
-        specificExam: z.string().describe('The specific competitive exam or job position (e.g., JEE Main, UPSC CSE).'),
+        examType: z.string().optional().describe('The type of competitive exam (e.g., JEE, NEET, UPSC).'),
+        specificExam: z.string().optional().describe('The specific competitive exam or job position (e.g., JEE Main, UPSC CSE).'),
       }).optional(),
       universityExam: z.object({
-        universityName: z.string().describe('The name of the university.'),
+        universityName: z.string().optional().describe('The name of the university.'),
         collegeName: z.string().optional().describe('The name of the college, if applicable.'),
-        course: z.string().describe('The student\'s course of study (e.g., B.Sc. Physics).'),
-        currentYear: z.string().describe('The student\'s current year of study (e.g., 1st, 2nd).'),
+        course: z.string().optional().describe('The student\'s course of study (e.g., B.Sc. Physics).'),
+        currentYear: z.string().optional().describe('The student\'s current year of study (e.g., 1st, 2nd).'),
       }).optional(),
     }).describe('The student\'s detailed educational background, specifying board, exam, or university details.'),
   }).describe('The student profile information from the onboarding form.'),
@@ -40,7 +40,7 @@ const AIGuidedStudySessionInputSchema = z.object({
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
   specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", or "General Discussion", "AI Learning Assistant Chat", "Homework Help" if it is a general tutor query not tied to a pre-selected subject/lesson/topic path).'),
   question: z.string().describe('The student\'s question or request for the study session.'),
-  photoDataUri: z.string().optional().nullable().describe("An optional photo uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
+  photoDataUri: z.string().optional().describe("An optional photo uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
 export type AIGuidedStudySessionInput = z.infer<typeof AIGuidedStudySessionInputSchema>;
 
@@ -65,7 +65,7 @@ const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
   input: {schema: AIGuidedStudySessionInputSchema},
   output: {schema: AIGuidedStudySessionOutputSchema},
-  model: 'googleai/gemini-1.5-flash-latest', // Specify a multimodal model
+  model: 'googleai/gemini-1.5-flash-latest', 
   prompt: `You are an expert AI Tutor and Learning Assistant. Your goal is to provide a personalized and effective study session for a student based on their detailed profile and specific query.
   Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, and preferred language.
 
@@ -82,22 +82,22 @@ const prompt = ai.definePrompt({
     {{#if boardExam.board}}
     Studying for: Board Exam
     Board: {{{boardExam.board}}}
-    Standard/Grade: {{{boardExam.standard}}}
-    Curriculum Focus: Material relevant to the {{{boardExam.board}}} syllabus for {{{boardExam.standard}}} standard in {{{studentProfile.country}}}.
+    {{#if boardExam.standard}}Standard/Grade: {{{boardExam.standard}}}{{/if}}
+    Curriculum Focus: Material relevant to the {{{boardExam.board}}} syllabus{{#if boardExam.standard}} for {{{boardExam.standard}}} standard{{/if}} in {{{studentProfile.country}}}.
     {{/if}}
     {{#if competitiveExam.examType}}
     Preparing for: Competitive Exam
     Exam Type: {{{competitiveExam.examType}}}
-    Specific Exam: {{{competitiveExam.specificExam}}}
-    Curriculum Focus: Material relevant to the syllabus of {{{competitiveExam.specificExam}}} ({{{competitiveExam.examType}}}) in {{{studentProfile.country}}}.
+    {{#if competitiveExam.specificExam}}Specific Exam: {{{competitiveExam.specificExam}}}{{/if}}
+    Curriculum Focus: Material relevant to the syllabus of {{#if competitiveExam.specificExam}}{{{competitiveExam.specificExam}}} ({{/if}}{{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}}){{/if}} in {{{studentProfile.country}}}.
     {{/if}}
     {{#if universityExam.universityName}}
     Attending: University
     University: {{{universityExam.universityName}}}
     {{#if universityExam.collegeName}}College: {{{universityExam.collegeName}}}{{/if}}
-    Course: {{{universityExam.course}}}
-    Year: {{{universityExam.currentYear}}}
-    Curriculum Focus: Material relevant to the {{{universityExam.course}}} curriculum for year {{{universityExam.currentYear}}} at {{{universityExam.universityName}}} in {{{studentProfile.country}}}.
+    {{#if universityExam.course}}Course: {{{universityExam.course}}}{{/if}}
+    {{#if universityExam.currentYear}}Year: {{{universityExam.currentYear}}}{{/if}}
+    Curriculum Focus: Material relevant to the {{#if universityExam.course}}{{{universityExam.course}}} curriculum{{/if}}{{#if universityExam.currentYear}} for year {{{universityExam.currentYear}}}{{/if}} at {{{universityExam.universityName}}} in {{{studentProfile.country}}}.
     {{/if}}
   {{/with}}
 
@@ -174,12 +174,11 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
         return output;
     }
     
-    console.warn("AI output was malformed or missing. Input was:", JSON.stringify(input)); // Log malformed input for debugging
+    console.warn("AI output was malformed or missing. Input was:", JSON.stringify(input)); 
     // Fallback response if AI output is malformed
     return {
         response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else about the topic? Please ensure your question is clear and any uploaded image is relevant.",
         suggestions: []
-        // visualElement will be undefined here by default
     };
   }
 );
