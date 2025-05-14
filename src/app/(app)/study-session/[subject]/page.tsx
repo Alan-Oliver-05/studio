@@ -186,8 +186,8 @@ export default function StudySessionPage() {
       case "selectLesson":
         return (
           <Card className="w-full max-w-3xl mx-auto">
-            <CardHeader>
-              <CardTitle className="text-2xl">Choose a Lesson in {subjectName}</CardTitle>
+            <CardHeader className="pt-0">
+              <CardTitle className="text-2xl mt-0">Choose a Lesson in {subjectName}</CardTitle>
               <CardDescription>Select a lesson to see its topics.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -213,8 +213,8 @@ export default function StudySessionPage() {
       case "selectTopic":
         return (
           <Card className="w-full max-w-3xl mx-auto">
-            <CardHeader>
-              <CardTitle className="text-2xl">Choose a Topic in {selectedLesson?.name}</CardTitle>
+            <CardHeader className="pt-0">
+              <CardTitle className="text-2xl mt-0">Choose a Topic in {selectedLesson?.name}</CardTitle>
               <CardDescription>Select a topic to start your Q&amp;A session.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -243,11 +243,11 @@ export default function StudySessionPage() {
           const initialMessage = `Hello ${profile.name}! Let's start our Q&A session on "${selectedTopic.name}" from the lesson "${selectedLesson.name}" in "${subjectName}". What aspect of "${selectedTopic.name}" would you like to explore first?`;
           return (
             <div className="h-full flex flex-col">
-                <div className="mb-2">
+                <div className="mb-2 pt-0">
                     <Button variant="link" size="sm" className="text-muted-foreground p-0 h-auto" onClick={() => {setSelectedTopic(null); setCurrentStep("selectTopic")}}>
                         &larr; Back to Topics in {selectedLesson.name}
                     </Button>
-                    <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center">
+                    <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
                         <Lightbulb className="mr-3 h-8 w-8 text-accent"/> Study: {selectedTopic.name}
                     </h1>
                     <p className="text-sm text-muted-foreground">Subject: {subjectName} &gt; Lesson: {selectedLesson.name}</p>
@@ -274,8 +274,8 @@ export default function StudySessionPage() {
   return (
     <div className="h-full flex flex-col p-1 sm:p-2 md:p-0">
         {currentStep !== 'chat' && (
-             <div className="mb-4 text-center">
-                <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center justify-center">
+             <div className="mb-4 text-center pt-0">
+                <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center justify-center mt-0">
                     <BookOpen className="mr-3 h-8 w-8"/> Study Session: {subjectName}
                 </h1>
              </div>
@@ -286,4 +286,3 @@ export default function StudySessionPage() {
     </div>
   );
 }
-

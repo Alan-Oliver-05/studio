@@ -105,7 +105,7 @@ export default function LibraryPage() {
 
   const getRevisitLink = (convo: Conversation) => {
     if (convo.topic === "Homework Help") return "/homework-assistant";
-    if (convo.topic === "General AI Tutor") return "/general-tutor";
+    if (convo.topic === "General AI Tutor" || convo.topic === "AI Learning Assistant Chat") return "/general-tutor";
     // For specific study sessions, reconstruct the path
     // The convo.topic is the specific topic, subjectContext is the broader subject
     return `/study-session/${encodeURIComponent(convo.subjectContext || convo.topic)}`;
@@ -113,9 +113,9 @@ export default function LibraryPage() {
 
   return (
     <div className="pb-8">
-      <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+      <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center pt-0">
         <div className="mb-4 sm:mb-0 text-center sm:text-left">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-primary flex items-center">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-primary flex items-center mt-0">
             <LibraryBig className="mr-3 h-8 w-8 md:h-10 md:w-10" /> Your Learning Library
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground mt-1 md:mt-2">
@@ -217,4 +217,3 @@ export default function LibraryPage() {
     </div>
   );
 }
-

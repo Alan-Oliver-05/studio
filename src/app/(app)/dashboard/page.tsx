@@ -98,8 +98,8 @@ export default function DashboardPage() {
 
   return (
     <div className="pb-8">
-      <div className="mb-8 text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-primary">Welcome, {profile.name}!</h1>
+      <div className="mb-8 text-center pt-0">
+        <h1 className="text-4xl font-bold tracking-tight text-primary mt-0">Welcome, {profile.name}!</h1>
         <p className="text-xl text-muted-foreground mt-2">Here are your personalized study recommendations.</p>
       </div>
 

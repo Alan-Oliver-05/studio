@@ -41,8 +41,8 @@ export default function AITutorPage() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center">
+      <div className="mb-6 pt-0">
+        <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
             <Brain className="mr-3 h-8 w-8"/> AI Learning Assistant
         </h1>
         <p className="text-muted-foreground">Your multi-modal personal tutor.</p>

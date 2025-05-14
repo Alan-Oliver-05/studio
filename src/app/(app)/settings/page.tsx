@@ -56,9 +56,9 @@ export default function SettingsPage() {
 
   return (
     <div className="pb-8">
-       <div className="mb-8 flex flex-col sm:flex-row justify-between items-center">
+       <div className="mb-8 flex flex-col sm:flex-row justify-between items-center pt-0">
           <div className="mb-4 sm:mb-0 text-center sm:text-left">
-            <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center">
+            <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center mt-0">
               <SettingsIcon className="mr-3 h-10 w-10" /> User Settings
             </h1>
             <p className="text-xl text-muted-foreground mt-2">
