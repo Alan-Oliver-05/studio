@@ -63,7 +63,7 @@ export default function DashboardPage() {
 
   if (profileLoading || isLoadingSubjects) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-theme(spacing.20))]">
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-theme(spacing.20))] pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading your personalized dashboard...</p>
       </div>
@@ -72,7 +72,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <Alert variant="destructive" className="max-w-2xl mx-auto mt-10">
+      <Alert variant="destructive" className="max-w-2xl mx-auto mt-10 pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>{error}</AlertDescription>
@@ -82,7 +82,7 @@ export default function DashboardPage() {
   
   if (!profile || !profile.name) {
      return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-theme(spacing.20))] text-center">
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-theme(spacing.20))] text-center pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
         <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
         <h2 className="text-2xl font-semibold mb-2">Profile Not Found</h2>
         <p className="text-muted-foreground mb-4">We couldn't find your profile. Please complete the onboarding process.</p>
@@ -94,7 +94,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div> {/* Removed pb-8, main layout handles all padding including bottom */}
+    <div className="pr-4 md:pr-6 pb-4 md:pb-6 pt-0"> {/* Added padding here, removed left padding */}
       <div className="mb-6 text-center pt-0">
         <h1 className="text-4xl font-bold tracking-tight text-primary mt-0">Welcome, {profile.name}!</h1>
         <p className="text-xl text-muted-foreground mt-2">Here are your personalized study recommendations.</p>
