@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from "react";
-import type { UserProfile, Message as MessageType } from "@/types";
+import type { UserProfile, Message as MessageType, VisualElement } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle } from "lucide-react";
+import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from "@/ai/flows/ai-guided-study-session";
 import { addMessageToConversation, getConversationById } from "@/lib/chat-storage";
@@ -19,6 +19,7 @@ import {
   TooltipProvider
 } from "@/components/ui/tooltip";
 import Image from "next/image";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ChatInterfaceProps {
   userProfile: UserProfile | null;
@@ -31,6 +32,28 @@ interface ChatInterfaceProps {
     lesson: string;
   };
 }
+
+const renderVisualElementContent = (visualElement: VisualElement) => {
+  let contentRepresentation = "Visual content details are not available or type is not recognized.";
+  if (visualElement.content) {
+    if (typeof visualElement.content === 'string') {
+      contentRepresentation = visualElement.content;
+    } else if (Array.isArray(visualElement.content) || typeof visualElement.content === 'object') {
+      try {
+        contentRepresentation = JSON.stringify(visualElement.content, null, 2);
+      } catch (e) {
+        contentRepresentation = "Could not display structured content."
+      }
+    }
+  }
+
+  return (
+    <pre className="mt-1 whitespace-pre-wrap text-xs bg-muted/50 p-2 rounded-md max-h-40 overflow-auto">
+      {contentRepresentation}
+    </pre>
+  );
+};
+
 
 export function ChatInterface({
   userProfile,
@@ -160,7 +183,7 @@ export function ChatInterface({
         subject: context?.subject, 
         lesson: context?.lesson,   
         specificTopic: topic,    
-        question: userMessage.text, // Original text without image name, AI sees image directly
+        question: userMessage.text.replace(`(See attached image: ${uploadedImageName})`, '').trim(), // Cleaned text for AI
         photoDataUri: imageToSend, // Pass the data URI of the image
       };
       
@@ -172,6 +195,7 @@ export function ChatInterface({
           sender: "ai",
           text: aiResponse.response,
           suggestions: aiResponse.suggestions,
+          visualElement: aiResponse.visualElement,
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, aiMessage]);
@@ -257,6 +281,29 @@ export function ChatInterface({
                   </div>
                 )}
                 <p className="whitespace-pre-wrap">{message.text}</p>
+                
+                {message.sender === "ai" && message.visualElement && (
+                  <Card className="mt-3 bg-primary/5 border-primary/20">
+                    <CardHeader className="pb-2 pt-3 px-3">
+                      <CardTitle className="text-sm font-semibold text-primary flex items-center">
+                        {message.visualElement.type.includes('chart') && <BarChart2 className="h-4 w-4 mr-2"/>}
+                        {message.visualElement.type.includes('flowchart') && <Zap className="h-4 w-4 mr-2"/>}
+                        {message.visualElement.type.includes('image') && <ImageIcon className="h-4 w-4 mr-2"/>}
+                        AI Suggested Visual
+                      </CardTitle>
+                      {message.visualElement.caption && (
+                        <CardDescription className="text-xs">{message.visualElement.caption}</CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent className="px-3 pb-3">
+                      <p className="text-xs mb-1">Type: <span className="font-medium">{message.visualElement.type.replace(/_/g, ' ')}</span></p>
+                      <p className="text-xs mb-1">Content:</p>
+                      {renderVisualElementContent(message.visualElement)}
+                      <p className="text-xs italic mt-2 text-muted-foreground">(Visual rendering capabilities are under development)</p>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {message.sender === "ai" && message.suggestions && message.suggestions.length > 0 && (
                    <div className="mt-3 pt-2 border-t border-muted-foreground/20">
                       <p className="text-xs font-semibold mb-1 text-muted-foreground flex items-center">
@@ -369,3 +416,4 @@ export function ChatInterface({
     </div>
   );
 }
+

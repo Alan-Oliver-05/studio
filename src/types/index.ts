@@ -53,6 +53,12 @@ export interface Topic {
   description?: string;
 }
 
+export interface VisualElement {
+  type: 'bar_chart_data' | 'line_chart_data' | 'flowchart_description' | 'image_generation_prompt';
+  content: any; // Could be chart data array, string description, or image prompt string
+  caption?: string;
+}
+
 export interface Message {
   id: string;
   sender: 'user' | 'ai';
@@ -60,6 +66,7 @@ export interface Message {
   suggestions?: string[];
   timestamp: number;
   attachmentPreview?: string | null; // For client-side display of image thumbnail
+  visualElement?: VisualElement | null; // To hold structured visual data from AI
 }
 
 export interface Conversation {
@@ -72,3 +79,4 @@ export interface Conversation {
   summary?: string;
   lastUpdatedAt: number;
 }
+

@@ -44,9 +44,16 @@ const AIGuidedStudySessionInputSchema = z.object({
 });
 export type AIGuidedStudySessionInput = z.infer<typeof AIGuidedStudySessionInputSchema>;
 
+const VisualElementSchema = z.object({
+  type: z.enum(['bar_chart_data', 'line_chart_data', 'flowchart_description', 'image_generation_prompt']).describe('The type of visual element suggested.'),
+  content: z.any().describe('Structured data for charts (e.g., array of objects for bar/line charts), textual description for flowcharts, or a string prompt for image generation.'),
+  caption: z.string().optional().describe('A brief caption or title for the visual element.'),
+}).describe('A structured representation of a visual aid suggested by the AI.');
+
 const AIGuidedStudySessionOutputSchema = z.object({
   response: z.string().describe('The AI tutor\'s response to the student\'s question, including explanations, study materials, and examples tailored to their educational context and preferred language. The response should be comprehensive and directly address the query based on the student\'s specific curriculum if applicable.'),
   suggestions: z.array(z.string()).describe('A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student\'s curriculum and country/region.'),
+  visualElement: VisualElementSchema.optional().describe('An optional visual element to aid understanding. This could be data for a chart, a description for a flowchart, or a prompt for image generation.'),
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
 
@@ -117,9 +124,14 @@ const prompt = ai.definePrompt({
   4.  **External Suggestions**: Provide 2-3 "suggestions" for further study. These should be high-quality, specific external resources.
       *   Preferably, suggest official sources like specific pages on their educational board's website (e.g., {{{studentProfile.educationQualification.boardExam.board}}} website if applicable), national educational portals for {{{studentProfile.country}}}, or specific, reputable textbooks or academic websites known to be used for their curriculum.
       *   If official sources are hard to pinpoint, suggest well-regarded open educational resources or university course pages relevant to the topic and student's level.
-  5.  **Visual Explanations**: If the student asks for visual explanations or if it would significantly aid understanding, describe how a graph, chart, or flowchart could represent the information. You can also provide data points that could be used to create such visuals.
-  6.  **Tone**: Maintain a supportive, encouraging, and patient tone.
-  7.  **Format**: Ensure your entire output is a single JSON object with "response" and "suggestions" fields.
+  5.  **Visual Explanations (Textual Description)**: If the student asks for visual explanations or if it would significantly aid understanding, describe in your main 'response' text how a graph, chart, or flowchart could represent the information. You can also provide data points that could be used to create such visuals.
+  6.  **Visual Element Output (Structured Data)**: If you determine a visual explanation is highly beneficial (as per instruction 5), in addition to describing it in your main 'response' text, ALSO populate the 'visualElement' output field.
+      *   For charts (bar, line): Set 'type' to 'bar_chart_data' or 'line_chart_data'. For 'content', provide an array of data objects suitable for charting (e.g., \`[{ "name": "Category A", "value": 30 }, { "name": "Category B", "value": 50 }]\`). Include a 'caption'.
+      *   For flowcharts: Set 'type' to 'flowchart_description'. For 'content', provide a textual description of the flowchart steps or an array of step objects (e.g., \`[{ "id": "1", "text": "Start" }, { "id": "2", "text": "Process A"}]\`). Include a 'caption'.
+      *   If you believe an image would be best: Set 'type' to 'image_generation_prompt'. For 'content', provide a concise, descriptive prompt string for an image generation model (e.g., "a diagram illustrating the water cycle with labels for evaporation, condensation, precipitation"). Include a 'caption'.
+      *   This 'visualElement' field is intended for the application to potentially render the visual. If no visual is strongly appropriate, leave 'visualElement' undefined.
+  7.  **Tone**: Maintain a supportive, encouraging, and patient tone.
+  8.  **Format**: Ensure your entire output is a single JSON object with "response", "suggestions", and optionally "visualElement" fields.
 
   Consider the student's country ({{{studentProfile.country}}}) and state ({{{studentProfile.state}}}) for tailoring content, especially if state-specific curriculum or resources are relevant.
   If 'specificTopic' is "General Discussion", "AI Learning Assistant Chat", "Homework Help", or similar, adapt your response to be a general academic assistant, still using the student's profile for context but without a narrow predefined topic unless specified in the question.
@@ -157,6 +169,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     const {output} = await prompt(input);
     
     if (output && output.response && Array.isArray(output.suggestions)) {
+        // visualElement is optional, so we don't need to check for its presence for a valid output
         return output;
     }
     
@@ -165,6 +178,8 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     return {
         response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else about the topic? Please ensure your question is clear and any uploaded image is relevant.",
         suggestions: []
+        // visualElement will be undefined here by default
     };
   }
 );
+
