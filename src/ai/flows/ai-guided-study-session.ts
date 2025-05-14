@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for conducting AI-guided study sessions.
@@ -37,8 +38,9 @@ const AIGuidedStudySessionInputSchema = z.object({
   }).describe('The student profile information from the onboarding form.'),
   subject: z.string().optional().describe('The main subject of study (e.g., "Physics for 12th Standard CBSE").'),
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
-  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", or "General Discussion" if it is a general tutor query not tied to a pre-selected subject/lesson/topic path).'),
+  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", or "General Discussion", "AI Learning Assistant Chat", "Homework Help" if it is a general tutor query not tied to a pre-selected subject/lesson/topic path).'),
   question: z.string().describe('The student\'s question or request for the study session.'),
+  photoDataUri: z.string().optional().describe("An optional photo uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
 export type AIGuidedStudySessionInput = z.infer<typeof AIGuidedStudySessionInputSchema>;
 
@@ -56,7 +58,7 @@ const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
   input: {schema: AIGuidedStudySessionInputSchema},
   output: {schema: AIGuidedStudySessionOutputSchema},
-  prompt: `You are an expert AI Tutor. Your goal is to provide a personalized and effective study session for a student based on their detailed profile and specific query.
+  prompt: `You are an expert AI Tutor and Learning Assistant. Your goal is to provide a personalized and effective study session for a student based on their detailed profile and specific query.
   Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, and preferred language.
 
   Student Profile:
@@ -98,26 +100,32 @@ const prompt = ai.definePrompt({
 
   Student's Question/Request: "{{{question}}}"
 
+  {{#if photoDataUri}}
+  Student provided image for context:
+  {{media url=photoDataUri}}
+  {{/if}}
+
   Instructions for AI Tutor:
   1.  **Understand the Context**: Deeply analyze the student's profile, especially their educational qualification (board, standard, exam, course, year, country, state) to understand their specific curriculum and learning level.
   2.  **Personalized Response**: Craft your "response" in the student's preferred language ({{{studentProfile.preferredLanguage}}}). Address the student's "{{{question}}}" directly and comprehensively.
-      *   If the question is a greeting or general, provide a welcoming response and ask how you can help with the specified topic, considering their educational context.
+      *   If the question is a greeting or general (e.g., topic is "General Discussion", "AI Learning Assistant Chat"), provide a welcoming response and ask how you can help, considering their educational context and any uploaded image.
       *   If about a specific concept: Explain it clearly with examples relevant to their syllabus (e.g., examples from their prescribed textbooks if known, or typical examples for their level and region).
-      *   If asking for problems: Provide a few relevant problems aligning with their curriculum's difficulty.
+      *   If asking for help with problems (e.g. math equations, science problems): Break down complex problems into simple, understandable, step-by-step solutions. Explain each step clearly.
       *   If stuck: Offer hints, break down the problem, or explain prerequisite concepts they might be missing.
+      *   If an image is provided (see "Student provided image for context"), use it to understand and answer the question. For example, if it's an image of a math problem, help solve it. If it's a diagram, explain it.
   3.  **Study Materials in Response**: Integrate study material directly into your response. This means clear explanations, definitions, examples, and step-by-step solutions where appropriate.
   4.  **External Suggestions**: Provide 2-3 "suggestions" for further study. These should be high-quality, specific external resources.
       *   Preferably, suggest official sources like specific pages on their educational board's website (e.g., {{{studentProfile.educationQualification.boardExam.board}}} website if applicable), national educational portals for {{{studentProfile.country}}}, or specific, reputable textbooks or academic websites known to be used for their curriculum.
       *   If official sources are hard to pinpoint, suggest well-regarded open educational resources or university course pages relevant to the topic and student's level.
-      *   Example: For a CBSE student in India, you might suggest a link to NCERT textbook PDFs or relevant sections on the CBSE academic website.
-  5.  **Tone**: Maintain a supportive, encouraging, and patient tone.
-  6.  **Format**: Ensure your entire output is a single JSON object with "response" and "suggestions" fields.
+  5.  **Visual Explanations**: If the student asks for visual explanations or if it would significantly aid understanding, describe how a graph, chart, or flowchart could represent the information. You can also provide data points that could be used to create such visuals.
+  6.  **Tone**: Maintain a supportive, encouraging, and patient tone.
+  7.  **Format**: Ensure your entire output is a single JSON object with "response" and "suggestions" fields.
 
   Consider the student's country ({{{studentProfile.country}}}) and state ({{{studentProfile.state}}}) for tailoring content, especially if state-specific curriculum or resources are relevant.
-  If 'specificTopic' is "General Discussion", "Homework Help", or similar, adapt your response to be a general academic assistant, still using the student's profile for context but without a narrow predefined topic.
+  If 'specificTopic' is "General Discussion", "AI Learning Assistant Chat", "Homework Help", or similar, adapt your response to be a general academic assistant, still using the student's profile for context but without a narrow predefined topic unless specified in the question.
   `,
   config: {
-    temperature: 0.4, // Slightly higher for more conversational and varied responses, but still grounded.
+    temperature: 0.5, 
      safetySettings: [
       {
         category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -147,15 +155,16 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    // Ensure a valid output structure even if AI fails to provide one
+    
     if (output && output.response && Array.isArray(output.suggestions)) {
         return output;
     }
+    
+    console.warn("AI output was malformed or missing. Input was:", JSON.stringify(input)); // Log malformed input for debugging
     // Fallback response if AI output is malformed
     return {
-        response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else about the topic? Please ensure your question is clear.",
+        response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else about the topic? Please ensure your question is clear and any uploaded image is relevant.",
         suggestions: []
     };
   }
 );
-

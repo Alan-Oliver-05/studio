@@ -1,4 +1,5 @@
 
+
 export interface BoardExamInfo {
   board?: string;
   standard?: string;
@@ -58,6 +59,7 @@ export interface Message {
   text: string;
   suggestions?: string[];
   timestamp: number;
+  attachmentPreview?: string | null; // For client-side display of image thumbnail
 }
 
 export interface Conversation {
@@ -70,4 +72,3 @@ export interface Conversation {
   summary?: string;
   lastUpdatedAt: number;
 }
-

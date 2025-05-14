@@ -2,18 +2,21 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { ChatInterface } from "../study-session/components/chat-interface"; // Reusing the chat interface
-import { Loader2, AlertTriangle, Brain } from "lucide-react";
+import { ChatInterface } from "../study-session/components/chat-interface";
+import { Loader2, AlertTriangle, Brain, MessageCircle, Languages, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function GeneralTutorPage() {
+export default function AITutorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
 
   if (profileLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex flex-col items-center justify-center h-full p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading AI Tutor...</p>
       </div>
     );
   }
@@ -24,7 +27,7 @@ export default function GeneralTutorPage() {
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
         <h2 className="text-3xl font-semibold mb-3">Profile Required</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
-          To use the General AI Tutor, we need your profile information. Please complete the onboarding process first.
+          To use the AI Tutor, we need your profile information. Please complete the onboarding process first.
         </p>
         <Button asChild size="lg">
           <Link href="/onboarding">Go to Onboarding</Link>
@@ -33,26 +36,57 @@ export default function GeneralTutorPage() {
     );
   }
   
-  const conversationId = `general-tutor-${profile.id || 'default'}`;
-  const initialMessage = `Hello ${profile.name}! I'm your General AI Tutor. Feel free to ask me about any subject or topic you're curious about. How can I help you learn today?`;
+  const chatConversationId = `ai-tutor-chat-${profile.id || 'default'}`;
+  const initialChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context.`;
 
   return (
     <div className="h-full flex flex-col">
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center">
-            <Brain className="mr-3 h-8 w-8"/> General AI Tutor
+            <Brain className="mr-3 h-8 w-8"/> AI Learning Assistant
         </h1>
-        <p className="text-muted-foreground">A chat playground for general study information and exploring new topics.</p>
+        <p className="text-muted-foreground">Your multi-modal personal tutor.</p>
       </div>
-      <div className="flex-grow">
-        <ChatInterface
-          userProfile={profile}
-          topic="General AI Tutor"
-          conversationId={conversationId}
-          initialSystemMessage={initialMessage}
-          placeholderText="Ask anything..."
-        />
-      </div>
+      
+      <Tabs defaultValue="chat" className="flex-grow flex flex-col">
+        <TabsList className="mb-4 self-start">
+          <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4" />Chat</TabsTrigger>
+          <TabsTrigger value="language-learning"><Languages className="mr-2 h-4 w-4" />Language Learning</TabsTrigger>
+          <TabsTrigger value="visual-learning"><BarChart3 className="mr-2 h-4 w-4" />Visual Learning</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="chat" className="flex-grow flex flex-col min-h-0">
+          <ChatInterface
+            userProfile={profile}
+            topic="AI Learning Assistant Chat" // General topic for this mode
+            conversationId={chatConversationId}
+            initialSystemMessage={initialChatMessage}
+            placeholderText="Ask anything or upload an image..."
+          />
+        </TabsContent>
+        <TabsContent value="language-learning" className="flex-grow">
+          <Card>
+            <CardHeader>
+              <CardTitle>Language Learning</CardTitle>
+              <CardDescription>Practice vocabulary, grammar, pronunciation, and have interactive conversations in your target language.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">This feature is coming soon! Get ready to enhance your language skills with AI-powered practice.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="visual-learning" className="flex-grow">
+           <Card>
+            <CardHeader>
+              <CardTitle>Visual Learning</CardTitle>
+              <CardDescription>Explore concepts with interactive graphs, charts, and flowcharts generated by AI.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Get ready for visual explanations! This interactive learning mode is under development.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

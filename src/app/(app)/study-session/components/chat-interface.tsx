@@ -1,13 +1,13 @@
 
 "use client";
 
-import { useState, useEffect, useRef, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent, ChangeEvent } from "react";
 import type { UserProfile, Message as MessageType } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SendHorizonal, Bot, User, Loader2, Info } from "lucide-react";
+import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from "@/ai/flows/ai-guided-study-session";
 import { addMessageToConversation, getConversationById } from "@/lib/chat-storage";
@@ -18,14 +18,15 @@ import {
   TooltipTrigger,
   TooltipProvider
 } from "@/components/ui/tooltip";
+import Image from "next/image";
 
 interface ChatInterfaceProps {
   userProfile: UserProfile | null;
-  topic: string; // This will be the most specific topic (e.g., "Linear Equations", "General AI Tutor")
+  topic: string; 
   conversationId: string; 
   initialSystemMessage?: string; 
   placeholderText?: string;
-  context?: { // Optional broader context for specific study sessions
+  context?: { 
     subject: string;
     lesson: string;
   };
@@ -33,16 +34,19 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({
   userProfile,
-  topic, // This is the specificTopic for the AI flow
+  topic, 
   conversationId,
   initialSystemMessage,
   placeholderText = "Ask your question...",
-  context, // Contains subject and lesson if applicable
+  context, 
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedImageName, setUploadedImageName] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -59,11 +63,11 @@ export function ChatInterface({
       setMessages([firstAIMessage]);
       addMessageToConversation(
         conversationId, 
-        topic, // Specific topic
+        topic, 
         firstAIMessage, 
         userProfile || undefined,
-        context?.subject, // Broader subject context
-        context?.lesson // Broader lesson context
+        context?.subject, 
+        context?.lesson 
       );
     }
   }, [conversationId, initialSystemMessage, topic, userProfile, context]);
@@ -74,15 +78,49 @@ export function ChatInterface({
     }
   }, [messages]);
 
+  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 4 * 1024 * 1024) { // 4MB limit
+        toast({
+          title: "Image too large",
+          description: "Please upload an image smaller than 4MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedImage(reader.result as string);
+        setUploadedImageName(file.name);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeUploadedImage = () => {
+    setUploadedImage(null);
+    setUploadedImageName(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Reset file input
+    }
+  };
+
   const handleSubmit = async (e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
-    if (!input.trim() || isLoading || !userProfile) return;
+    if ((!input.trim() && !uploadedImage) || isLoading || !userProfile) return;
 
+    let userMessageText = input.trim();
+    if (uploadedImage && uploadedImageName) {
+       userMessageText = userMessageText ? `${userMessageText} (See attached image: ${uploadedImageName})` : `(See attached image: ${uploadedImageName})`;
+    }
+    
     const userMessage: MessageType = {
       id: crypto.randomUUID(),
       sender: "user",
-      text: input,
+      text: userMessageText,
       timestamp: Date.now(),
+      attachmentPreview: uploadedImage, // For display in chat
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -94,7 +132,14 @@ export function ChatInterface({
         context?.subject,
         context?.lesson
     );
+    
+    const imageToSend = uploadedImage; // Capture current image for the AI call
     setInput("");
+    setUploadedImage(null); 
+    setUploadedImageName(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     setIsLoading(true);
 
     try {
@@ -112,10 +157,11 @@ export function ChatInterface({
             universityExam: userProfile.educationCategory === 'university' ? userProfile.educationQualification.universityExams : undefined,
           }
         },
-        subject: context?.subject, // Will be undefined for General Tutor / Homework Assistant
-        lesson: context?.lesson,   // Will be undefined for General Tutor / Homework Assistant
-        specificTopic: topic,    // The 'topic' prop of ChatInterface becomes 'specificTopic'
-        question: userMessage.text,
+        subject: context?.subject, 
+        lesson: context?.lesson,   
+        specificTopic: topic,    
+        question: userMessage.text, // Original text without image name, AI sees image directly
+        photoDataUri: imageToSend, // Pass the data URI of the image
       };
       
       const aiResponse = await aiGuidedStudySession(aiInput);
@@ -147,10 +193,13 @@ export function ChatInterface({
         description: "Failed to get a response from AI. Please try again.",
         variant: "destructive",
       });
+      const errorMessageText = error instanceof Error && error.message.includes("IMAGE_SIZE_LIMIT_EXCEEDED")
+        ? "The uploaded image is too large for me to process. Please try a smaller one."
+        : "I encountered an error. Please try asking again.";
       const errorMessage: MessageType = {
         id: crypto.randomUUID(),
         sender: "ai",
-        text: "I encountered an error. Please try asking again.",
+        text: errorMessageText,
         timestamp: Date.now(),
       };
        setMessages((prev) => [...prev, errorMessage]);
@@ -184,7 +233,7 @@ export function ChatInterface({
               )}
             >
               {message.sender === "ai" && (
-                <Avatar className="h-8 w-8 border border-primary/50">
+                <Avatar className="h-8 w-8 border border-primary/50 self-start">
                   <AvatarFallback><Bot className="h-5 w-5 text-primary" /></AvatarFallback>
                 </Avatar>
               )}
@@ -196,6 +245,17 @@ export function ChatInterface({
                     : "bg-muted text-foreground rounded-bl-none border"
                 )}
               >
+                {message.attachmentPreview && message.sender === 'user' && (
+                  <div className="mb-2">
+                    <Image 
+                      src={message.attachmentPreview} 
+                      alt="Uploaded preview" 
+                      width={200} 
+                      height={200} 
+                      className="rounded-md object-contain max-h-48" 
+                    />
+                  </div>
+                )}
                 <p className="whitespace-pre-wrap">{message.text}</p>
                 {message.sender === "ai" && message.suggestions && message.suggestions.length > 0 && (
                    <div className="mt-3 pt-2 border-t border-muted-foreground/20">
@@ -221,7 +281,7 @@ export function ChatInterface({
                 )}
               </div>
               {message.sender === "user" && (
-                 <Avatar className="h-8 w-8 border border-accent/50">
+                 <Avatar className="h-8 w-8 border border-accent/50 self-start">
                   <AvatarFallback><User className="h-5 w-5 text-accent" /></AvatarFallback>
                 </Avatar>
               )}
@@ -239,21 +299,64 @@ export function ChatInterface({
           )}
         </div>
       </ScrollArea>
+      {uploadedImage && uploadedImageName && (
+        <div className="p-2 border-t bg-muted/50 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Paperclip className="h-4 w-4" />
+            Attached: <span className="font-medium text-foreground">{uploadedImageName}</span>
+             <Image src={uploadedImage} alt="Preview" width={24} height={24} className="rounded object-cover" />
+          </div>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={removeUploadedImage}>
+            <XCircle className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+      )}
       <form
         onSubmit={handleSubmit}
-        className="flex items-center gap-3 border-t p-4 bg-background rounded-b-lg"
+        className="flex items-center gap-3 border-t p-3 bg-background rounded-b-lg"
       >
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+              >
+                <ImagePlus className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Upload Image</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <Input 
+          type="file" 
+          accept="image/*" 
+          ref={fileInputRef} 
+          onChange={handleImageUpload} 
+          className="hidden" 
+          disabled={isLoading}
+        />
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={placeholderText}
           className="flex-grow text-sm"
           disabled={isLoading}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              handleSubmit(e as unknown as FormEvent<HTMLFormElement>);
+            }
+          }}
         />
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+              <Button type="submit" size="icon" disabled={isLoading || (!input.trim() && !uploadedImage)}>
                 <SendHorizonal className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
@@ -266,4 +369,3 @@ export function ChatInterface({
     </div>
   );
 }
-
