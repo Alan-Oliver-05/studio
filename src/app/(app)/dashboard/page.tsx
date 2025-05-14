@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState }
@@ -96,14 +97,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto pb-8">
+    <div className="pb-8">
       <div className="mb-8 text-center">
         <h1 className="text-4xl font-bold tracking-tight text-primary">Welcome, {profile.name}!</h1>
         <p className="text-xl text-muted-foreground mt-2">Here are your personalized study recommendations.</p>
       </div>
 
       {subjects.length === 0 && !isLoadingSubjects && (
-        <Card className="text-center py-10 shadow-lg">
+        <Card className="text-center py-10 shadow-lg max-w-2xl mx-auto">
           <CardHeader>
             <div className="mx-auto bg-accent/20 rounded-full p-3 w-fit">
              <Sparkles className="h-10 w-10 text-accent" />
@@ -132,7 +133,7 @@ export default function DashboardPage() {
               <CardHeader className="pb-2">
                 <div className="relative h-40 w-full mb-4 rounded-md overflow-hidden">
                   <Image 
-                    src={`https://picsum.photos/seed/${subject.name.replace(/\s/g, '')}/400/200`} 
+                    src={`https://placehold.co/400x200.png`} 
                     alt={subject.name} 
                     fill
                     style={{ objectFit: "cover" }}

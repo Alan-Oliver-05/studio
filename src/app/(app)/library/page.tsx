@@ -26,17 +26,13 @@ export default function LibraryPage() {
   const [loadingSummary, setLoadingSummary] = useState<Record<string, boolean>>({});
   const [timeAgo, setTimeAgo] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     try {
       const convos = getConversations();
       setConversations(convos);
-      const initialTimeAgo: Record<string, string> = {};
-      convos.forEach(convo => {
-        initialTimeAgo[convo.id] = 'Calculating...';
-      });
-      setTimeAgo(initialTimeAgo);
-
     } catch (e) {
       console.error("Failed to load conversations:", e);
       setError("Failed to load conversation history.");
@@ -46,11 +42,16 @@ export default function LibraryPage() {
   }, []);
 
   useEffect(() => {
-    if (conversations.length > 0 && typeof window !== 'undefined') { // Ensure window is defined for client-side date formatting
+    if (isClient && conversations.length > 0) {
       const calculateTimes = () => {
         const updatedTimeAgo: Record<string, string> = {};
         conversations.forEach(convo => {
-          updatedTimeAgo[convo.id] = formatDistanceToNow(new Date(convo.lastUpdatedAt), { addSuffix: true });
+          try {
+            updatedTimeAgo[convo.id] = formatDistanceToNow(new Date(convo.lastUpdatedAt), { addSuffix: true });
+          } catch (e) {
+            console.warn(`Could not format date for convo ${convo.id}:`, e);
+            updatedTimeAgo[convo.id] = 'Invalid date';
+          }
         });
         setTimeAgo(updatedTimeAgo);
       };
@@ -59,7 +60,7 @@ export default function LibraryPage() {
       const intervalId = setInterval(calculateTimes, 60000); 
       return () => clearInterval(intervalId);
     }
-  }, [conversations]);
+  }, [conversations, isClient]);
 
   const handleGenerateSummary = async (conversation: Conversation) => {
     if (!conversation.messages || conversation.messages.length === 0) {
@@ -83,7 +84,7 @@ export default function LibraryPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !isClient) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -111,7 +112,7 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="container mx-auto pb-8">
+    <div className="pb-8">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div className="mb-4 sm:mb-0 text-center sm:text-left">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-primary flex items-center">
@@ -124,7 +125,7 @@ export default function LibraryPage() {
       </div>
 
       {conversations.length === 0 ? (
-        <Card className="text-center py-10 shadow-lg">
+        <Card className="text-center py-10 shadow-lg max-w-2xl mx-auto">
           <CardHeader>
              <div className="mx-auto bg-accent/10 rounded-full p-3 w-fit">
                 <MessageSquareText className="h-10 w-10 text-accent" />

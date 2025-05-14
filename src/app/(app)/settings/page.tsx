@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
@@ -54,7 +55,7 @@ export default function SettingsPage() {
 
 
   return (
-    <div className="container mx-auto pb-8">
+    <div className="pb-8">
        <div className="mb-8 flex flex-col sm:flex-row justify-between items-center">
           <div className="mb-4 sm:mb-0 text-center sm:text-left">
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center">
@@ -71,7 +72,7 @@ export default function SettingsPage() {
           </Button>
       </div>
 
-      <Card className="shadow-xl">
+      <Card className="shadow-xl max-w-3xl mx-auto">
         <CardHeader className="items-center text-center border-b pb-6">
            <Avatar className="h-24 w-24 mb-4 border-4 border-primary shadow-md">
             {/* Placeholder for profile picture, if it were implemented */}
