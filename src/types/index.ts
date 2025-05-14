@@ -1,5 +1,6 @@
 
 
+
 export interface BoardExamInfo {
   board?: string;
   standard?: string;
@@ -80,3 +81,10 @@ export interface Conversation {
   lastUpdatedAt: number;
 }
 
+export interface Task {
+  id: string;
+  title: string;
+  category: string;
+  dueDate?: string;
+  status: 'pending' | 'completed';
+}

@@ -11,6 +11,7 @@ import {
   Brain,
   Settings,
   GraduationCap,
+  ListChecks, // Added ListChecks icon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/study-session", icon: BookOpen, label: "Study Session", isDynamic: true }, // isDynamic indicates base path
   { href: "/library", icon: LibraryBig, label: "Library" },
+  { href: "/todo", icon: ListChecks, label: "To-Do List" }, // Added To-Do List
   { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
   { href: "/general-tutor", icon: Brain, label: "General Tutor" },
 ];
@@ -38,7 +40,7 @@ const settingsItem = { href: "/settings", icon: Settings, label: "Settings" };
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const { state: sidebarState } = useSidebar(); // Get sidebar state
+  const { state: sidebarState, isMobile } = useSidebar(); 
 
   const isNavItemActive = (itemHref: string, isDynamic?: boolean) => {
     if (isDynamic) {
@@ -47,7 +49,7 @@ export function SidebarNav() {
     return pathname === itemHref;
   };
   
-  const sidebarOpen = sidebarState === "expanded";
+  const sidebarOpen = !isMobile && sidebarState === "expanded";
 
   return (
     <Sidebar className="border-r" collapsible="icon">
@@ -60,7 +62,6 @@ export function SidebarNav() {
       <SidebarContent className="flex-grow p-2">
         <SidebarMenu>
           {navItems.map((item) => {
-            // Hide "Study Session" from sidebar if it's dynamic, users navigate via dashboard
             if (item.isDynamic && item.href === "/study-session") return null;
             
             return (
