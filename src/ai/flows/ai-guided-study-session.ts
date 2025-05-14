@@ -40,7 +40,7 @@ const AIGuidedStudySessionInputSchema = z.object({
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
   specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", or "General Discussion", "AI Learning Assistant Chat", "Homework Help" if it is a general tutor query not tied to a pre-selected subject/lesson/topic path).'),
   question: z.string().describe('The student\'s question or request for the study session.'),
-  photoDataUri: z.string().optional().describe("An optional photo uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
+  photoDataUri: z.string().optional().nullable().describe("An optional photo uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
 export type AIGuidedStudySessionInput = z.infer<typeof AIGuidedStudySessionInputSchema>;
 
