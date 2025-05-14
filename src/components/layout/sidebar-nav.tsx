@@ -50,7 +50,7 @@ export function SidebarNav() {
   const sidebarOpen = sidebarState === "expanded";
 
   return (
-    <Sidebar className="border-r">
+    <Sidebar className="border-r" collapsible="icon">
       <SidebarHeader className="p-4">
         <Link href="/dashboard" className="flex items-center gap-2">
           <GraduationCap className="h-8 w-8 text-primary" />
