@@ -11,7 +11,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <SidebarNav />
         <div className="flex flex-col flex-1 md:pl-[calc(var(--sidebar-width-icon))] group-data-[sidebar-state=expanded]/sidebar-wrapper:md:pl-[var(--sidebar-width)] transition-[padding-left] duration-300 ease-in-out">
           <AppHeader />
-          <main className="flex-1 px-2 sm:px-3 md:px-4 pb-2 sm:pb-3 md:pb-4 pt-0 overflow-auto">
+          <main className="flex-1 p-4 md:p-6 overflow-auto">
             {children}
           </main>
         </div>
