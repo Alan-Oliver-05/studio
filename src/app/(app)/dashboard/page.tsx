@@ -98,27 +98,27 @@ export default function DashboardPage() {
 
   return (
     <div className="pb-8">
-      <div className="mb-8 text-center pt-0">
+      <div className="mb-6 text-center pt-0">
         <h1 className="text-4xl font-bold tracking-tight text-primary mt-0">Welcome, {profile.name}!</h1>
         <p className="text-xl text-muted-foreground mt-2">Here are your personalized study recommendations.</p>
       </div>
 
       {subjects.length === 0 && !isLoadingSubjects && (
-        <Card className="text-center py-10 shadow-lg max-w-2xl mx-auto">
-          <CardHeader>
+        <Card className="text-center py-8 shadow-lg max-w-2xl mx-auto">
+          <CardHeader className="p-4">
             <div className="mx-auto bg-accent/20 rounded-full p-3 w-fit">
              <Sparkles className="h-10 w-10 text-accent" />
             </div>
             <CardTitle className="mt-4 text-2xl">No Subjects Found Yet</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4">
             <p className="text-muted-foreground">
               We couldn't find any specific subject recommendations for you at the moment.
               This might be due to your unique profile combination.
               You can still explore general topics using our AI Tutor.
             </p>
           </CardContent>
-          <CardFooter className="justify-center">
+          <CardFooter className="justify-center p-4">
              <Button asChild variant="outline">
                 <Link href="/general-tutor">Explore General Tutor</Link>
              </Button>
@@ -127,11 +127,11 @@ export default function DashboardPage() {
       )}
 
       {subjects.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {subjects.map((subject, index) => (
             <Card key={index} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
-              <CardHeader className="pb-2">
-                <div className="relative h-40 w-full mb-4 rounded-md overflow-hidden">
+              <CardHeader className="p-4 pb-2">
+                <div className="relative h-40 w-full mb-3 rounded-md overflow-hidden">
                   <Image 
                     src={`https://placehold.co/400x200.png`} 
                     alt={subject.name} 
@@ -140,14 +140,14 @@ export default function DashboardPage() {
                     data-ai-hint="education abstract"
                   />
                 </div>
-                <CardTitle className="text-2xl font-semibold text-primary">{subject.name}</CardTitle>
-                <CardDescription className="text-sm text-muted-foreground h-16 line-clamp-3">{subject.description}</CardDescription>
+                <CardTitle className="text-xl font-semibold text-primary">{subject.name}</CardTitle>
+                <CardDescription className="text-sm text-muted-foreground h-12 line-clamp-2">{subject.description}</CardDescription>
               </CardHeader>
-              <CardContent className="flex-grow">
+              <CardContent className="flex-grow p-4 pt-2">
                 {subject.studyMaterials && subject.studyMaterials.length > 0 && (
                   <div>
                     <h4 className="font-semibold mb-1 text-sm">Key Topics:</h4>
-                    <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1">
+                    <ul className="list-disc list-inside text-xs text-muted-foreground space-y-0.5">
                       {subject.studyMaterials.slice(0, 3).map((material, i) => (
                         <li key={i} className="truncate">{material}</li>
                       ))}
@@ -155,7 +155,7 @@ export default function DashboardPage() {
                   </div>
                 )}
               </CardContent>
-              <CardFooter>
+              <CardFooter className="p-4 pt-2">
                 <Button asChild className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
                   <Link href={`/study-session/${encodeURIComponent(subject.name)}`}>
                     <BookOpen className="mr-2 h-4 w-4" /> Start Studying
