@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ListChecks, PlusCircle, Edit3, Trash2, CalendarDays, Tag, Filter, ArrowUpDown } from "lucide-react";
 import type { Task } from "@/types";
+import { Input } from "@/components/ui/input"; // Added for potential future inline edit
 
 // Mock data for initial display
 const initialTasks: Task[] = [
@@ -55,7 +56,7 @@ export default function TodoPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("dueDate");
 
-  const categories = Array.from(new Set(tasks.map(task => task.category)));
+  const categories = Array.from(new Set(tasks.map(task => task.category).filter(Boolean)));
 
   useEffect(() => {
     let tempTasks = [...tasks];
@@ -80,7 +81,7 @@ export default function TodoPage() {
     } else if (sortBy === "title") {
       tempTasks.sort((a, b) => a.title.localeCompare(b.title));
     } else if (sortBy === "category") {
-      tempTasks.sort((a, b) => a.category.localeCompare(b.category));
+      tempTasks.sort((a, b) => (a.category || "").localeCompare(b.category || ""));
     }
     
     setFilteredTasks(tempTasks);
@@ -97,26 +98,31 @@ export default function TodoPage() {
     );
   };
 
-  // Placeholder functions for edit and delete
   const handleEditTask = (taskId: string) => {
-    console.log("Edit task:", taskId);
-    // Future: Open a dialog or navigate to an edit page
+    const taskToEdit = tasks.find(task => task.id === taskId);
+    if (!taskToEdit) return;
+
+    const newTitle = prompt("Enter new task name:", taskToEdit.title);
+    if (newTitle !== null && newTitle.trim() !== "") {
+      setTasks(
+        tasks.map(task =>
+          task.id === taskId ? { ...task, title: newTitle.trim() } : task
+        )
+      );
+    }
   };
 
   const handleDeleteTask = (taskId: string) => {
     setTasks(tasks.filter(task => task.id !== taskId));
-    console.log("Delete task:", taskId);
   };
   
   const handleAddTask = () => {
-    console.log("Add new task clicked");
-    // Future: Open a dialog to add a new task
      const newTask: Task = {
       id: String(Date.now()),
       title: "New Task - Click edit to change",
       category: "General",
       status: "pending",
-      dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) // Default due tomorrow
+      dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) 
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
   };
@@ -124,9 +130,9 @@ export default function TodoPage() {
 
   return (
     <div className="pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pt-0 mt-0">
         <div className="mb-4 sm:mb-0">
-          <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
+          <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
             <ListChecks className="mr-3 h-8 w-8" /> My To-Do List
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -213,7 +219,7 @@ export default function TodoPage() {
                         {task.title}
                       </label>
                       <div className="flex items-center space-x-2 mt-1">
-                        <Badge variant={task.status === 'completed' ? 'secondary' : 'outline'} className="text-xs">{task.category}</Badge>
+                        {task.category && <Badge variant={task.status === 'completed' ? 'secondary' : 'outline'} className="text-xs">{task.category}</Badge>}
                         {task.dueDate && (
                           <p className="text-xs text-muted-foreground flex items-center">
                             <CalendarDays className="h-3 w-3 mr-1" />
@@ -242,3 +248,4 @@ export default function TodoPage() {
     </div>
   );
 }
+
