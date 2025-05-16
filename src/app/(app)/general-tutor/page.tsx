@@ -6,7 +6,7 @@ import { Loader2, AlertTriangle, Brain, MessageCircle, Languages, BarChart3 } fr
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import dynamic from 'next/dynamic';
 
 const DynamicChatInterface = dynamic(() =>
@@ -22,7 +22,7 @@ export default function AITutorPage() {
 
   if (profileLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 mt-0 pt-0">
+      <div className="flex flex-col items-center justify-center h-full p-4 mt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading AI Tutor...</p>
       </div>
@@ -31,7 +31,7 @@ export default function AITutorPage() {
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8 mt-0 pt-0">
+      <div className="flex flex-col items-center justify-center h-full text-center p-8 mt-0">
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
         <h2 className="text-3xl font-semibold mb-3">Profile Required</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
@@ -48,8 +48,8 @@ export default function AITutorPage() {
   const initialChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context.`;
 
   return (
-    <div className="h-full flex flex-col mt-0 pt-0">
-      <div className="mb-6 pt-0 mt-0">
+    <div className="h-full flex flex-col mt-0">
+      <div className="mb-6 pt-0">
         <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
             <Brain className="mr-3 h-8 w-8"/> AI Learning Assistant
         </h1>
@@ -75,32 +75,36 @@ export default function AITutorPage() {
         <TabsContent value="language-learning" className="flex-grow">
           <Card>
             <CardHeader>
-              <CardTitle>Language Learning</CardTitle>
-              <CardDescription>Master new languages with AI. Practice vocabulary, grammar, pronunciation, and engage in interactive conversations. Get instant feedback and translations.</CardDescription>
+              <CardTitle>Language Learning Hub</CardTitle>
+              <CardDescription>Master new languages with your AI assistant. Practice vocabulary, grammar, pronunciation (text-based), and engage in interactive conversations. Get instant feedback and translations.</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="list-disc list-inside text-muted-foreground space-y-1 text-sm">
                 <li>Interactive lessons tailored to your level.</li>
-                <li>Speech recognition for pronunciation feedback.</li>
                 <li>AI-powered translations and grammar explanations.</li>
-                <li>Adaptive difficulty that adjusts to your progress.</li>
+                <li>Practice conversations in your target language.</li>
+                <li>Vocabulary building exercises and tips.</li>
               </ul>
-              <p className="text-sm font-semibold text-primary mt-4">This feature is currently under development.</p>
             </CardContent>
+            <CardFooter>
+              <Button asChild>
+                <Link href="/language-learning">Go to Language Learning Hub</Link>
+              </Button>
+            </CardFooter>
           </Card>
         </TabsContent>
         <TabsContent value="visual-learning" className="flex-grow">
            <Card>
             <CardHeader>
-              <CardTitle>Visual Learning</CardTitle>
+              <CardTitle>Visual Learning Tools</CardTitle>
               <CardDescription>Understand complex topics visually. Explore concepts with AI-generated interactive graphs, charts, and flowcharts tailored to your learning needs.</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="list-disc list-inside text-muted-foreground space-y-1 text-sm">
                 <li>Dynamic visualizations to simplify difficult concepts.</li>
-                <li>Interactive elements to explore data and relationships.</li>
-                <li>AI generation of custom diagrams based on your questions.</li>
-                <li>Support for various chart types and flowcharts.</li>
+                <li>Interactive elements to explore data and relationships (future).</li>
+                <li>AI generation of custom diagrams based on your questions (future).</li>
+                <li>Support for various chart types and flowcharts (future).</li>
               </ul>
               <p className="text-sm font-semibold text-primary mt-4">This feature is currently under development.</p>
             </CardContent>

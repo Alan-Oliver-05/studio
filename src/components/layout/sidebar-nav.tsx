@@ -12,7 +12,8 @@ import {
   NotebookText,
   Settings,
   GraduationCap,
-  ListChecks, // Added ListChecks icon
+  ListChecks, 
+  Languages, // Added Languages icon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -25,16 +26,16 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/study-session", icon: BookOpen, label: "Study Session", isDynamic: true }, // isDynamic indicates base path
   { href: "/library", icon: LibraryBig, label: "Library" },
-  { href: "/todo", icon: ListChecks, label: "To-Do List" }, // Added To-Do List
+  { href: "/todo", icon: ListChecks, label: "To-Do List" }, 
   { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
   { href: "/notepad", icon: NotebookText, label: "Note Pad" },
   { href: "/general-tutor", icon: Brain, label: "General Tutor" },
+  { href: "/language-learning", icon: Languages, label: "Language Learning" }, // Added Language Learning
 ];
 
 const settingsItem = { href: "/settings", icon: Settings, label: "Settings" };

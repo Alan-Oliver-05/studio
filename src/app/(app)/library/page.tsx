@@ -13,7 +13,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, ChevronDown } from "lucide-react";
+import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -37,15 +37,16 @@ export default function LibraryPage() {
     if (isClient) {
       setIsLoading(true);
       try {
-        const convos = getConversations(); // Already sorted by lastUpdatedAt (newest first from chat-storage)
+        const convos = getConversations(); 
         setAllConversations(convos);
 
         const groups: Record<string, Conversation[]> = {};
         convos.forEach(convo => {
-          // Prefer subjectContext if available, otherwise use topic. Default to "Uncategorized".
           let groupKey = convo.subjectContext || convo.topic || "Uncategorized";
-          // Consolidate general tutor chats under one heading
           if (groupKey === "AI Learning Assistant Chat") groupKey = "General AI Tutor";
+          if (groupKey === "LanguageLearningMode") groupKey = "Language Learning";
+          if (groupKey === "Homework Help") groupKey = "Homework Helper";
+
 
           if (!groups[groupKey]) {
             groups[groupKey] = [];
@@ -133,12 +134,19 @@ export default function LibraryPage() {
   const getRevisitLink = (convo: Conversation) => {
     if (convo.topic === "Homework Help") return "/homework-assistant";
     if (convo.topic === "AI Learning Assistant Chat") return "/general-tutor"; 
-    // For specific study sessions, use subjectContext if available for the link, fallback to topic
+    if (convo.topic === "LanguageLearningMode") return "/language-learning";
     const subjectForLink = convo.subjectContext || convo.topic;
     return `/study-session/${encodeURIComponent(subjectForLink)}`;
   };
   
   const sortedGroupNames = Object.keys(groupedConversations).sort((a, b) => a.localeCompare(b));
+
+  const getGroupIcon = (groupName: string) => {
+    if (groupName === "General AI Tutor") return <Brain className="mr-2 h-5 w-5" />;
+    if (groupName === "Homework Helper") return <PenSquare className="mr-2 h-5 w-5" />;
+    if (groupName === "Language Learning") return <Languages className="mr-2 h-5 w-5" />;
+    return <BookCopy className="mr-2 h-5 w-5" />;
+  };
 
   return (
     <div className="pb-8 pr-4 md:pr-6 pt-0">
@@ -186,21 +194,24 @@ export default function LibraryPage() {
               <AccordionItem value={groupName} key={groupName} className="bg-card border rounded-lg shadow-md overflow-hidden">
                 <AccordionTrigger className="p-4 md:p-5 hover:no-underline bg-muted/50 hover:bg-muted/80">
                   <div className="flex justify-between items-center w-full">
-                    <h2 className="text-lg md:text-xl font-semibold text-primary">{groupName}</h2>
+                    <h2 className="text-lg md:text-xl font-semibold text-primary flex items-center">
+                        {getGroupIcon(groupName)}
+                        {groupName}
+                    </h2>
                     <span className="text-sm text-muted-foreground bg-background px-2 py-1 rounded-md">
                       {convosInGroup.length} session{convosInGroup.length === 1 ? '' : 's'}
                     </span>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="p-0">
-                  <Accordion type="single" collapsible className="w-full space-y-px bg-card"> {/* Use space-y-px for thin dividers */}
+                  <Accordion type="single" collapsible className="w-full space-y-px bg-card"> 
                     {convosInGroup.map((convo, index) => (
                       <AccordionItem value={convo.id} key={convo.id} className={`border-t ${index === 0 ? 'border-t-0' : ''}`}>
                         <AccordionTrigger className="p-3 md:p-4 hover:no-underline text-left">
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full">
                             <div className="flex-grow mb-2 sm:mb-0">
                               <h3 className="text-sm md:text-base font-medium text-foreground">
-                                {convo.topic !== groupName ? convo.topic : (convo.lessonContext ? `Lesson: ${convo.lessonContext}` : 'General Discussion')}
+                                {(convo.topic !== groupName && convo.topic !== "LanguageLearningMode" && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "Homework Help") ? convo.topic : (convo.lessonContext ? `Lesson: ${convo.lessonContext}` : (convo.topic === "LanguageLearningMode" ? "Language Practice" : 'General Discussion'))}
                               </h3>
                               {convo.subjectContext && convo.subjectContext !== groupName && (
                                 <p className="text-xs text-muted-foreground flex items-center">

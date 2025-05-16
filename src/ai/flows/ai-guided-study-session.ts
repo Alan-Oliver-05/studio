@@ -34,11 +34,11 @@ const AIGuidedStudySessionInputSchema = z.object({
         course: z.string().optional().describe('The student\'s course of study (e.g., B.Sc. Physics).'),
         currentYear: z.string().optional().describe('The student\'s current year of study (e.g., 1st, 2nd).'),
       }).optional(),
-    }).describe('The student\'s detailed educational background, specifying board, exam, or university details. All sub-fields are optional.'),
+    }).optional().describe('The student\'s detailed educational background, specifying board, exam, or university details. All sub-fields are optional.'),
   }).describe('The student profile information from the onboarding form.'),
   subject: z.string().optional().describe('The main subject of study (e.g., "Physics for 12th Standard CBSE").'),
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
-  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", or "General Discussion", "AI Learning Assistant Chat", "Homework Help" if it is a general tutor query not tied to a pre-selected subject/lesson/topic path).'),
+  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageLearningMode" if it is a language learning session).'),
   question: z.string().describe('The student\'s question or request for the study session.'),
   photoDataUri: z.string().optional().describe("An optional photo uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
@@ -75,7 +75,7 @@ const prompt = ai.definePrompt({
   Gender: {{{studentProfile.gender}}}
   Country: {{{studentProfile.country}}}
   State/Province: {{{studentProfile.state}}}
-  Preferred Language for Learning: {{{studentProfile.preferredLanguage}}}
+  Preferred Language for Learning (for meta-communication and explanations): {{{studentProfile.preferredLanguage}}}
 
   Educational Context:
   {{#with studentProfile.educationQualification}}
@@ -115,7 +115,7 @@ const prompt = ai.definePrompt({
 
   Instructions for AI Tutor:
   1.  **Understand the Context**: Deeply analyze the student's profile, especially their educational qualification (board, standard, exam, course, year, country, state) to understand their specific curriculum and learning level.
-  2.  **Personalized Response**: Craft your "response" in the student's preferred language ({{{studentProfile.preferredLanguage}}}). Address the student's "{{{question}}}" directly and comprehensively.
+  2.  **Personalized Response**: Craft your "response" in the student's preferred language for learning ({{{studentProfile.preferredLanguage}}}), UNLESS the mode is "LanguageLearningMode" and a target language is being practiced. Address the student's "{{{question}}}" directly and comprehensively.
       *   If the question is a greeting or general (e.g., topic is "General Discussion", "AI Learning Assistant Chat"), provide a welcoming response and ask how you can help, considering their educational context and any uploaded image.
       *   If about a specific concept: Explain it clearly with examples relevant to their syllabus (e.g., examples from their prescribed textbooks if known, or typical examples for their level and region).
       *   If asking for help with problems (e.g. math equations, science problems): Break down complex problems into simple, understandable, step-by-step solutions. Explain each step clearly.
@@ -142,6 +142,18 @@ const prompt = ai.definePrompt({
           *   **Problem Decomposition**: If a problem is complex, break it down into smaller, manageable parts.
           *   **Factual Recall**: For questions like "What is the capital of France?" or "When did World War II end?", provide the direct factual answer.
           *   Reference the uploaded image if provided to help solve the specific homework problem.
+  10. **Language Learning Mode Specialization**:
+      *   If 'specificTopic' is "LanguageLearningMode":
+          *   The student's 'question' will likely indicate the target language or be an interaction in that language.
+          *   **Engage in the Target Language**: If the student initiates in or requests a specific target language, try to converse primarily in that language. Use the student's 'preferredLanguage' ({{{studentProfile.preferredLanguage}}}) for clarifications or explanations if needed, or if the student asks for it.
+          *   **Vocabulary Assistance**: If the student asks for vocabulary related to a theme, provide relevant words and example sentences in the target language and optionally their translation in {{{studentProfile.preferredLanguage}}}.
+          *   **Grammar Explanation**: Explain grammatical concepts of the target language. Provide examples. Use {{{studentProfile.preferredLanguage}}} for complex explanations if the student seems to struggle.
+          *   **Translation**: Translate phrases or sentences between the target language and {{{studentProfile.preferredLanguage}}} as requested.
+          *   **Conversational Practice**: Engage in simple role-playing or conversational scenarios. Ask questions to encourage the student to respond in the target language.
+          *   **Simple Exercises**: Offer simple fill-in-the-blank, sentence completion, or matching exercises for vocabulary or grammar practice.
+          *   **Correction (Gentle)**: If the student makes errors in the target language, gently offer corrections and explanations.
+          *   The initial question might be "I want to learn Spanish" or "Parlez-vous français?". Adapt your response accordingly to initiate the language learning interaction.
+          *   Suggestions in this mode could be links to online dictionaries, language learning apps (e.g., Duolingo, Memrise), or relevant cultural resources.
 
   Consider the student's country ({{{studentProfile.country}}}) and state ({{{studentProfile.state}}}) for tailoring content, especially if state-specific curriculum or resources are relevant.
   If 'specificTopic' is "General Discussion" or "AI Learning Assistant Chat", adapt your response to be a general academic assistant, still using the student's profile for context but without a narrow predefined topic unless specified in the question.
@@ -176,19 +188,26 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     outputSchema: AIGuidedStudySessionOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    // Ensure educationQualification is at least an empty object if not provided
+    const robustInput = {
+      ...input,
+      studentProfile: {
+        ...input.studentProfile,
+        educationQualification: input.studentProfile.educationQualification || {},
+      },
+    };
+    const {output} = await prompt(robustInput);
     
     if (output && output.response && Array.isArray(output.suggestions)) {
         // visualElement is optional, so we don't need to check for its presence for a valid output
         return output;
     }
     
-    console.warn("AI output was malformed or missing. Input was:", JSON.stringify(input)); 
+    console.warn("AI output was malformed or missing. Input was:", JSON.stringify(robustInput)); 
     // Fallback response if AI output is malformed
     return {
-        response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else about the topic? Please ensure your question is clear and any uploaded image is relevant.",
+        response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else? Please ensure your question is clear and any uploaded image is relevant.",
         suggestions: []
     };
   }
 );
-
