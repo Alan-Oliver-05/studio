@@ -38,28 +38,30 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { TASK_CATEGORIES, TASK_PRIORITIES } from "@/lib/constants";
 import type { Task, TaskPriority } from "@/types";
+import { useEffect } from "react";
 
-const AddTaskFormSchema = z.object({
+const TaskFormSchema = z.object({
   title: z.string().min(3, { message: "Task title must be at least 3 characters." }),
   category: z.string().min(1, { message: "Please select a category." }),
   priority: z.enum(["Low", "Medium", "High"], { required_error: "Please select a priority."}),
-  dueDate: z.date().optional(),
+  dueDate: z.date().optional().nullable(),
 });
 
-type AddTaskFormValues = z.infer<typeof AddTaskFormSchema>;
+export type TaskFormValues = z.infer<typeof TaskFormSchema>;
 
-interface AddTaskDialogProps {
+interface TaskFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddTask: (task: Omit<Task, "id" | "status">) => void;
+  onSubmitForm: (data: TaskFormValues) => void;
+  taskData?: Task | null;
 }
 
-export function AddTaskDialog({ open, onOpenChange, onAddTask }: AddTaskDialogProps) {
-  const form = useForm<AddTaskFormValues>({
-    resolver: zodResolver(AddTaskFormSchema),
+export function TaskFormDialog({ open, onOpenChange, onSubmitForm, taskData }: TaskFormDialogProps) {
+  const form = useForm<TaskFormValues>({
+    resolver: zodResolver(TaskFormSchema),
     defaultValues: {
       title: "",
       category: TASK_CATEGORIES[0]?.value || "",
@@ -68,26 +70,42 @@ export function AddTaskDialog({ open, onOpenChange, onAddTask }: AddTaskDialogPr
     },
   });
 
-  const onSubmit = (data: AddTaskFormValues) => {
-    onAddTask({
-      title: data.title,
-      category: data.category,
-      priority: data.priority as TaskPriority,
-      dueDate: data.dueDate ? format(data.dueDate, "PPP") : undefined, // Store as formatted string
-    });
-    form.reset();
-    onOpenChange(false);
+  const isEditMode = !!taskData;
+
+  useEffect(() => {
+    if (taskData && open) {
+      form.reset({
+        title: taskData.title,
+        category: taskData.category,
+        priority: taskData.priority,
+        dueDate: taskData.dueDate ? parse(taskData.dueDate, "PPP", new Date()) : undefined,
+      });
+    } else if (!open) {
+      form.reset({ // Reset to default when dialog closes or for add mode
+        title: "",
+        category: TASK_CATEGORIES[0]?.value || "",
+        priority: "Medium",
+        dueDate: undefined,
+      });
+    }
+  }, [taskData, open, form]);
+
+  const handleSubmit = (data: TaskFormValues) => {
+    onSubmitForm(data);
+    onOpenChange(false); // Close dialog on submit
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New Task</DialogTitle>
-          <DialogDescription>Fill in the details for your new task.</DialogDescription>
+          <DialogTitle>{isEditMode ? "Edit Task" : "Add New Task"}</DialogTitle>
+          <DialogDescription>
+            {isEditMode ? "Update the details for your task." : "Fill in the details for your new task."}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4">
             <FormField
               control={form.control}
               name="title"
@@ -108,7 +126,7 @@ export function AddTaskDialog({ open, onOpenChange, onAddTask }: AddTaskDialogPr
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
@@ -132,7 +150,7 @@ export function AddTaskDialog({ open, onOpenChange, onAddTask }: AddTaskDialogPr
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select priority" />
@@ -179,9 +197,9 @@ export function AddTaskDialog({ open, onOpenChange, onAddTask }: AddTaskDialogPr
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={field.value}
+                        selected={field.value || undefined}
                         onSelect={field.onChange}
-                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) } // Disable past dates
+                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
                         initialFocus
                       />
                     </PopoverContent>
@@ -192,11 +210,11 @@ export function AddTaskDialog({ open, onOpenChange, onAddTask }: AddTaskDialogPr
             />
             <DialogFooter className="pt-4">
               <DialogClose asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit">Add Task</Button>
+              <Button type="submit">{isEditMode ? "Save Changes" : "Add Task"}</Button>
             </DialogFooter>
           </form>
         </Form>

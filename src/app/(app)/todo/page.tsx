@@ -12,11 +12,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ListChecks, PlusCircle, Edit3, Trash2, CalendarDays, Tag, Filter, ArrowUpDown, ShieldAlert, Star } from "lucide-react";
 import type { Task, TaskPriority } from "@/types";
 import { TASK_CATEGORIES, TASK_PRIORITIES } from "@/lib/constants";
-import { AddTaskDialog } from "./components/add-task-dialog"; // Import the dialog
+import { TaskFormDialog, TaskFormValues } from "./components/task-form-dialog"; 
+import { format } from "date-fns";
 
 // Mock data for initial display
 const initialTasks: Task[] = [
@@ -61,7 +62,9 @@ export default function TodoPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("dueDate");
-  const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
+  
+  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const categories = Array.from(new Set(tasks.map(task => task.category).filter(Boolean).concat(TASK_CATEGORIES.map(tc => tc.value))));
 
@@ -106,32 +109,49 @@ export default function TodoPage() {
       )
     );
   };
+  
+  const handleOpenAddTaskForm = () => {
+    setEditingTask(null);
+    setIsTaskFormOpen(true);
+  };
 
-  const handleEditTask = (taskId: string) => {
-    const taskToEdit = tasks.find(task => task.id === taskId);
-    if (!taskToEdit) return;
-
-    const newTitle = prompt("Enter new task name:", taskToEdit.title);
-    if (newTitle !== null && newTitle.trim() !== "") {
-      setTasks(
-        tasks.map(task =>
-          task.id === taskId ? { ...task, title: newTitle.trim() } : task
-        )
-      );
-    }
+  const handleOpenEditTaskForm = (task: Task) => {
+    setEditingTask(task);
+    setIsTaskFormOpen(true);
   };
 
   const handleDeleteTask = (taskId: string) => {
     setTasks(tasks.filter(task => task.id !== taskId));
   };
   
-  const handleAddNewTask = (newTaskData: Omit<Task, "id" | "status">) => {
-     const newTask: Task = {
-      id: String(Date.now()),
-      ...newTaskData,
-      status: "pending",
-    };
-    setTasks(prevTasks => [newTask, ...prevTasks]);
+  const handleTaskFormSubmit = (data: TaskFormValues) => {
+    if (editingTask) { // Editing existing task
+      setTasks(
+        tasks.map(task =>
+          task.id === editingTask.id
+            ? { 
+                ...editingTask, // Keep original id and status
+                title: data.title,
+                category: data.category,
+                priority: data.priority as TaskPriority,
+                dueDate: data.dueDate ? format(data.dueDate, "PPP") : undefined,
+              }
+            : task
+        )
+      );
+    } else { // Adding new task
+      const newTask: Task = {
+        id: String(Date.now()),
+        title: data.title,
+        category: data.category,
+        priority: data.priority as TaskPriority,
+        dueDate: data.dueDate ? format(data.dueDate, "PPP") : undefined,
+        status: "pending",
+      };
+      setTasks(prevTasks => [newTask, ...prevTasks]);
+    }
+    setIsTaskFormOpen(false);
+    setEditingTask(null);
   };
 
   const getPriorityIcon = (priority: TaskPriority) => {
@@ -154,15 +174,16 @@ export default function TodoPage() {
             Manage your tasks and stay organized.
           </p>
         </div>
-        <Button onClick={() => setIsAddTaskDialogOpen(true)} className="bg-primary hover:bg-primary/90">
+        <Button onClick={handleOpenAddTaskForm} className="bg-primary hover:bg-primary/90">
           <PlusCircle className="mr-2 h-5 w-5" /> Add Task
         </Button>
       </div>
 
-      <AddTaskDialog
-        open={isAddTaskDialogOpen}
-        onOpenChange={setIsAddTaskDialogOpen}
-        onAddTask={handleAddNewTask}
+      <TaskFormDialog
+        open={isTaskFormOpen}
+        onOpenChange={setIsTaskFormOpen}
+        onSubmitForm={handleTaskFormSubmit}
+        taskData={editingTask}
       />
 
       <Card className="shadow-lg">
@@ -276,7 +297,7 @@ export default function TodoPage() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleEditTask(task.id)} aria-label="Edit task">
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenEditTaskForm(task)} aria-label="Edit task">
                       <Edit3 className="h-4 w-4 text-muted-foreground hover:text-primary" />
                     </Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} aria-label="Delete task">
