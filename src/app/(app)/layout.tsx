@@ -8,8 +8,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full bg-muted/40">
-        <SidebarNav />
-        <div className="flex flex-col flex-1 mt-0 pt-0"> {/* Removed dynamic left padding and transition */}
+        <SidebarNav /><div className="flex flex-col flex-1">
           <AppHeader />
           <main className="flex-1 overflow-auto pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
             {children}
