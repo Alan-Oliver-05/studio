@@ -34,7 +34,7 @@ const AIGuidedStudySessionInputSchema = z.object({
         course: z.string().optional().describe('The student\'s course of study (e.g., B.Sc. Physics).'),
         currentYear: z.string().optional().describe('The student\'s current year of study (e.g., 1st, 2nd).'),
       }).optional(),
-    }).describe('The student\'s detailed educational background, specifying board, exam, or university details.'),
+    }).describe('The student\'s detailed educational background, specifying board, exam, or university details. All sub-fields are optional.'),
   }).describe('The student profile information from the onboarding form.'),
   subject: z.string().optional().describe('The main subject of study (e.g., "Physics for 12th Standard CBSE").'),
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
@@ -133,9 +133,18 @@ const prompt = ai.definePrompt({
       *   This 'visualElement' field is intended for the application to potentially render the visual. If no visual is strongly appropriate, leave 'visualElement' undefined.
   7.  **Tone**: Maintain a supportive, encouraging, and patient tone.
   8.  **Format**: Ensure your entire output is a single JSON object with "response", "suggestions", and optionally "visualElement" fields.
+  9.  **Homework Help Specialization**:
+      *   If 'specificTopic' is "Homework Help":
+          *   **Act like a computational knowledge engine.** Prioritize providing direct, factual answers to questions.
+          *   **Step-by-Step Solutions**: For mathematical, scientific, or logical problems, provide clear, step-by-step derivations or solutions.
+          *   **Calculations**: If the question involves calculations (e.g., "What is 25% of 150?", "Convert 100 Celsius to Fahrenheit"), perform the calculation and show the result.
+          *   **Concise Explanations**: When explaining concepts related to homework, be clear, concise, and directly relevant to what the student needs to know to solve their problem or understand the topic for their assignment.
+          *   **Problem Decomposition**: If a problem is complex, break it down into smaller, manageable parts.
+          *   **Factual Recall**: For questions like "What is the capital of France?" or "When did World War II end?", provide the direct factual answer.
+          *   Reference the uploaded image if provided to help solve the specific homework problem.
 
   Consider the student's country ({{{studentProfile.country}}}) and state ({{{studentProfile.state}}}) for tailoring content, especially if state-specific curriculum or resources are relevant.
-  If 'specificTopic' is "General Discussion", "AI Learning Assistant Chat", "Homework Help", or similar, adapt your response to be a general academic assistant, still using the student's profile for context but without a narrow predefined topic unless specified in the question.
+  If 'specificTopic' is "General Discussion" or "AI Learning Assistant Chat", adapt your response to be a general academic assistant, still using the student's profile for context but without a narrow predefined topic unless specified in the question.
   `,
   config: {
     temperature: 0.5, 

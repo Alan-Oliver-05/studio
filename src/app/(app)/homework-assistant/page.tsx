@@ -43,7 +43,7 @@ export default function HomeworkAssistantPage() {
   }
 
   const conversationId = `homework-assistant-${profile.id || 'default'}`;
-  const initialMessage = `Hi ${profile.name}! I'm here to help with your homework and assignments. What problem are you working on?`;
+  const initialMessage = `Hi ${profile.name}! I'm here to help with your homework. Ask me math problems, science questions, historical facts, or anything else you need step-by-step solutions or direct answers for. You can also upload an image of your problem.`;
 
   return (
     <div className="h-full flex flex-col mt-0 pt-0">
@@ -51,15 +51,15 @@ export default function HomeworkAssistantPage() {
         <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
             <PenSquare className="mr-3 h-8 w-8"/> Homework Assistant
         </h1>
-        <p className="text-muted-foreground">Get help with your homework, assignments, and tricky questions.</p>
+        <p className="text-muted-foreground">Get help with your homework, assignments, and tricky questions. Modeled to provide direct answers and step-by-step solutions.</p>
       </div>
-      <div className="flex-grow">
+      <div className="flex-grow min-h-0"> {/* Added min-h-0 here */}
         <DynamicChatInterface
           userProfile={profile}
           topic="Homework Help"
           conversationId={conversationId}
           initialSystemMessage={initialMessage}
-          placeholderText="Describe your homework problem..."
+          placeholderText="Describe your homework problem or ask a question..."
         />
       </div>
     </div>
