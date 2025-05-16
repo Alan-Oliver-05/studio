@@ -2,19 +2,28 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { ChatInterface } from "../study-session/components/chat-interface";
+// import { ChatInterface } from "../study-session/components/chat-interface"; // Removed direct import
 import { Loader2, AlertTriangle, Brain, MessageCircle, Languages, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import dynamic from 'next/dynamic';
+
+const DynamicChatInterface = dynamic(() =>
+  import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
+  { 
+    loading: () => <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
+    ssr: false 
+  }
+);
 
 export default function AITutorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
 
   if (profileLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4">
+      <div className="flex flex-col items-center justify-center h-full p-4 mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading AI Tutor...</p>
       </div>
@@ -23,7 +32,7 @@ export default function AITutorPage() {
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8">
+      <div className="flex flex-col items-center justify-center h-full text-center p-8 mt-0 pt-0">
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
         <h2 className="text-3xl font-semibold mb-3">Profile Required</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
@@ -40,8 +49,8 @@ export default function AITutorPage() {
   const initialChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context.`;
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="mb-6 pt-0">
+    <div className="h-full flex flex-col mt-0 pt-0">
+      <div className="mb-6 pt-0 mt-0">
         <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
             <Brain className="mr-3 h-8 w-8"/> AI Learning Assistant
         </h1>
@@ -56,9 +65,9 @@ export default function AITutorPage() {
         </TabsList>
 
         <TabsContent value="chat" className="flex-grow flex flex-col min-h-0">
-          <ChatInterface
+          <DynamicChatInterface
             userProfile={profile}
-            topic="AI Learning Assistant Chat" // General topic for this mode
+            topic="AI Learning Assistant Chat" 
             conversationId={chatConversationId}
             initialSystemMessage={initialChatMessage}
             placeholderText="Ask anything or upload an image..."

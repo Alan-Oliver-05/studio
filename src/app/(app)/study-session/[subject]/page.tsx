@@ -2,7 +2,7 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { ChatInterface } from "../components/chat-interface";
+// import { ChatInterface } from "../components/chat-interface"; // Removed direct import
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Lesson, Topic, UserProfile as UserProfileType } from "@/types";
@@ -14,6 +14,15 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import dynamic from 'next/dynamic';
+
+const DynamicChatInterface = dynamic(() =>
+  import('../components/chat-interface').then((mod) => mod.ChatInterface),
+  { 
+    loading: () => <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
+    ssr: false 
+  }
+);
 
 type StudyStep = "selectLesson" | "selectTopic" | "chat" | "loading" | "error";
 
@@ -42,7 +51,7 @@ export default function StudySessionPage() {
             subjectName,
             studentProfile: {
               ...profile,
-              age: Number(profile.age) // Ensure age is number for AI flow
+              age: Number(profile.age) 
             } as UserProfileType & { age: number }, 
           };
           const result = await getLessonsForSubject(input);
@@ -83,7 +92,7 @@ export default function StudySessionPage() {
             setCurrentStep("selectTopic");
             } else {
             setErrorMessage(`No topics found for lesson "${lesson.name}". Please select another lesson or go back.`);
-            setCurrentStep("error"); // Or back to selectLesson?
+            setCurrentStep("error"); 
             }
         } catch (e) {
             console.error("Failed to fetch topics:", e);
@@ -100,10 +109,8 @@ export default function StudySessionPage() {
   
   const handleRetry = () => {
     if (selectedLesson && currentStep === "error" && errorMessage?.includes("topics")) {
-        // Error was while fetching topics, retry fetching topics for selectedLesson
         handleSelectLesson(selectedLesson);
     } else {
-        // Error was while fetching lessons or other general error, refetch lessons
          if (!profileLoading && profile && subjectName) {
             setCurrentStep("loading");
             setErrorMessage(null);
@@ -138,7 +145,7 @@ export default function StudySessionPage() {
 
   if (profileLoading || (currentStep === "loading" && !errorMessage)) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4">
+      <div className="flex flex-col items-center justify-center h-full p-4 mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
         <p className="text-muted-foreground">Loading study materials for {subjectName}...</p>
       </div>
@@ -147,7 +154,7 @@ export default function StudySessionPage() {
 
   if (!profile) {
      return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8">
+      <div className="flex flex-col items-center justify-center h-full text-center p-8 mt-0 pt-0">
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
         <h2 className="text-3xl font-semibold mb-3">Profile Required</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
@@ -162,7 +169,7 @@ export default function StudySessionPage() {
 
   if (currentStep === "error" && errorMessage) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4">
+      <div className="flex flex-col items-center justify-center h-full p-4 mt-0 pt-0">
         <Alert variant="destructive" className="max-w-lg text-center">
             <AlertTriangle className="h-5 w-5" />
             <AlertTitle>Error Loading Content</AlertTitle>
@@ -191,7 +198,7 @@ export default function StudySessionPage() {
               <CardDescription>Select a lesson to see its topics.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[calc(100vh-20rem)] pr-4"> {/* Adjust height as needed */}
+              <ScrollArea className="h-[calc(100vh-20rem)] pr-4">
                 <div className="space-y-3">
                   {lessons.map((lesson, idx) => (
                     <Button key={idx} variant="outline" className="w-full justify-between text-left h-auto py-3 px-4" onClick={() => handleSelectLesson(lesson)}>
@@ -218,10 +225,10 @@ export default function StudySessionPage() {
               <CardDescription>Select a topic to start your Q&amp;A session.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[calc(100vh-22rem)] pr-4"> {/* Adjust height as needed */}
+              <ScrollArea className="h-[calc(100vh-22rem)] pr-4"> 
                 <div className="space-y-3">
                   {topics.map((topic, idx) => (
-                    <Button key={idx} variant="outline" className="w-full justify-between text-left h-auto py-3 px-4" onClick={() => handleSelectTopic(topic)}>
+                    <Button key={idx} variant="outline" className="w-full justify-between text-left h-auto py-3 px-4 group" onClick={() => handleSelectTopic(topic)}>
                        <div className="flex-1">
                         <p className="font-semibold text-md">{topic.name}</p>
                         {topic.description && <p className="text-xs text-muted-foreground mt-1">{topic.description}</p>}
@@ -253,9 +260,9 @@ export default function StudySessionPage() {
                     <p className="text-sm text-muted-foreground">Subject: {subjectName} &gt; Lesson: {selectedLesson.name}</p>
                 </div>
                  <div className="flex-grow min-h-0">
-                    <ChatInterface
+                    <DynamicChatInterface
                     userProfile={profile}
-                    topic={selectedTopic.name} // Most specific topic for the chat
+                    topic={selectedTopic.name} 
                     conversationId={conversationId}
                     initialSystemMessage={initialMessage}
                     placeholderText={`Ask about ${selectedTopic.name}...`}
@@ -265,24 +272,25 @@ export default function StudySessionPage() {
             </div>
           );
         }
-        return <p>Error: Topic not selected.</p>; // Should not happen
+        return <p>Error: Topic not selected.</p>; 
       default:
         return <p>Loading or invalid state...</p>;
     }
   }
 
   return (
-    <div className="h-full flex flex-col p-1 sm:p-2 md:p-0">
+    <div className="h-full flex flex-col p-1 sm:p-2 md:p-0 mt-0 pt-0">
         {currentStep !== 'chat' && (
-             <div className="mb-4 text-center pt-0">
+             <div className="mb-4 text-center pt-0 mt-0">
                 <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center justify-center mt-0">
                     <BookOpen className="mr-3 h-8 w-8"/> Study Session: {subjectName}
                 </h1>
              </div>
         )}
-        <div className="flex-grow min-h-0"> {/* Ensure this div can shrink and grow */}
+        <div className="flex-grow min-h-0"> 
             {renderStepContent()}
         </div>
     </div>
   );
 }
+

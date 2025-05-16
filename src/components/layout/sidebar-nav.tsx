@@ -9,6 +9,7 @@ import {
   LibraryBig,
   PenSquare,
   Brain,
+  NotebookText,
   Settings,
   GraduationCap,
   ListChecks, // Added ListChecks icon
@@ -32,6 +33,7 @@ const navItems = [
   { href: "/library", icon: LibraryBig, label: "Library" },
   { href: "/todo", icon: ListChecks, label: "To-Do List" }, // Added To-Do List
   { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
+  { href: "/notepad", icon: NotebookText, label: "Note Pad" },
   { href: "/general-tutor", icon: Brain, label: "General Tutor" },
 ];
 
