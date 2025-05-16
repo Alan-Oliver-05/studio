@@ -29,17 +29,22 @@ export default function LibraryPage() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
-    try {
-      const convos = getConversations();
-      setConversations(convos);
-    } catch (e) {
-      console.error("Failed to load conversations:", e);
-      setError("Failed to load conversation history.");
-    } finally {
-      setIsLoading(false);
-    }
+    setIsClient(true); // Ensure client-side only execution for localStorage
   }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      try {
+        const convos = getConversations();
+        setConversations(convos);
+      } catch (e) {
+        console.error("Failed to load conversations:", e);
+        setError("Failed to load conversation history.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [isClient]);
 
   useEffect(() => {
     if (isClient && conversations.length > 0) {
@@ -47,7 +52,13 @@ export default function LibraryPage() {
         const updatedTimeAgo: Record<string, string> = {};
         conversations.forEach(convo => {
           try {
-            updatedTimeAgo[convo.id] = formatDistanceToNow(new Date(convo.lastUpdatedAt), { addSuffix: true });
+            // Ensure convo.lastUpdatedAt is a valid number before creating a Date
+            const lastUpdatedDate = new Date(convo.lastUpdatedAt);
+            if (!isNaN(lastUpdatedDate.getTime())) {
+              updatedTimeAgo[convo.id] = formatDistanceToNow(lastUpdatedDate, { addSuffix: true });
+            } else {
+              updatedTimeAgo[convo.id] = 'Invalid date';
+            }
           } catch (e) {
             console.warn(`Could not format date for convo ${convo.id}:`, e);
             updatedTimeAgo[convo.id] = 'Invalid date';
@@ -86,7 +97,7 @@ export default function LibraryPage() {
 
   if (isLoading || !isClient) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4">
+      <div className="flex flex-col items-center justify-center h-full p-4 mt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading your library...</p>
       </div>
@@ -105,14 +116,15 @@ export default function LibraryPage() {
 
   const getRevisitLink = (convo: Conversation) => {
     if (convo.topic === "Homework Help") return "/homework-assistant";
-    if (convo.topic === "General AI Tutor" || convo.topic === "AI Learning Assistant Chat") return "/general-tutor";
+    // "AI Learning Assistant Chat" is the topic used by general-tutor page
+    if (convo.topic === "AI Learning Assistant Chat") return "/general-tutor"; 
     // For specific study sessions, reconstruct the path
     // The convo.topic is the specific topic, subjectContext is the broader subject
     return `/study-session/${encodeURIComponent(convo.subjectContext || convo.topic)}`;
   };
 
   return (
-    <div className="pb-8">
+    <div className="pb-8 pr-4 md:pr-6">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center pt-0">
         <div className="mb-4 sm:mb-0 text-center sm:text-left">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-primary flex items-center mt-0">
@@ -126,7 +138,7 @@ export default function LibraryPage() {
 
       {conversations.length === 0 ? (
         <Card className="text-center py-10 shadow-lg max-w-2xl mx-auto">
-          <CardHeader>
+          <CardHeader className="pt-0">
              <div className="mx-auto bg-accent/10 rounded-full p-3 w-fit">
                 <MessageSquareText className="h-10 w-10 text-accent" />
             </div>
@@ -217,3 +229,5 @@ export default function LibraryPage() {
     </div>
   );
 }
+
+    
