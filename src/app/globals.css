@@ -26,8 +26,8 @@ body {
     --muted: 220 10% 94%;
     --muted-foreground: 220 10% 45%;
 
-    --accent: 30 90% 50%; /* Vibrant orange/tangerine */
-    --accent-foreground: 0 0% 100%;
+    --accent: 190 70% 40%; /* Deep Teal */
+    --accent-foreground: 0 0% 100%; /* White */
 
     --destructive: 0 80% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -37,19 +37,19 @@ body {
     --ring: 225 70% 65%;
 
     --chart-1: 225 70% 55%; /* Primary */
-    --chart-2: 30 90% 50%;  /* Accent */
-    --chart-3: 190 60% 50%; /* A clear teal */
-    --chart-4: 270 60% 65%; /* A pleasant lavender */
+    --chart-2: 190 70% 40%;  /* Accent - Deep Teal */
+    --chart-3: 270 60% 65%; /* A pleasant lavender */
+    --chart-4: 30 90% 50%; /* Vibrant orange/tangerine (can be used as tertiary if needed) */
     --chart-5: 0 0% 65%;   /* Medium Gray */
     --radius: 0.75rem; /* Slightly larger radius */
 
     /* Sidebar specific colors - harmonized with new light theme */
-    --sidebar-background: 0 0% 98%; /* Slightly off-white, similar to original light background */
+    --sidebar-background: 0 0% 98%; 
     --sidebar-foreground: 220 15% 25%;
     --sidebar-primary: 225 70% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 90% 50%;
-    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-accent: 190 70% 40%; /* Deep Teal */
+    --sidebar-accent-foreground: 0 0% 100%; /* White */
     --sidebar-border: 220 10% 88%;
     --sidebar-ring: 225 70% 65%;
   }
@@ -73,8 +73,8 @@ body {
     --muted: 220 15% 20%;
     --muted-foreground: 210 20% 65%;
 
-    --accent: 45 90% 55%; /* Rich, vibrant gold/amber */
-    --accent-foreground: 45 90% 5%; /* Very dark brown/black */
+    --accent: 190 65% 55%; /* Deep Teal (adjusted for dark mode) */
+    --accent-foreground: 190 20% 5%; /* Very dark teal/black for text */
 
     --destructive: 0 70% 55%; /* Strong, clear red */
     --destructive-foreground: 0 0% 100%;
@@ -84,9 +84,9 @@ body {
     --ring: 210 100% 70%;
     
     --chart-1: 210 100% 60%; /* Primary Dark */
-    --chart-2: 45 90% 55%;  /* Accent Dark */
-    --chart-3: 180 70% 55%; /* A brighter cyan/teal for dark */
-    --chart-4: 260 70% 70%; /* A brighter violet for dark */
+    --chart-2: 190 65% 55%;  /* Accent Dark - Deep Teal */
+    --chart-3: 260 70% 70%; /* A brighter violet for dark */
+    --chart-4: 45 90% 55%; /* Rich, vibrant gold/amber (can be used as tertiary if needed) */
     --chart-5: 0 0% 80%;    /* Light Gray for dark */
 
     /* Sidebar specific colors for dark theme - harmonized */
@@ -94,8 +94,8 @@ body {
     --sidebar-foreground: 210 30% 95%;
     --sidebar-primary: 210 100% 60%;
     --sidebar-primary-foreground: 220 20% 10%;
-    --sidebar-accent: 45 90% 55%;
-    --sidebar-accent-foreground: 45 90% 5%;
+    --sidebar-accent: 190 65% 55%; /* Deep Teal */
+    --sidebar-accent-foreground: 190 20% 5%; /* Very dark teal/black */
     --sidebar-border: 220 15% 25%;
     --sidebar-ring: 210 100% 70%;
   }
