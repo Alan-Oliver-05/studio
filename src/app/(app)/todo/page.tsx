@@ -13,9 +13,10 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ListChecks, PlusCircle, Edit3, Trash2, CalendarDays, Tag, Filter, ArrowUpDown } from "lucide-react";
-import type { Task } from "@/types";
-import { Input } from "@/components/ui/input"; // Added for potential future inline edit
+import { ListChecks, PlusCircle, Edit3, Trash2, CalendarDays, Tag, Filter, ArrowUpDown, ShieldAlert, Star } from "lucide-react";
+import type { Task, TaskPriority } from "@/types";
+import { TASK_CATEGORIES, TASK_PRIORITIES } from "@/lib/constants";
+import { AddTaskDialog } from "./components/add-task-dialog"; // Import the dialog
 
 // Mock data for initial display
 const initialTasks: Task[] = [
@@ -24,6 +25,7 @@ const initialTasks: Task[] = [
     title: "Review Quantum Physics notes",
     category: "Concept Review",
     dueDate: "May 9, 2025",
+    priority: "High",
     status: "pending",
   },
   {
@@ -31,12 +33,14 @@ const initialTasks: Task[] = [
     title: "Math Homework Chapter 3",
     category: "Assignment",
     dueDate: "May 11, 2025",
+    priority: "Medium",
     status: "pending",
   },
   {
     id: "3",
     title: "Practice coding challenge",
     category: "Practice Question",
+    priority: "Medium",
     status: "pending",
     dueDate: "May 15, 2025",
   },
@@ -45,6 +49,7 @@ const initialTasks: Task[] = [
     title: "Prepare presentation slides",
     category: "Project",
     dueDate: "May 7, 2025",
+    priority: "Low",
     status: "completed",
   },
 ];
@@ -54,24 +59,25 @@ export default function TodoPage() {
   const [filteredTasks, setFilteredTasks] = useState<Task[]>(initialTasks);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("dueDate");
+  const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
 
-  const categories = Array.from(new Set(tasks.map(task => task.category).filter(Boolean)));
+  const categories = Array.from(new Set(tasks.map(task => task.category).filter(Boolean).concat(TASK_CATEGORIES.map(tc => tc.value))));
 
   useEffect(() => {
     let tempTasks = [...tasks];
 
-    // Filter by status
     if (statusFilter !== "all") {
       tempTasks = tempTasks.filter(task => task.status === statusFilter);
     }
-
-    // Filter by category
     if (categoryFilter !== "all") {
       tempTasks = tempTasks.filter(task => task.category === categoryFilter);
     }
+    if (priorityFilter !== "all") {
+      tempTasks = tempTasks.filter(task => task.priority === priorityFilter);
+    }
 
-    // Sort tasks
     if (sortBy === "dueDate") {
       tempTasks.sort((a, b) => {
         if (!a.dueDate) return 1;
@@ -82,11 +88,14 @@ export default function TodoPage() {
       tempTasks.sort((a, b) => a.title.localeCompare(b.title));
     } else if (sortBy === "category") {
       tempTasks.sort((a, b) => (a.category || "").localeCompare(b.category || ""));
+    } else if (sortBy === "priority") {
+        const priorityOrder: Record<TaskPriority, number> = { High: 1, Medium: 2, Low: 3 };
+        tempTasks.sort((a,b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
     }
     
     setFilteredTasks(tempTasks);
 
-  }, [tasks, statusFilter, categoryFilter, sortBy]);
+  }, [tasks, statusFilter, categoryFilter, priorityFilter, sortBy]);
 
   const handleToggleStatus = (taskId: string) => {
     setTasks(
@@ -116,17 +125,23 @@ export default function TodoPage() {
     setTasks(tasks.filter(task => task.id !== taskId));
   };
   
-  const handleAddTask = () => {
+  const handleAddNewTask = (newTaskData: Omit<Task, "id" | "status">) => {
      const newTask: Task = {
       id: String(Date.now()),
-      title: "New Task - Click edit to change",
-      category: "General",
+      ...newTaskData,
       status: "pending",
-      dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) 
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
   };
 
+  const getPriorityIcon = (priority: TaskPriority) => {
+    switch (priority) {
+      case "High": return <ShieldAlert className="h-3 w-3 text-destructive" />;
+      case "Medium": return <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />;
+      case "Low": return <Star className="h-3 w-3 text-green-500 fill-green-500" />;
+      default: return null;
+    }
+  };
 
   return (
     <div className="pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
@@ -139,14 +154,20 @@ export default function TodoPage() {
             Manage your tasks and stay organized.
           </p>
         </div>
-        <Button onClick={handleAddTask} className="bg-primary hover:bg-primary/90">
+        <Button onClick={() => setIsAddTaskDialogOpen(true)} className="bg-primary hover:bg-primary/90">
           <PlusCircle className="mr-2 h-5 w-5" /> Add Task
         </Button>
       </div>
 
+      <AddTaskDialog
+        open={isAddTaskDialogOpen}
+        onOpenChange={setIsAddTaskDialogOpen}
+        onAddTask={handleAddNewTask}
+      />
+
       <Card className="shadow-lg">
         <CardHeader className="border-b p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label htmlFor="status-filter" className="text-sm font-medium text-muted-foreground flex items-center mb-1">
                 <Filter className="h-4 w-4 mr-1.5"/> Filter by Status
@@ -172,9 +193,27 @@ export default function TodoPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map(category => (
+                  {Array.from(new Set(categories)).map(category => (
                     <SelectItem key={category} value={category}>
                       {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label htmlFor="priority-filter" className="text-sm font-medium text-muted-foreground flex items-center mb-1">
+                <ShieldAlert className="h-4 w-4 mr-1.5"/> Filter by Priority
+              </label>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger id="priority-filter">
+                  <SelectValue placeholder="All Priorities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  {TASK_PRIORITIES.map(p => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -190,6 +229,7 @@ export default function TodoPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="dueDate">Due Date</SelectItem>
+                  <SelectItem value="priority">Priority</SelectItem>
                   <SelectItem value="title">Title</SelectItem>
                   <SelectItem value="category">Category</SelectItem>
                 </SelectContent>
@@ -220,6 +260,12 @@ export default function TodoPage() {
                       </label>
                       <div className="flex items-center space-x-2 mt-1">
                         {task.category && <Badge variant={task.status === 'completed' ? 'secondary' : 'outline'} className="text-xs">{task.category}</Badge>}
+                        {task.priority && (
+                            <span className="flex items-center text-xs text-muted-foreground">
+                                {getPriorityIcon(task.priority)}
+                                <span className="ml-1">{task.priority}</span>
+                            </span>
+                        )}
                         {task.dueDate && (
                           <p className="text-xs text-muted-foreground flex items-center">
                             <CalendarDays className="h-3 w-3 mr-1" />
@@ -248,4 +294,3 @@ export default function TodoPage() {
     </div>
   );
 }
-

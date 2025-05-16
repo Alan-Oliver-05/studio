@@ -1,6 +1,5 @@
 
 
-
 export interface BoardExamInfo {
   board?: string;
   standard?: string;
@@ -81,10 +80,13 @@ export interface Conversation {
   lastUpdatedAt: number;
 }
 
+export type TaskPriority = "Low" | "Medium" | "High";
+
 export interface Task {
   id: string;
   title: string;
   category: string;
   dueDate?: string;
+  priority: TaskPriority;
   status: 'pending' | 'completed';
 }

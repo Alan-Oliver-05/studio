@@ -1,4 +1,6 @@
 
+import type { TaskPriority } from "@/types";
+
 export const GENDERS = [
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },
@@ -70,4 +72,21 @@ export const COMPETITIVE_EXAM_TYPES_STATE = [
     { value: "StatePolice", label: "State Police Recruitment"},
     { value: "StateTeaching", label: "State Teacher Eligibility Test (TET)"},
     { value: "Other", label: "Other State Govt Exam"},
+];
+
+export const TASK_CATEGORIES = [
+    { value: "Assignment", label: "Assignment" },
+    { value: "Concept Review", label: "Concept Review" },
+    { value: "Practice Question", label: "Practice Question" },
+    { value: "Project", label: "Project" },
+    { value: "Study Session", label: "Study Session" },
+    { value: "Exam Preparation", label: "Exam Preparation" },
+    { value: "Reading", label: "Reading" },
+    { value: "Other", label: "Other" },
+];
+
+export const TASK_PRIORITIES: { value: TaskPriority, label: string }[] = [
+    { value: "Low", label: "Low" },
+    { value: "Medium", label: "Medium" },
+    { value: "High", label: "High" },
 ];
