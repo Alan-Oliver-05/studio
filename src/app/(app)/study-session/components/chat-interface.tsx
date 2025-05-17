@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from "react";
@@ -7,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, Image as ImageIcon } from "lucide-react";
+import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, Image as ImageIcon, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from "@/ai/flows/ai-guided-study-session";
-import { addMessageToConversation, getConversationById } from "@/lib/chat-storage";
+import { generateImageFromPrompt } from "@/ai/flows/generate-image-from-prompt"; // Import the new flow
+import { addMessageToConversation, getConversationById, saveConversation } from "@/lib/chat-storage";
 import { useToast } from "@/hooks/use-toast";
 import {
   Tooltip,
@@ -18,7 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import Image from "next/image";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ChatInterfaceProps {
   userProfile: UserProfile | null;
@@ -70,6 +72,7 @@ export function ChatInterface({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [generatingImageForMessageId, setGeneratingImageForMessageId] = useState<string | null>(null);
 
   useEffect(() => {
     const existingConversation = getConversationById(conversationId);
@@ -125,6 +128,39 @@ export function ChatInterface({
     setUploadedImageName(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; // Reset file input
+    }
+  };
+
+  const handleGenerateImage = async (messageId: string, promptText: string) => {
+    setGeneratingImageForMessageId(messageId);
+    try {
+      const result = await generateImageFromPrompt({ prompt: promptText });
+      if (result.imageDataUri) {
+        setMessages(prevMessages => {
+          const updatedMessages = prevMessages.map(msg =>
+            msg.id === messageId ? { ...msg, generatedImageUri: result.imageDataUri } : msg
+          );
+          // Update localStorage
+          const convo = getConversationById(conversationId);
+          if (convo) {
+            convo.messages = updatedMessages;
+            saveConversation(convo);
+          }
+          return updatedMessages;
+        });
+        toast({ title: "Image Generated", description: "The visual has been generated successfully." });
+      } else {
+        throw new Error("Image data URI was empty.");
+      }
+    } catch (error) {
+      console.error("Error generating image:", error);
+      toast({
+        title: "Image Generation Failed",
+        description: error instanceof Error ? error.message : "Could not generate the image.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingImageForMessageId(null);
     }
   };
 
@@ -298,7 +334,38 @@ export function ChatInterface({
                       <p className="text-xs mb-1">Type: <span className="font-medium">{message.visualElement.type.replace(/_/g, ' ')}</span></p>
                       <p className="text-xs mb-1">Content:</p>
                       {renderVisualElementContent(message.visualElement)}
-                      <p className="text-xs italic mt-2 text-muted-foreground">(Visual rendering capabilities are under development)</p>
+                      
+                      {message.visualElement.type === 'image_generation_prompt' && !message.generatedImageUri && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="mt-2 text-xs"
+                          onClick={() => handleGenerateImage(message.id, message.visualElement?.content as string)}
+                          disabled={generatingImageForMessageId === message.id}
+                        >
+                          {generatingImageForMessageId === message.id ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="mr-2 h-4 w-4" />
+                          )}
+                          Generate Image
+                        </Button>
+                      )}
+                      {message.generatedImageUri && (
+                        <div className="mt-2 border rounded-md overflow-hidden">
+                          <Image 
+                            src={message.generatedImageUri} 
+                            alt={message.visualElement.caption || "Generated image"} 
+                            width={300} 
+                            height={300} 
+                            className="object-contain" 
+                            data-ai-hint="illustration diagram"
+                          />
+                        </div>
+                      )}
+                       {(message.visualElement.type.includes('chart') || message.visualElement.type.includes('flowchart')) && (
+                        <p className="text-xs italic mt-2 text-muted-foreground">(Visual rendering for charts/flowcharts is under development)</p>
+                       )}
                     </CardContent>
                   </Card>
                 )}

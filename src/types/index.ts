@@ -67,6 +67,7 @@ export interface Message {
   timestamp: number;
   attachmentPreview?: string | null; // For client-side display of image thumbnail
   visualElement?: VisualElement | null; // To hold structured visual data from AI
+  generatedImageUri?: string | null; // To store the data URI of an AI-generated image
 }
 
 export interface Conversation {
