@@ -2,11 +2,9 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Brain, MessageCircle, Languages, BarChart3, PieChartIcon } from "lucide-react";
+import { Loader2, AlertTriangle, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation'; 
 import { useEffect, useState } from "react"; 
@@ -45,7 +43,7 @@ export default function AITutorPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading AI Tutor...</p>
+        <p className="mt-4 text-muted-foreground">Loading AI Learning Assistant...</p>
       </div>
     );
   }
@@ -56,7 +54,7 @@ export default function AITutorPage() {
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
         <h2 className="text-3xl font-semibold mb-3">Profile Required</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
-          To use the AI Tutor, we need your profile information. Please complete the onboarding process first.
+          To use the AI Learning Assistant, we need your profile information. Please complete the onboarding process first.
         </p>
         <Button asChild size="lg">
           <Link href="/onboarding">Go to Onboarding</Link>
@@ -69,7 +67,7 @@ export default function AITutorPage() {
      return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Initializing chat sessions...</p>
+        <p className="mt-4 text-muted-foreground">Initializing chat session...</p>
       </div>
     );
   }
@@ -85,69 +83,18 @@ export default function AITutorPage() {
         <p className="text-muted-foreground mt-1">Your multi-modal personal tutor.</p>
       </div>
       
-      <Tabs defaultValue="chat" className="flex-grow flex flex-col">
-        <TabsList className="mb-4 self-start">
-          <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4" />Chat</TabsTrigger>
-          <TabsTrigger value="visual-learning"><PieChartIcon className="mr-2 h-4 w-4" />Visual Learning</TabsTrigger>
-          <TabsTrigger value="language-learning"><Languages className="mr-2 h-4 w-4" />Language Learning</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="chat" className="flex-grow flex flex-col min-h-0">
-          {mainChatKey && mainChatConversationId && (
-            <DynamicChatInterface
-              key={mainChatKey} 
-              userProfile={profile}
-              topic="AI Learning Assistant Chat" 
-              conversationId={mainChatConversationId}
-              initialSystemMessage={initialMainChatMessage}
-              placeholderText="Ask anything or upload an image..."
-            />
-          )}
-        </TabsContent>
-
-        <TabsContent value="visual-learning" className="flex-grow flex flex-col min-h-0">
-           <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-lg">Visual Learning Tools</CardTitle>
-              <CardDescription>Understand complex topics visually. Explore concepts with AI-generated interactive graphs, charts, and flowcharts tailored to your learning needs.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="list-disc list-inside text-muted-foreground space-y-1 text-sm">
-                <li>Dynamic visualizations to simplify difficult concepts.</li>
-                <li>AI generation of custom diagrams and images based on your questions.</li>
-                <li>Support for various chart types and flowcharts.</li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button asChild variant="accent">
-                <Link href="/visual-learning">Go to Visual Learning Hub</Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="language-learning" className="flex-grow">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-lg">Language Learning Hub</CardTitle>
-              <CardDescription>Master new languages with your AI assistant. Practice vocabulary, grammar, pronunciation (text-based), and engage in interactive conversations. Get instant feedback and translations.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="list-disc list-inside text-muted-foreground space-y-1 text-sm">
-                <li>Interactive lessons tailored to your level.</li>
-                <li>AI-powered translations and grammar explanations.</li>
-                <li>Practice conversations in your target language.</li>
-                <li>Vocabulary building exercises and tips.</li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button asChild variant="accent">
-                <Link href="/language-learning">Go to Language Learning Hub</Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <div className="flex-grow flex flex-col min-h-0">
+        {mainChatKey && mainChatConversationId && (
+          <DynamicChatInterface
+            key={mainChatKey} 
+            userProfile={profile}
+            topic="AI Learning Assistant Chat" 
+            conversationId={mainChatConversationId}
+            initialSystemMessage={initialMainChatMessage}
+            placeholderText="Ask anything or upload an image..."
+          />
+        )}
+      </div>
     </div>
   );
 }
