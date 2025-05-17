@@ -22,7 +22,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
@@ -192,7 +191,7 @@ export default function LibraryPage() {
     if (convo.topic === "AI Learning Assistant Chat") return "/general-tutor"; 
     if (convo.topic === "LanguageLearningMode") return "/language-learning";
     const subjectForLink = convo.subjectContext || convo.topic;
-    return `/study-session/${encodeURIComponent(subjectForLink)}`;
+    return `/study-session/${encodeURIComponent(subjectForLink || 'general')}`;
   };
   
   const sortedGroupNames = Object.keys(groupedConversations).sort((a, b) => a.localeCompare(b));
@@ -301,16 +300,22 @@ export default function LibraryPage() {
                             <div className="flex items-center space-x-1 mt-2 sm:mt-0 self-start sm:self-center">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleRenameConversation(convo);}}>
-                                        <Edit3 className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                      <Button asChild variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleRenameConversation(convo);}}>
+                                        {/* This div will be rendered instead of a <button> element */}
+                                        <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLDivElement).click(); } }}>
+                                           <Edit3 className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                        </div>
                                       </Button>
                                   </TooltipTrigger>
                                   <TooltipContent><p>Rename Conversation</p></TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteClick(convo); }}>
-                                      <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                                    <Button asChild variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteClick(convo); }}>
+                                      {/* This div will be rendered instead of a <button> element */}
+                                      <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLDivElement).click(); } }}>
+                                         <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                                      </div>
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent><p>Delete Conversation</p></TooltipContent>
@@ -372,7 +377,7 @@ export default function LibraryPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the conversation titled &quot;{conversationToDelete?.customTitle || conversationToDelete?.topic}&quot;.
+              This action cannot be undone. This will permanently delete the conversation titled &quot;{conversationToDelete?.customTitle || getConversationDisplayTitle(conversationToDelete!, getGroupNameForConvo(conversationToDelete!))}&quot;.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -384,4 +389,6 @@ export default function LibraryPage() {
     </div>
   );
 }
+    
+
     
