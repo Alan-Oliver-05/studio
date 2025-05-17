@@ -301,7 +301,6 @@ export default function LibraryPage() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                       <Button asChild variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleRenameConversation(convo);}}>
-                                        {/* This div will be rendered instead of a <button> element */}
                                         <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLDivElement).click(); } }}>
                                            <Edit3 className="h-4 w-4 text-muted-foreground hover:text-primary" />
                                         </div>
@@ -312,7 +311,6 @@ export default function LibraryPage() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button asChild variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteClick(convo); }}>
-                                      {/* This div will be rendered instead of a <button> element */}
                                       <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLDivElement).click(); } }}>
                                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                                       </div>
@@ -377,7 +375,8 @@ export default function LibraryPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the conversation titled &quot;{conversationToDelete?.customTitle || getConversationDisplayTitle(conversationToDelete!, getGroupNameForConvo(conversationToDelete!))}&quot;.
+              This action cannot be undone. This will permanently delete the conversation
+              {conversationToDelete ? ` titled "${conversationToDelete.customTitle || getConversationDisplayTitle(conversationToDelete, getGroupNameForConvo(conversationToDelete))}"` : ''}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -389,6 +388,8 @@ export default function LibraryPage() {
     </div>
   );
 }
+    
+
     
 
     
