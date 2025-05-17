@@ -28,6 +28,12 @@ import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, Fi
 import { formatDistanceToNow } from 'date-fns';
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 
 export default function LibraryPage() {
   const [allConversations, setAllConversations] = useState<Conversation[]>([]);
@@ -39,7 +45,7 @@ export default function LibraryPage() {
   const [timeAgo, setTimeAgo] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
-  const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
+  const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null); // For AlertDialog
 
   useEffect(() => {
     setIsClient(true); 
@@ -128,26 +134,38 @@ export default function LibraryPage() {
   };
 
   const handleRenameConversation = (convo: Conversation) => {
-    const newTitle = prompt("Enter new title for this conversation:", convo.customTitle || convo.topic);
-    if (newTitle !== null) { // prompt returns null if cancelled
+    const newTitle = prompt("Enter new title for this conversation:", convo.customTitle || getConversationDisplayTitle(convo, getGroupNameForConvo(convo)));
+    if (newTitle !== null) { 
       if (newTitle.trim() === "") {
         toast({ title: "Rename Error", description: "Title cannot be empty.", variant: "destructive"});
         return;
       }
       updateConversationCustomTitle(convo.id, newTitle.trim());
-      loadConversations(); // Reload to reflect changes
+      loadConversations(); 
       toast({ title: "Conversation Renamed", description: `Successfully renamed to "${newTitle.trim()}".` });
     }
+  };
+
+  const handleDeleteClick = (convo: Conversation) => {
+    setConversationToDelete(convo); // Set the conversation to be deleted, this will trigger the AlertDialog
   };
 
   const handleDeleteConfirmed = () => {
     if (conversationToDelete) {
       deleteConversation(conversationToDelete.id);
-      setConversationToDelete(null);
+      setConversationToDelete(null); // Clear it
       loadConversations(); // Reload to reflect changes
       toast({ title: "Conversation Deleted", description: `"${conversationToDelete.customTitle || conversationToDelete.topic}" has been deleted.`, variant: "destructive" });
     }
   };
+
+  const getGroupNameForConvo = (convo: Conversation): string => {
+    let groupKey = convo.subjectContext || convo.topic || "Uncategorized";
+    if (groupKey === "AI Learning Assistant Chat") groupKey = "General AI Tutor";
+    if (groupKey === "LanguageLearningMode") groupKey = "Language Learning";
+    if (groupKey === "Homework Help") groupKey = "Homework Helper";
+    return groupKey;
+  }
 
 
   if (isLoading || !isClient) {
@@ -171,10 +189,8 @@ export default function LibraryPage() {
 
   const getRevisitLink = (convo: Conversation) => {
     if (convo.topic === "Homework Help") return "/homework-assistant";
-    // Check for general tutor by specific topic name first
     if (convo.topic === "AI Learning Assistant Chat") return "/general-tutor"; 
     if (convo.topic === "LanguageLearningMode") return "/language-learning";
-    // Fallback to subject context for study sessions
     const subjectForLink = convo.subjectContext || convo.topic;
     return `/study-session/${encodeURIComponent(subjectForLink)}`;
   };
@@ -192,8 +208,12 @@ export default function LibraryPage() {
     if (convo.customTitle) return convo.customTitle;
     if (convo.topic !== groupName && convo.topic !== "LanguageLearningMode" && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "Homework Help") return convo.topic;
     if (convo.lessonContext) return `Lesson: ${convo.lessonContext}`;
-    if (convo.topic === "LanguageLearningMode") return "Language Practice";
-    return 'General Discussion';
+    // For general chats within a group context, use a generic title if no specific topic/lesson.
+    if (groupName === "General AI Tutor" && convo.topic === "AI Learning Assistant Chat") return "General Chat";
+    if (groupName === "Language Learning" && convo.topic === "LanguageLearningMode") return "Language Practice";
+    if (groupName === "Homework Helper" && convo.topic === "Homework Help") return "Homework Session";
+
+    return convo.topic || 'General Discussion';
   };
 
   return (
@@ -239,7 +259,7 @@ export default function LibraryPage() {
             if (!convosInGroup || convosInGroup.length === 0) return null;
 
             return (
-              <AccordionItem value={groupName} key={groupName} className="bg-card border rounded-lg shadow-md overflow-hidden">
+              <AccordionItem value={groupName} key={groupName} className="bg-card border rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
                 <AccordionTrigger className="p-4 md:p-5 hover:no-underline bg-muted/50 hover:bg-muted/80">
                   <div className="flex justify-between items-center w-full">
                     <h2 className="text-lg md:text-xl font-semibold text-primary flex items-center">
@@ -255,7 +275,7 @@ export default function LibraryPage() {
                   <Accordion type="single" collapsible className="w-full space-y-px bg-card"> 
                     {convosInGroup.map((convo, index) => (
                       <AccordionItem value={convo.id} key={convo.id} className={`border-t ${index === 0 ? 'border-t-0' : ''}`}>
-                        <AccordionTrigger className="p-3 md:p-4 hover:no-underline text-left">
+                        <AccordionTrigger className="p-3 md:p-4 hover:no-underline hover:bg-accent/5 transition-colors text-left">
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full">
                             <div className="flex-grow mb-2 sm:mb-0">
                               <h3 className="text-sm md:text-base font-medium text-foreground">
@@ -279,28 +299,22 @@ export default function LibraryPage() {
                               </p>
                             </div>
                             <div className="flex items-center space-x-1 mt-2 sm:mt-0 self-start sm:self-center">
-                               <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleRenameConversation(convo);}} title="Rename conversation">
-                                <Edit3 className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()} title="Delete conversation">
-                                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete the conversation titled &quot;{convo.customTitle || convo.topic}&quot;.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteConfirmed()}>Delete</AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleRenameConversation(convo);}}>
+                                        <Edit3 className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                      </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Rename Conversation</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteClick(convo); }}>
+                                      <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Delete Conversation</p></TooltipContent>
+                                </Tooltip>
                               <Button variant="outline" size="sm" asChild onClick={(e) => e.stopPropagation()}>
                                 <Link href={getRevisitLink(convo)}>
                                   Revisit
@@ -353,8 +367,20 @@ export default function LibraryPage() {
           })}
         </Accordion>
       )}
-       {/* AlertDialog for delete confirmation - structure might need slight adjustment if it's meant to be a single dialog reused */}
-       {/* It's better to have AlertDialogTrigger inside map, and DialogContent outside or manage state carefully if one dialog */}
+      <AlertDialog open={!!conversationToDelete} onOpenChange={(open) => !open && setConversationToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the conversation titled &quot;{conversationToDelete?.customTitle || conversationToDelete?.topic}&quot;.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConversationToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirmed} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

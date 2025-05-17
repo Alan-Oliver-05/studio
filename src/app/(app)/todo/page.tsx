@@ -18,6 +18,11 @@ import type { Task, TaskPriority } from "@/types";
 import { TASK_CATEGORIES, TASK_PRIORITIES } from "@/lib/constants";
 import { TaskFormDialog, TaskFormValues } from "./components/task-form-dialog"; 
 import { format } from "date-fns";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Mock data for initial display
 const initialTasks: Task[] = [
@@ -157,8 +162,8 @@ export default function TodoPage() {
   const getPriorityIcon = (priority: TaskPriority) => {
     switch (priority) {
       case "High": return <ShieldAlert className="h-3 w-3 text-destructive" />;
-      case "Medium": return <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />;
-      case "Low": return <Star className="h-3 w-3 text-green-500 fill-green-500" />;
+      case "Medium": return <Star className="h-3 w-3 text-yellow-500 fill-current" />;
+      case "Low": return <Star className="h-3 w-3 text-green-500 fill-current" />;
       default: return null;
     }
   };
@@ -296,13 +301,27 @@ export default function TodoPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenEditTaskForm(task)} aria-label="Edit task">
-                      <Edit3 className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} aria-label="Delete task">
-                      <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                    </Button>
+                  <div className="flex items-center space-x-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenEditTaskForm(task)} aria-label="Edit task">
+                          <Edit3 className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Edit Task</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} aria-label="Delete task">
+                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Delete Task</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                 </li>
               ))}
@@ -315,3 +334,4 @@ export default function TodoPage() {
     </div>
   );
 }
+

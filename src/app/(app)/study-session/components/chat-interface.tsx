@@ -16,7 +16,6 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  TooltipProvider
 } from "@/components/ui/tooltip";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -184,7 +183,7 @@ export function ChatInterface({
         lesson: context?.lesson || undefined,   
         specificTopic: topic,    
         question: userMessage.text.replace(`(See attached image: ${uploadedImageName})`, '').trim(),
-        photoDataUri: imageToSend ? imageToSend : undefined, // Ensure undefined if no image
+        photoDataUri: imageToSend ? imageToSend : undefined,
       };
       
       const aiResponse = await aiGuidedStudySession(aiInput);
@@ -353,7 +352,7 @@ export function ChatInterface({
             Attached: <span className="font-medium text-foreground">{uploadedImageName}</span>
              <Image src={uploadedImage} alt="Preview" width={24} height={24} className="rounded object-cover" />
           </div>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={removeUploadedImage}>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={removeUploadedImage} title="Remove image">
             <XCircle className="h-4 w-4 text-destructive" />
           </Button>
         </div>
@@ -362,24 +361,23 @@ export function ChatInterface({
         onSubmit={handleSubmit}
         className="flex items-center gap-3 border-t p-3 bg-background rounded-b-lg"
       >
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
-              >
-                <ImagePlus className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Upload Image</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+              aria-label="Upload Image"
+            >
+              <ImagePlus className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Upload Image</p>
+          </TooltipContent>
+        </Tooltip>
         <Input 
           type="file" 
           accept="image/*" 
@@ -400,18 +398,16 @@ export function ChatInterface({
             }
           }}
         />
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button type="submit" size="icon" disabled={isLoading || (!input.trim() && !uploadedImage)}>
-                <SendHorizonal className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Send message</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button type="submit" size="icon" disabled={isLoading || (!input.trim() && !uploadedImage)} aria-label="Send message">
+              <SendHorizonal className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Send Message</p>
+          </TooltipContent>
+        </Tooltip>
       </form>
     </div>
   );

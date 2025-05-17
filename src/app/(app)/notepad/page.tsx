@@ -9,6 +9,12 @@ import { Bold, Italic, ListOrdered, Save, Trash2, Edit2, FilePlus2, CalendarDays
 import type { Note } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 
 const LOCAL_STORAGE_NOTES_KEY = 'eduai-notes';
 
@@ -96,8 +102,6 @@ const NotePadPage: React.FC = () => {
       setNotes(prevNotes => [newNote, ...prevNotes]);
       toast({ title: "Note Saved", description: `"${newNote.title}" has been saved.`});
     }
-    // Optionally clear after save, or keep for further editing. For now, let's clear for a "new note" feel after saving.
-    // handleNewNote(); // Uncomment if you want to clear fields after save
   };
 
   const handleLoadNote = (noteId: string) => {
@@ -114,7 +118,7 @@ const NotePadPage: React.FC = () => {
   const handleDeleteNote = (noteId: string) => {
     const noteToDelete = notes.find(note => note.id === noteId);
     setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
-    if (editingNoteId === noteId) { // If deleting the currently edited note
+    if (editingNoteId === noteId) { 
       handleNewNote();
     }
     if (noteToDelete) {
@@ -123,6 +127,7 @@ const NotePadPage: React.FC = () => {
   };
   
   const getPreviewContent = (htmlContent: string) => {
+    if (!isClient) return "Loading preview...";
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
     const text = tempDiv.textContent || tempDiv.innerText || "";
@@ -135,12 +140,26 @@ const NotePadPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 mt-0">
         <h1 className="text-3xl font-bold text-primary mt-0">Note Pad</h1>
         <div className="flex gap-2 mt-4 sm:mt-0">
-          <Button onClick={handleNewNote} variant="outline">
-            <FilePlus2 className="mr-2 h-4 w-4" /> New Note
-          </Button>
-          <Button onClick={handleSaveNote}>
-            <Save className="mr-2 h-4 w-4" /> {editingNoteId ? "Update Note" : "Save Note"}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={handleNewNote} variant="outline">
+                <FilePlus2 className="mr-2 h-4 w-4" /> New Note
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Create a new blank note</p>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={handleSaveNote}>
+                <Save className="mr-2 h-4 w-4" /> {editingNoteId ? "Update Note" : "Save Note"}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{editingNoteId ? "Save changes to current note" : "Save the new note"}</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -157,15 +176,15 @@ const NotePadPage: React.FC = () => {
           <CardContent>
             <div className="border border-input rounded-md shadow-sm">
               <div className="flex items-center p-2 border-b border-input bg-muted/50 rounded-t-md space-x-1">
-                <TooltipButton label="Bold" onClick={() => execCommand('bold')}>
+                <EditorToolbarButton label="Bold" onClick={() => execCommand('bold')}>
                   <Bold className="h-4 w-4" />
-                </TooltipButton>
-                <TooltipButton label="Italic" onClick={() => execCommand('italic')}>
+                </EditorToolbarButton>
+                <EditorToolbarButton label="Italic" onClick={() => execCommand('italic')}>
                   <Italic className="h-4 w-4" />
-                </TooltipButton>
-                <TooltipButton label="Numbered List" onClick={() => execCommand('insertOrderedList')}>
+                </EditorToolbarButton>
+                <EditorToolbarButton label="Numbered List" onClick={() => execCommand('insertOrderedList')}>
                   <ListOrdered className="h-4 w-4" />
-                </TooltipButton>
+                </EditorToolbarButton>
               </div>
               <div
                 ref={editorRef}
@@ -173,6 +192,8 @@ const NotePadPage: React.FC = () => {
                 onInput={handleInput}
                 className="w-full min-h-[16rem] p-4 focus:outline-none prose dark:prose-invert max-w-none bg-background"
                 dangerouslySetInnerHTML={{ __html: currentContent }}
+                role="textbox"
+                aria-multiline="true"
               />
             </div>
           </CardContent>
@@ -201,16 +222,30 @@ const NotePadPage: React.FC = () => {
                 </CardHeader>
                 <CardContent className="flex-grow min-h-[4rem]">
                   <p className="text-sm text-muted-foreground line-clamp-3">
-                    {isClient ? getPreviewContent(note.content) : "Loading preview..."}
+                    {getPreviewContent(note.content)}
                   </p>
                 </CardContent>
-                <CardFooter className="flex justify-end gap-2 pt-2">
-                  <Button variant="ghost" size="sm" onClick={() => handleLoadNote(note.id)}>
-                    <Edit2 className="mr-1.5 h-3.5 w-3.5" /> Edit
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDeleteNote(note.id)}>
-                    <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Delete
-                  </Button>
+                <CardFooter className="flex justify-end gap-1 pt-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => handleLoadNote(note.id)}>
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Edit Note</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteNote(note.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Delete Note</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </CardFooter>
               </Card>
             ))}
@@ -221,16 +256,24 @@ const NotePadPage: React.FC = () => {
   );
 };
 
-interface TooltipButtonProps extends React.ComponentProps<typeof Button> {
+interface EditorToolbarButtonProps extends React.ComponentProps<typeof Button> {
   label: string;
 }
 
-const TooltipButton: React.FC<TooltipButtonProps> = ({ label, children, ...props }) => {
+const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = ({ label, children, ...props }) => {
   return (
-    <Button variant="ghost" size="icon" aria-label={label} title={label} {...props}>
-      {children}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label={label} {...props}>
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{label}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 
 export default NotePadPage;
+
