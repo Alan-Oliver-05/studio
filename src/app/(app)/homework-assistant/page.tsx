@@ -7,7 +7,7 @@ import { Loader2, AlertTriangle, PenSquare, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
-import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
+import { useSearchParams, useRouter } from 'next/navigation'; 
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -20,7 +20,7 @@ const DynamicChatInterface = dynamic(() =>
 export default function HomeworkAssistantPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const searchParams = useSearchParams();
-  const router = useRouter(); // Added router
+  const router = useRouter(); 
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState(Date.now());
 
@@ -29,7 +29,7 @@ export default function HomeworkAssistantPage() {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
       setCurrentConversationId(sessionIdFromQuery);
-      setChatKey(Number(sessionIdFromQuery.split('-').pop()) || Date.now()); // Use timestamp from ID or new one
+      setChatKey(Number(sessionIdFromQuery.split('-').pop()) || Date.now()); 
     } else if (profile?.id) {
       const newTimestamp = Date.now();
       setCurrentConversationId(`homework-assistant-${profile.id}-${newTimestamp}`);
@@ -39,8 +39,8 @@ export default function HomeworkAssistantPage() {
 
 
   const handleNewSession = () => {
-    // Navigate to the base page to clear query params, then generate new ID
-    router.push('/homework-assistant', { scroll: false }); // scroll:false to prevent scroll jump
+    
+    router.push('/homework-assistant', { scroll: false }); 
     if (profile?.id) {
         const newTimestamp = Date.now();
         setCurrentConversationId(`homework-assistant-${profile.id}-${newTimestamp}`);
@@ -86,8 +86,8 @@ export default function HomeworkAssistantPage() {
     <div className="h-full flex flex-col mt-0 pt-0">
       <div className="flex justify-between items-center mb-6 pt-0 mt-0">
         <div>
-            <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-                <PenSquare className="mr-3 h-8 w-8"/> Homework Assistant
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
+                <PenSquare className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Homework Assistant
             </h1>
             <p className="text-muted-foreground">Get help with your homework, assignments, and tricky questions.</p>
         </div>
@@ -108,5 +108,3 @@ export default function HomeworkAssistantPage() {
     </div>
   );
 }
-
-    

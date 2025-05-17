@@ -142,7 +142,7 @@ export default function AnalyticsPage() {
   if (sessionsChartData.length > 0) {
      sessionsChartData.forEach(item => {
         if (!sessionsChartConfig[item.name]) {
-            sessionsChartConfig[item.name] = { label: item.name, color: "hsl(var(--chart-3))" }; // Default color
+            sessionsChartConfig[item.name] = { label: item.name, color: "hsl(var(--chart-3))" }; 
         }
      });
   }
@@ -190,10 +190,10 @@ export default function AnalyticsPage() {
   );
 
   return (
-    <div className="pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
+    <div className="pr-0 md:pr-2 pb-4 md:pb-6 pt-0">
       <div className="mb-6 pt-0">
-        <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-          <BarChartBig className="mr-3 h-8 w-8" /> Analytics Dashboard
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
+          <BarChartBig className="mr-3 h-7 w-7 sm:h-8 sm:w-8" /> Analytics Dashboard
         </h1>
         <p className="text-muted-foreground">
           Insights into your learning patterns and progress.
@@ -202,7 +202,7 @@ export default function AnalyticsPage() {
 
       {sessionStats && (
         <section className="mb-8">
-          <h2 className="text-2xl font-semibold text-primary mb-4 flex items-center"><MessageSquare className="mr-2 h-6 w-6"/>Chat Activity</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold text-primary mb-4 flex items-center"><MessageSquare className="mr-2 h-5 w-5 sm:h-6 sm:w-6"/>Chat Activity</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard title="Total Chat Sessions" value={sessionStats.totalSessions} icon={<History />} description="All recorded chat interactions." />
             <StatCard title="Total Messages Exchanged" value={sessionStats.totalMessages} icon={<FileText />} description="Sum of all messages sent by you and AI." />
@@ -212,7 +212,7 @@ export default function AnalyticsPage() {
           {sessionsChartData.length > 0 && (
             <Card className="mt-6 shadow-lg">
               <CardHeader>
-                <CardTitle className="text-xl flex items-center"><Layers className="mr-2 h-5 w-5"/>Learning Sessions Breakdown</CardTitle>
+                <CardTitle className="text-lg sm:text-xl flex items-center"><Layers className="mr-2 h-5 w-5"/>Learning Sessions Breakdown</CardTitle>
                 <CardDescription>Number of sessions per category.</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px] md:h-[350px]">
@@ -240,11 +240,11 @@ export default function AnalyticsPage() {
             {Object.entries(sessionStats.sessionsByType).map(([type, data]) => (
               <Card key={type} className="shadow-md">
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold text-accent">
-                    {type === "General AI Tutor" ? <Brain className="inline mr-2 h-5 w-5"/> : 
-                     type === "Language Learning" ? <Languages className="inline mr-2 h-5 w-5"/> : 
-                     type === "Homework Helper" ? <PenSquare className="inline mr-2 h-5 w-5"/> :
-                     <BookOpen className="inline mr-2 h-5 w-5"/> 
+                  <CardTitle className="text-md sm:text-lg font-semibold text-accent">
+                    {type === "General AI Tutor" ? <Brain className="inline mr-2 h-4 w-4 sm:h-5 sm:w-5"/> : 
+                     type === "Language Learning" ? <Languages className="inline mr-2 h-4 w-4 sm:h-5 sm:w-5"/> : 
+                     type === "Homework Helper" ? <PenSquare className="inline mr-2 h-4 w-4 sm:h-5 sm:w-5"/> :
+                     <BookOpen className="inline mr-2 h-4 w-4 sm:h-5 sm:w-5"/> 
                     }
                     {type}
                   </CardTitle>
@@ -262,7 +262,7 @@ export default function AnalyticsPage() {
 
       {taskStats && (
         <section className="mb-8">
-          <h2 className="text-2xl font-semibold text-primary mb-4 flex items-center"><ListChecks className="mr-2 h-6 w-6"/>Task Insights</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold text-primary mb-4 flex items-center"><ListChecks className="mr-2 h-5 w-5 sm:h-6 sm:w-6"/>Task Insights</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard title="Total Tasks" value={taskStats.totalTasks} icon={<ListChecks />} />
             <StatCard title="Tasks Completed" value={taskStats.completed} icon={<CheckCircle className="text-green-500"/>} />
@@ -273,7 +273,7 @@ export default function AnalyticsPage() {
             {taskStatusChartData.length > 0 && taskStatusChartData.some(d => d.value > 0) && (
               <Card className="shadow-lg">
                 <CardHeader>
-                  <CardTitle className="text-xl flex items-center"><PieChartIcon className="mr-2 h-5 w-5"/>Task Status Overview</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl flex items-center"><PieChartIcon className="mr-2 h-5 w-5"/>Task Status Overview</CardTitle>
                   <CardDescription>Distribution of pending vs. completed tasks.</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[250px] md:h-[300px] flex items-center justify-center">
@@ -304,7 +304,7 @@ export default function AnalyticsPage() {
             {taskPriorityChartData.length > 0 && (
               <Card className="shadow-lg">
                 <CardHeader>
-                  <CardTitle className="text-xl flex items-center"><TrendingUp className="mr-2 h-5 w-5"/>Tasks by Priority</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl flex items-center"><TrendingUp className="mr-2 h-5 w-5"/>Tasks by Priority</CardTitle>
                   <CardDescription>Distribution of tasks by their priority.</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[250px] md:h-[300px] flex items-center justify-center">
@@ -337,7 +337,7 @@ export default function AnalyticsPage() {
 
       {noteStats && (
          <section>
-            <h2 className="text-2xl font-semibold text-primary mb-4 flex items-center"><FileText className="mr-2 h-6 w-6"/>Notepad Insights</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold text-primary mb-4 flex items-center"><FileText className="mr-2 h-5 w-5 sm:h-6 sm:w-6"/>Notepad Insights</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard title="Total Notes Created" value={noteStats.totalNotes} icon={<FileText />} />
             </div>
@@ -363,4 +363,3 @@ export default function AnalyticsPage() {
     </div>
   );
 }
-

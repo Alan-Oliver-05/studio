@@ -44,7 +44,7 @@ export default function LibraryPage() {
   const [timeAgo, setTimeAgo] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
-  const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null); // For AlertDialog
+  const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null); 
 
   useEffect(() => {
     setIsClient(true); 
@@ -121,7 +121,7 @@ export default function LibraryPage() {
       const result = await summarizeConversation({ conversationHistory: conversationText });
       if (result.summary) {
         setSummaries(prev => ({ ...prev, [conversation.id]: result.summary }));
-        // Persist summary to localStorage
+        
         const convoToUpdate = getConversationById(conversation.id);
         if (convoToUpdate) {
             convoToUpdate.summary = result.summary;
@@ -204,12 +204,12 @@ export default function LibraryPage() {
     } else if (convo.topic === "LanguageLearningMode") {
       baseHref = "/language-learning";
     } else if (convo.subjectContext && convo.lessonContext && convo.topic) {
-      // This is a specific study session
+      
       baseHref = `/study-session/${encodeURIComponent(convo.subjectContext)}`;
       queryParams.append("lesson", encodeURIComponent(convo.lessonContext));
       queryParams.append("topic", encodeURIComponent(convo.topic));
     } else {
-        // Fallback for older or less specific study sessions, might just go to subject page
+        
         baseHref = `/study-session/${encodeURIComponent(convo.subjectContext || convo.topic || 'general')}`;
     }
     return `${baseHref}?${queryParams.toString()}`;
@@ -226,12 +226,12 @@ export default function LibraryPage() {
 
   const getConversationDisplayTitle = (convo: Conversation, groupName: string) => {
     if (convo.customTitle) return convo.customTitle;
-    // For specific study sessions, use the topic as the title.
+    
     if (convo.subjectContext && convo.lessonContext && convo.topic && convo.topic !== groupName) return convo.topic;
-    // For general types, if there's a specific topic that's not the generic group name, use it.
+    
     if (convo.topic && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "LanguageLearningMode" && convo.topic !== "Homework Help") return convo.topic;
     
-    // Fallback titles for generic session types
+    
     if (groupName === "General AI Tutor") return `General Chat (${new Date(convo.lastUpdatedAt).toLocaleDateString()})`;
     if (groupName === "Language Learning") return `Language Practice (${new Date(convo.lastUpdatedAt).toLocaleDateString()})`;
     if (groupName === "Homework Helper") return `Homework Session (${new Date(convo.lastUpdatedAt).toLocaleDateString()})`;
@@ -241,13 +241,13 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="pb-8 pr-4 md:pr-6 pt-0 mt-0">
+    <div className="pb-8 pr-0 md:pr-2 pt-0 mt-0">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center mt-0">
         <div className="mb-4 sm:mb-0 text-center sm:text-left">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-primary flex items-center mt-0">
-            <LibraryBig className="mr-3 h-8 w-8 md:h-10 md:w-10" /> Your Learning Library
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-primary flex items-center mt-0">
+            <LibraryBig className="mr-3 h-7 w-7 sm:h-8 md:h-10 md:w-10" /> Your Learning Library
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mt-1 md:mt-2">
+          <p className="text-md sm:text-lg md:text-xl text-muted-foreground mt-1 md:mt-2">
             Review your past study sessions. ({allConversations.length} total session{allConversations.length === 1 ? '' : 's'})
           </p>
         </div>
@@ -401,7 +401,7 @@ export default function LibraryPage() {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the conversation
-              {conversationToDelete ? ` titled "${getConversationDisplayTitle(conversationToDelete, getGroupNameForConvo(conversationToDelete))}"` : ''}.
+              {conversationToDelete ? ` titled "${getConversationDisplayTitle(conversationToDelete, getGroupNameForConvo(conversationToDelete!))}"` : ''}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -413,10 +413,3 @@ export default function LibraryPage() {
     </div>
   );
 }
-    
-
-    
-
-    
-
-    

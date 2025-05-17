@@ -24,7 +24,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// Mock data for initial display
+
 const initialTasks: Task[] = [
   {
     id: "1",
@@ -130,12 +130,12 @@ export default function TodoPage() {
   };
   
   const handleTaskFormSubmit = (data: TaskFormValues) => {
-    if (editingTask) { // Editing existing task
+    if (editingTask) { 
       setTasks(
         tasks.map(task =>
           task.id === editingTask.id
             ? { 
-                ...editingTask, // Keep original id and status
+                ...editingTask, 
                 title: data.title,
                 category: data.category,
                 priority: data.priority as TaskPriority,
@@ -144,7 +144,7 @@ export default function TodoPage() {
             : task
         )
       );
-    } else { // Adding new task
+    } else { 
       const newTask: Task = {
         id: String(Date.now()),
         title: data.title,
@@ -169,11 +169,11 @@ export default function TodoPage() {
   };
 
   return (
-    <div className="pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
+    <div className="pr-0 md:pr-2 pb-4 md:pb-6 pt-0">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pt-0 mt-0">
         <div className="mb-4 sm:mb-0">
-          <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
-            <ListChecks className="mr-3 h-8 w-8" /> My To-Do List
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
+            <ListChecks className="mr-3 h-7 w-7 sm:h-8 sm:w-8" /> My To-Do List
           </h1>
           <p className="text-muted-foreground mt-1">
             Manage your tasks and stay organized.
@@ -334,4 +334,3 @@ export default function TodoPage() {
     </div>
   );
 }
-

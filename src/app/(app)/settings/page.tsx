@@ -58,10 +58,10 @@ export default function SettingsPage() {
     <div className="pb-8">
        <div className="mb-8 flex flex-col sm:flex-row justify-between items-center pt-0">
           <div className="mb-4 sm:mb-0 text-center sm:text-left">
-            <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center mt-0">
-              <SettingsIcon className="mr-3 h-10 w-10" /> User Settings
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-primary flex items-center mt-0">
+              <SettingsIcon className="mr-3 h-7 w-7 sm:h-8 md:h-10 md:w-10" /> User Settings
             </h1>
-            <p className="text-xl text-muted-foreground mt-2">
+            <p className="text-lg sm:text-xl text-muted-foreground mt-2">
               View your profile information.
             </p>
           </div>
@@ -75,8 +75,7 @@ export default function SettingsPage() {
       <Card className="shadow-xl max-w-3xl mx-auto">
         <CardHeader className="items-center text-center border-b pb-6">
            <Avatar className="h-24 w-24 mb-4 border-4 border-primary shadow-md">
-            {/* Placeholder for profile picture, if it were implemented */}
-            {/* <AvatarImage src={profile.pictureUrl} alt={profile.name} /> */}
+            
             <AvatarFallback className="text-3xl bg-muted">
               {profile.name ? profile.name.charAt(0).toUpperCase() : <UserCircle2 />}
             </AvatarFallback>

@@ -138,7 +138,7 @@ const NotePadPage: React.FC = () => {
   return (
     <div className="pb-8 pt-0">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 mt-0">
-        <h1 className="text-3xl font-bold text-primary mt-0">Note Pad</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-primary mt-0">Note Pad</h1>
         <div className="flex gap-2 mt-4 sm:mt-0">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -206,7 +206,7 @@ const NotePadPage: React.FC = () => {
       )}
 
       <div>
-        <h2 className="text-2xl font-semibold mb-4 text-primary">Saved Notes ({notes.length})</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-primary">Saved Notes ({notes.length})</h2>
         {notes.length === 0 && isClient ? (
           <p className="text-muted-foreground">You have no saved notes yet. Create one above!</p>
         ) : (
@@ -276,4 +276,3 @@ const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = ({ label, childr
 };
 
 export default NotePadPage;
-

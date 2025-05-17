@@ -20,9 +20,9 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!profileLoading) { // Only proceed if profile loading state is settled
+    if (!profileLoading) { 
       if (profile && profile.name) {
-        // Profile is available and valid
+        
         setIsLoadingSubjects(true); 
         setError(null);
         const fetchSubjects = async () => {
@@ -58,16 +58,16 @@ export default function DashboardPage() {
         };
         fetchSubjects();
       } else {
-        // Profile is not available (either null or invalid after loading)
-        setSubjects([]); // Clear any existing subjects
-        setIsLoadingSubjects(false); // Stop loading subjects
+        
+        setSubjects([]); 
+        setIsLoadingSubjects(false); 
          if (!profile) setError("Profile not available. Please complete onboarding to see personalized subjects.");
       }
     } else {
-      // Profile is still loading
-      setSubjects([]); // Clear subjects while profile is loading to prevent flash of old data
-      setIsLoadingSubjects(true); // Indicate subjects are also pending profile
-      setError(null); // Clear previous errors
+      
+      setSubjects([]); 
+      setIsLoadingSubjects(true); 
+      setError(null); 
     }
   }, [profile, profileLoading]);
 
@@ -80,7 +80,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (error && (!profile || !profile.name)) { // Show error more prominently if profile is missing
+  if (error && (!profile || !profile.name)) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-theme(spacing.20))] text-center pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
         <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
@@ -93,7 +93,7 @@ export default function DashboardPage() {
     );
   }
   
-  if (!profile || !profile.name) { // This should be caught by the above if error is set.
+  if (!profile || !profile.name) { 
      return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-theme(spacing.20))] text-center pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
         <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
@@ -106,7 +106,7 @@ export default function DashboardPage() {
     );
   }
   
-  // If there's an error but profile exists (e.g., AI failed to generate subjects)
+  
   if (error) {
      return (
       <Alert variant="destructive" className="max-w-2xl mx-auto mt-10 pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
@@ -119,10 +119,10 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
+    <div className="pr-0 md:pr-2 pb-4 md:pb-6 pt-0">
       <div className="mb-6 text-center pt-0">
-        <h1 className="text-4xl font-bold tracking-tight text-primary mt-0">Welcome, {profile.name}!</h1>
-        <p className="text-xl text-muted-foreground mt-2">Here are your personalized study recommendations.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary mt-0">Welcome, {profile.name}!</h1>
+        <p className="text-lg sm:text-xl text-muted-foreground mt-2">Here are your personalized study recommendations.</p>
       </div>
 
       {subjects.length === 0 && !isLoadingSubjects && (
@@ -191,4 +191,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

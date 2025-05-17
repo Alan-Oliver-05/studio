@@ -6,8 +6,8 @@ import { Loader2, AlertTriangle, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
-import { useSearchParams } from 'next/navigation'; // Import useSearchParams
-import { useEffect, useState } from "react"; // Import useEffect and useState
+import { useSearchParams } from 'next/navigation'; 
+import { useEffect, useState } from "react"; 
 
 
 const DynamicChatInterface = dynamic(() =>
@@ -75,8 +75,8 @@ export default function LanguageLearningPage() {
   return (
     <div className="h-full flex flex-col mt-0 pt-0">
       <div className="mb-6 pt-0">
-        <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-            <Languages className="mr-3 h-8 w-8"/> Language Learning Hub
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
+            <Languages className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Language Learning Hub
         </h1>
         <p className="text-muted-foreground">Your personal AI language tutor.</p>
       </div>
@@ -94,5 +94,3 @@ export default function LanguageLearningPage() {
     </div>
   );
 }
-
-    
