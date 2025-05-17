@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BarChartBig, BookOpen, Brain, CheckCircle, FileText, History, Languages, Layers, ListChecks, Loader2, MessageSquare, PenSquare, PieChartIcon, TrendingUp, Users } from "lucide-react";
 import { getConversations } from "@/lib/chat-storage";
-import type { Conversation, Task, Note } from "@/types";
+import type { Conversation, Task, Note, TaskPriority } from "@/types";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
+import type { ChartConfig } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 
 
@@ -25,7 +26,7 @@ interface TaskStats {
   totalTasks: number;
   completed: number;
   pending: number;
-  byPriority: Record<string, number>;
+  byPriority: Record<TaskPriority, number>;
 }
 
 interface NoteStats {
@@ -51,7 +52,6 @@ export default function AnalyticsPage() {
       setIsLoading(true);
       const conversations = getConversations();
       
-      // Calculate session stats
       const newSessionStats: SessionStats = {
         totalSessions: conversations.length,
         totalMessages: conversations.reduce((acc, curr) => acc + curr.messages.length, 0),
@@ -64,7 +64,7 @@ export default function AnalyticsPage() {
         if (convo.topic === "AI Learning Assistant Chat") typeKey = "General AI Tutor";
         else if (convo.topic === "LanguageLearningMode") typeKey = "Language Learning";
         else if (convo.topic === "Homework Help") typeKey = "Homework Helper";
-        else if (convo.subjectContext) typeKey = convo.subjectContext; // Group by subject for study sessions
+        else if (convo.subjectContext) typeKey = convo.subjectContext; 
 
         if (!newSessionStats.sessionsByType[typeKey]) {
           newSessionStats.sessionsByType[typeKey] = { count: 0, totalMessages: 0, summarizedCount: 0 };
@@ -88,7 +88,6 @@ export default function AnalyticsPage() {
       });
       setSessionStats(newSessionStats);
 
-      // Calculate task stats
       try {
         const storedTasks = localStorage.getItem(LOCAL_STORAGE_TASKS_KEY);
         const tasks: Task[] = storedTasks ? JSON.parse(storedTasks) : [];
@@ -107,7 +106,6 @@ export default function AnalyticsPage() {
         setTaskStats({ totalTasks: 0, completed: 0, pending: 0, byPriority: { High: 0, Medium: 0, Low: 0 } });
       }
       
-      // Calculate note stats
       try {
         const storedNotes = localStorage.getItem(LOCAL_STORAGE_NOTES_KEY);
         const notes: Note[] = storedNotes ? JSON.parse(storedNotes) : [];
@@ -135,16 +133,42 @@ export default function AnalyticsPage() {
     sessions: data.count,
   })).sort((a,b) => b.sessions - a.sessions) : [];
 
+  const sessionsChartConfig: ChartConfig = {
+    sessions: {
+      label: "Sessions",
+      color: "hsl(var(--primary))",
+    },
+  };
+  if (sessionsChartData.length > 0) {
+     sessionsChartData.forEach(item => {
+        if (!sessionsChartConfig[item.name]) {
+            sessionsChartConfig[item.name] = { label: item.name, color: "hsl(var(--chart-3))" }; // Default color
+        }
+     });
+  }
+
+
   const taskStatusChartData = taskStats ? [
     { name: "Pending", value: taskStats.pending, fill: "hsl(var(--chart-2))" },
     { name: "Completed", value: taskStats.completed, fill: "hsl(var(--chart-1))" },
   ] : [];
   
+  const taskStatusChartConfig: ChartConfig = {
+    Pending: { label: "Pending", color: "hsl(var(--chart-2))" },
+    Completed: { label: "Completed", color: "hsl(var(--chart-1))" },
+  };
+
   const taskPriorityChartData = taskStats ? [
     { name: "High", value: taskStats.byPriority.High, fill: "hsl(var(--destructive))"},
     { name: "Medium", value: taskStats.byPriority.Medium, fill: "hsl(var(--chart-4))" },
     { name: "Low", value: taskStats.byPriority.Low, fill: "hsl(var(--chart-5))" },
   ].filter(d => d.value > 0) : [];
+
+  const taskPriorityChartConfig: ChartConfig = {
+    High: { label: "High", color: "hsl(var(--destructive))" },
+    Medium: { label: "Medium", color: "hsl(var(--chart-4))" },
+    Low: { label: "Low", color: "hsl(var(--chart-5))" },
+  };
 
 
   const StatCard = ({ title, value, icon, description, children }: { title: string, value: string | number, icon?: React.ReactNode, description?: string, children?: React.ReactNode }) => (
@@ -192,18 +216,22 @@ export default function AnalyticsPage() {
                 <CardDescription>Number of sessions per category.</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px] md:h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ChartContainer config={sessionsChartConfig} className="w-full h-full">
                   <BarChart data={sessionsChartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickLine={{ stroke: 'hsl(var(--muted-foreground))' }} />
                     <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickLine={{ stroke: 'hsl(var(--muted-foreground))' }} allowDecimals={false}/>
                     <RechartsTooltip
-                        content={<ChartTooltipContent labelKey="sessions" />}
+                        content={<ChartTooltipContent nameKey="name" labelKey="sessions" />}
                         cursor={{fill: "hsl(var(--muted))"}}
                     />
-                    <Bar dataKey="sessions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="sessions" radius={[4, 4, 0, 0]}>
+                       {sessionsChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={sessionsChartConfig[entry.name]?.color || "hsl(var(--primary))"} />
+                       ))}
+                    </Bar>
                   </BarChart>
-                </ResponsiveContainer>
+                </ChartContainer>
               </CardContent>
             </Card>
           )}
@@ -249,7 +277,7 @@ export default function AnalyticsPage() {
                   <CardDescription>Distribution of pending vs. completed tasks.</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[250px] md:h-[300px] flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ChartContainer config={taskStatusChartConfig} className="w-full h-full">
                     <PieChart>
                       <Pie
                         data={taskStatusChartData}
@@ -257,8 +285,7 @@ export default function AnalyticsPage() {
                         cy="50%"
                         labelLine={false}
                         outerRadius={80}
-                        innerRadius={40} // For Doughnut
-                        fill="#8884d8"
+                        innerRadius={40} 
                         dataKey="value"
                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       >
@@ -266,10 +293,10 @@ export default function AnalyticsPage() {
                           <Cell key={`cell-${index}`} fill={entry.fill} />
                         ))}
                       </Pie>
-                      <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
+                      <RechartsTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
                       <Legend verticalAlign="bottom" height={36}/>
                     </PieChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
             )}
@@ -281,7 +308,7 @@ export default function AnalyticsPage() {
                   <CardDescription>Distribution of tasks by their priority.</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[250px] md:h-[300px] flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ChartContainer config={taskPriorityChartConfig} className="w-full h-full">
                     <PieChart>
                       <Pie
                         data={taskPriorityChartData}
@@ -290,7 +317,6 @@ export default function AnalyticsPage() {
                         labelLine={false}
                         outerRadius={80}
                         innerRadius={40} 
-                        fill="#8884d8"
                         dataKey="value"
                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       >
@@ -298,10 +324,10 @@ export default function AnalyticsPage() {
                           <Cell key={`cell-prio-${index}`} fill={entry.fill} />
                         ))}
                       </Pie>
-                       <RechartsTooltip content={<ChartTooltipContent hideLabel />} />
+                       <RechartsTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
                        <Legend verticalAlign="bottom" height={36}/>
                     </PieChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
             )}
@@ -337,3 +363,4 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
