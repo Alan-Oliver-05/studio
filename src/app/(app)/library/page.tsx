@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getConversations, formatConversationForAI } from "@/lib/chat-storage";
+import { getConversations, formatConversationForAI, deleteConversation, updateConversationCustomTitle } from "@/lib/chat-storage";
 import { summarizeConversation } from "@/ai/flows/summarize-conversation";
 import type { Conversation } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -13,7 +13,18 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -28,12 +39,13 @@ export default function LibraryPage() {
   const [timeAgo, setTimeAgo] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
 
   useEffect(() => {
     setIsClient(true); 
   }, []);
 
-  useEffect(() => {
+  const loadConversations = () => {
     if (isClient) {
       setIsLoading(true);
       try {
@@ -46,7 +58,6 @@ export default function LibraryPage() {
           if (groupKey === "AI Learning Assistant Chat") groupKey = "General AI Tutor";
           if (groupKey === "LanguageLearningMode") groupKey = "Language Learning";
           if (groupKey === "Homework Help") groupKey = "Homework Helper";
-
 
           if (!groups[groupKey]) {
             groups[groupKey] = [];
@@ -62,6 +73,10 @@ export default function LibraryPage() {
         setIsLoading(false);
       }
     }
+  };
+
+  useEffect(() => {
+    loadConversations();
   }, [isClient]);
 
   useEffect(() => {
@@ -112,6 +127,29 @@ export default function LibraryPage() {
     }
   };
 
+  const handleRenameConversation = (convo: Conversation) => {
+    const newTitle = prompt("Enter new title for this conversation:", convo.customTitle || convo.topic);
+    if (newTitle !== null) { // prompt returns null if cancelled
+      if (newTitle.trim() === "") {
+        toast({ title: "Rename Error", description: "Title cannot be empty.", variant: "destructive"});
+        return;
+      }
+      updateConversationCustomTitle(convo.id, newTitle.trim());
+      loadConversations(); // Reload to reflect changes
+      toast({ title: "Conversation Renamed", description: `Successfully renamed to "${newTitle.trim()}".` });
+    }
+  };
+
+  const handleDeleteConfirmed = () => {
+    if (conversationToDelete) {
+      deleteConversation(conversationToDelete.id);
+      setConversationToDelete(null);
+      loadConversations(); // Reload to reflect changes
+      toast({ title: "Conversation Deleted", description: `"${conversationToDelete.customTitle || conversationToDelete.topic}" has been deleted.`, variant: "destructive" });
+    }
+  };
+
+
   if (isLoading || !isClient) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 mt-0">
@@ -133,8 +171,10 @@ export default function LibraryPage() {
 
   const getRevisitLink = (convo: Conversation) => {
     if (convo.topic === "Homework Help") return "/homework-assistant";
+    // Check for general tutor by specific topic name first
     if (convo.topic === "AI Learning Assistant Chat") return "/general-tutor"; 
     if (convo.topic === "LanguageLearningMode") return "/language-learning";
+    // Fallback to subject context for study sessions
     const subjectForLink = convo.subjectContext || convo.topic;
     return `/study-session/${encodeURIComponent(subjectForLink)}`;
   };
@@ -146,6 +186,14 @@ export default function LibraryPage() {
     if (groupName === "Homework Helper") return <PenSquare className="mr-2 h-5 w-5" />;
     if (groupName === "Language Learning") return <Languages className="mr-2 h-5 w-5" />;
     return <BookCopy className="mr-2 h-5 w-5" />;
+  };
+
+  const getConversationDisplayTitle = (convo: Conversation, groupName: string) => {
+    if (convo.customTitle) return convo.customTitle;
+    if (convo.topic !== groupName && convo.topic !== "LanguageLearningMode" && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "Homework Help") return convo.topic;
+    if (convo.lessonContext) return `Lesson: ${convo.lessonContext}`;
+    if (convo.topic === "LanguageLearningMode") return "Language Practice";
+    return 'General Discussion';
   };
 
   return (
@@ -211,14 +259,14 @@ export default function LibraryPage() {
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full">
                             <div className="flex-grow mb-2 sm:mb-0">
                               <h3 className="text-sm md:text-base font-medium text-foreground">
-                                {(convo.topic !== groupName && convo.topic !== "LanguageLearningMode" && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "Homework Help") ? convo.topic : (convo.lessonContext ? `Lesson: ${convo.lessonContext}` : (convo.topic === "LanguageLearningMode" ? "Language Practice" : 'General Discussion'))}
+                                {getConversationDisplayTitle(convo, groupName)}
                               </h3>
                               {convo.subjectContext && convo.subjectContext !== groupName && (
                                 <p className="text-xs text-muted-foreground flex items-center">
                                     <Layers className="mr-1.5 h-3 w-3"/> Subject: {convo.subjectContext}
                                 </p>
                               )}
-                               {(convo.subjectContext && convo.subjectContext === groupName && convo.lessonContext && convo.topic !== convo.lessonContext) && (
+                               {(convo.subjectContext && convo.subjectContext === groupName && convo.lessonContext && convo.topic !== convo.lessonContext && !convo.customTitle) && (
                                   <p className="text-xs text-muted-foreground flex items-center">
                                     <BookCopy className="mr-1.5 h-3 w-3"/> Lesson: {convo.lessonContext}
                                   </p>
@@ -230,11 +278,35 @@ export default function LibraryPage() {
                                 {convo.messages.length} message{convo.messages.length === 1 ? '' : 's'}
                               </p>
                             </div>
-                            <Button variant="outline" size="sm" asChild onClick={(e) => e.stopPropagation()} className="mt-2 sm:mt-0 self-start sm:self-center">
-                              <Link href={getRevisitLink(convo)}>
-                                Revisit Session
-                              </Link>
-                            </Button>
+                            <div className="flex items-center space-x-1 mt-2 sm:mt-0 self-start sm:self-center">
+                               <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleRenameConversation(convo);}} title="Rename conversation">
+                                <Edit3 className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()} title="Delete conversation">
+                                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete the conversation titled &quot;{convo.customTitle || convo.topic}&quot;.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteConfirmed()}>Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                              <Button variant="outline" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                <Link href={getRevisitLink(convo)}>
+                                  Revisit
+                                </Link>
+                              </Button>
+                            </div>
                           </div>
                         </AccordionTrigger>
                         <AccordionContent className="p-3 md:p-4 pt-0">
@@ -281,6 +353,8 @@ export default function LibraryPage() {
           })}
         </Accordion>
       )}
+       {/* AlertDialog for delete confirmation - structure might need slight adjustment if it's meant to be a single dialog reused */}
+       {/* It's better to have AlertDialogTrigger inside map, and DialogContent outside or manage state carefully if one dialog */}
     </div>
   );
 }

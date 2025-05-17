@@ -71,6 +71,7 @@ export interface Message {
 
 export interface Conversation {
   id: string; 
+  customTitle?: string; // User-defined title for the conversation in the library
   topic: string; // This will store the most specific topic of conversation
   subjectContext?: string; // General subject for context
   lessonContext?: string; // Lesson for context
@@ -98,3 +99,4 @@ export interface Note {
   createdAt: number;
   updatedAt: number;
 }
+

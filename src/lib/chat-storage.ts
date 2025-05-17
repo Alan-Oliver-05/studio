@@ -79,3 +79,29 @@ export const formatConversationForAI = (messages: Message[]): string => {
     .join('\n');
 };
 
+export const deleteConversation = (id: string): void => {
+  if (typeof window === "undefined") return;
+  let conversations = getConversations();
+  conversations = conversations.filter(conv => conv.id !== id);
+  try {
+    localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(conversations));
+  } catch (error) {
+    console.error("Error deleting conversation from localStorage", error);
+  }
+};
+
+export const updateConversationCustomTitle = (id: string, customTitle: string): void => {
+  if (typeof window === "undefined") return;
+  const conversations = getConversations();
+  const conversationIndex = conversations.findIndex(conv => conv.id === id);
+  if (conversationIndex > -1) {
+    conversations[conversationIndex].customTitle = customTitle;
+    conversations[conversationIndex].lastUpdatedAt = Date.now(); // Also update timestamp
+    try {
+      localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(conversations));
+    } catch (error)
+      {
+      console.error("Error updating conversation title in localStorage", error);
+    }
+  }
+};
