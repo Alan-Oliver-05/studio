@@ -31,7 +31,7 @@ export default function LanguageLearningPage() {
       setCurrentConversationId(sessionIdFromQuery);
       setChatKey(sessionIdFromQuery);
     } else if (profile) {
-      const profileIdentifier = profile.id || `user-${profile.name.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
+      const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
       const defaultId = `language-learning-chat-${profileIdentifier}`;
       setCurrentConversationId(defaultId);
       setChatKey(defaultId);
@@ -62,7 +62,7 @@ export default function LanguageLearningPage() {
     );
   }
 
-   if (!currentConversationId) {
+   if (!currentConversationId || !chatKey) {
      return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -82,7 +82,7 @@ export default function LanguageLearningPage() {
         <p className="text-muted-foreground mt-1">Your personal AI language tutor.</p>
       </div>
       
-      <div className="flex-grow min-h-0">
+      <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
         {chatKey && currentConversationId && (
           <DynamicChatInterface
             key={chatKey}
@@ -97,3 +97,4 @@ export default function LanguageLearningPage() {
     </div>
   );
 }
+

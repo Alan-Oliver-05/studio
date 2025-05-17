@@ -83,7 +83,7 @@ export default function AITutorPage() {
         <p className="text-muted-foreground mt-1">Your multi-modal personal tutor.</p>
       </div>
       
-      <div className="flex-grow flex flex-col min-h-0">
+      <div className="flex-grow flex flex-col min-h-0 max-w-4xl w-full mx-auto">
         {mainChatKey && mainChatConversationId && (
           <DynamicChatInterface
             key={mainChatKey} 
@@ -98,3 +98,4 @@ export default function AITutorPage() {
     </div>
   );
 }
+

@@ -80,7 +80,7 @@ export default function VisualLearningPage() {
         <p className="text-muted-foreground mt-1">Explore concepts with AI-generated interactive visuals.</p>
       </div>
       
-      <div className="flex-grow min-h-0">
+      <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
         {chatKey && currentConversationId && (
           <DynamicChatInterface
             key={chatKey}
@@ -95,3 +95,4 @@ export default function VisualLearningPage() {
     </div>
   );
 }
+

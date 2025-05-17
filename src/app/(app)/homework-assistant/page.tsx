@@ -31,34 +31,32 @@ export default function HomeworkAssistantPage() {
       setCurrentConversationId(sessionIdFromQuery);
       setChatKey(sessionIdFromQuery); 
     } else if (profile) { 
-      // Only generate a new ID if one isn't already set by a direct navigation or "New Session" click
-      // This mainly handles the initial load of the page without a specific session ID in the URL.
-      if (!currentConversationId) {
-        const profileIdentifier = profile.id || `user-${profile.name.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
-        const newTimestamp = Date.now(); // Safe inside useEffect
-        const newId = `homework-assistant-${profileIdentifier}-${newTimestamp}`;
-        setCurrentConversationId(newId);
-        setChatKey(newId);
-      }
+      const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
+      const newTimestamp = Date.now();
+      const newId = `homework-assistant-${profileIdentifier}-${newTimestamp}`;
+      setCurrentConversationId(newId);
+      setChatKey(newId);
     }
-  }, [searchParams, profile, currentConversationId]);
+  }, [searchParams, profile]);
 
 
   const handleNewSession = () => {
+    // Navigate to the base path to ensure no sessionId query param is present
     router.push('/homework-assistant', { scroll: false }); 
     if (profile) {
-        const profileIdentifier = profile.id || `user-${profile.name.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
+        const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
         const newTimestamp = Date.now();
         const newId = `homework-assistant-${profileIdentifier}-${newTimestamp}`;
         setCurrentConversationId(newId);
-        setChatKey(newId);
+        setChatKey(newId); // This will force ChatInterface to re-mount with a new conversationId
     }
   };
 
   if (profileLoading) {
     return (
-      <div className="flex items-center justify-center h-full mt-0 pt-0">
+      <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading Homework Assistant...</p>
       </div>
     );
   }
@@ -78,7 +76,7 @@ export default function HomeworkAssistantPage() {
     );
   }
 
-  if (!currentConversationId) {
+  if (!currentConversationId || !chatKey) {
     return (
         <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -102,8 +100,7 @@ export default function HomeworkAssistantPage() {
           <RotateCcw className="mr-2 h-4 w-4" /> New Homework Session
         </Button>
       </div>
-      <div className="flex-grow min-h-0">
-        {/* Ensure chatKey is not an empty string when passed if ChatInterface expects a truthy key */}
+      <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
         {chatKey && currentConversationId && (
           <DynamicChatInterface
             key={chatKey} 
@@ -118,3 +115,4 @@ export default function HomeworkAssistantPage() {
     </div>
   );
 }
+
