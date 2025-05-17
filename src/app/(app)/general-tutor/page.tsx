@@ -22,19 +22,32 @@ const DynamicChatInterface = dynamic(() =>
 export default function AITutorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const searchParams = useSearchParams();
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [chatKey, setChatKey] = useState<string>(''); 
+  
+  const [mainChatConversationId, setMainChatConversationId] = useState<string | null>(null);
+  const [mainChatKey, setMainChatKey] = useState<string>(''); 
+
+  const [visualLearningChatConversationId, setVisualLearningChatConversationId] = useState<string | null>(null);
+  const [visualLearningChatKey, setVisualLearningChatKey] = useState<string>('');
 
   useEffect(() => {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
-      setCurrentConversationId(sessionIdFromQuery);
-      setChatKey(sessionIdFromQuery); 
+      // This logic primarily applies if the /general-tutor page itself is revisited with a specific session ID
+      // For distinct tabs, we'll use profile-based IDs.
+      setMainChatConversationId(sessionIdFromQuery);
+      setMainChatKey(sessionIdFromQuery); 
     } else if (profile) {
-      const profileIdentifier = profile.id || `user-${profile.name.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
-      const defaultId = `ai-tutor-chat-${profileIdentifier}`;
-      setCurrentConversationId(defaultId);
-      setChatKey(defaultId); 
+      const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
+      
+      // Main Chat
+      const defaultMainChatId = `ai-tutor-chat-${profileIdentifier}`;
+      setMainChatConversationId(defaultMainChatId);
+      setMainChatKey(defaultMainChatId); 
+
+      // Visual Learning Chat
+      const defaultVisualLearningChatId = `visual-learning-focus-chat-${profileIdentifier}`;
+      setVisualLearningChatConversationId(defaultVisualLearningChatId);
+      setVisualLearningChatKey(defaultVisualLearningChatId);
     }
   }, [searchParams, profile]);
 
@@ -63,16 +76,17 @@ export default function AITutorPage() {
     );
   }
   
-  if (!currentConversationId) {
+  if (!mainChatConversationId || !visualLearningChatConversationId) {
      return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Initializing chat...</p>
+        <p className="mt-4 text-muted-foreground">Initializing chat sessions...</p>
       </div>
     );
   }
 
-  const initialChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context.`;
+  const initialMainChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context.`;
+  const initialVisualLearningChatMessage = `Hi ${profile.name}! Welcome to Visual Learning. How can I help you visualize a concept today? Ask me to explain something with a chart, diagram, or suggest an image. For example: "Explain photosynthesis with a diagram" or "Show me a bar chart of planet sizes."`;
 
   return (
     <div className="h-full flex flex-col mt-0 pt-0">
@@ -86,26 +100,40 @@ export default function AITutorPage() {
       <Tabs defaultValue="chat" className="flex-grow flex flex-col">
         <TabsList className="mb-4 self-start">
           <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4" />Chat</TabsTrigger>
-          <TabsTrigger value="language-learning"><Languages className="mr-2 h-4 w-4" />Language Learning</TabsTrigger>
           <TabsTrigger value="visual-learning"><BarChart3 className="mr-2 h-4 w-4" />Visual Learning</TabsTrigger>
+          <TabsTrigger value="language-learning"><Languages className="mr-2 h-4 w-4" />Language Learning</TabsTrigger>
         </TabsList>
 
         <TabsContent value="chat" className="flex-grow flex flex-col min-h-0">
-          {chatKey && currentConversationId && (
+          {mainChatKey && mainChatConversationId && (
             <DynamicChatInterface
-              key={chatKey} 
+              key={mainChatKey} 
               userProfile={profile}
               topic="AI Learning Assistant Chat" 
-              conversationId={currentConversationId}
-              initialSystemMessage={initialChatMessage}
+              conversationId={mainChatConversationId}
+              initialSystemMessage={initialMainChatMessage}
               placeholderText="Ask anything or upload an image..."
             />
           )}
         </TabsContent>
+
+        <TabsContent value="visual-learning" className="flex-grow flex flex-col min-h-0">
+           {visualLearningChatKey && visualLearningChatConversationId && (
+            <DynamicChatInterface
+              key={visualLearningChatKey}
+              userProfile={profile}
+              topic="Visual Learning Focus"
+              conversationId={visualLearningChatConversationId}
+              initialSystemMessage={initialVisualLearningChatMessage}
+              placeholderText="Ask for a visual explanation..."
+            />
+           )}
+        </TabsContent>
+        
         <TabsContent value="language-learning" className="flex-grow">
-          <Card>
+          <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle>Language Learning Hub</CardTitle>
+              <CardTitle className="text-lg">Language Learning Hub</CardTitle>
               <CardDescription>Master new languages with your AI assistant. Practice vocabulary, grammar, pronunciation (text-based), and engage in interactive conversations. Get instant feedback and translations.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -117,27 +145,10 @@ export default function AITutorPage() {
               </ul>
             </CardContent>
             <CardFooter>
-              <Button asChild>
+              <Button asChild variant="accent">
                 <Link href="/language-learning">Go to Language Learning Hub</Link>
               </Button>
             </CardFooter>
-          </Card>
-        </TabsContent>
-        <TabsContent value="visual-learning" className="flex-grow">
-           <Card>
-            <CardHeader>
-              <CardTitle>Visual Learning Tools</CardTitle>
-              <CardDescription>Understand complex topics visually. Explore concepts with AI-generated interactive graphs, charts, and flowcharts tailored to your learning needs.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="list-disc list-inside text-muted-foreground space-y-1 text-sm">
-                <li>Dynamic visualizations to simplify difficult concepts.</li>
-                <li>Interactive elements to explore data and relationships (future).</li>
-                <li>AI generation of custom diagrams based on your questions (future).</li>
-                <li>Support for various chart types and flowcharts (future).</li>
-              </ul>
-              <p className="text-sm font-semibold text-primary mt-4">This feature is currently under development.</p>
-            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
