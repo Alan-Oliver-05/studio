@@ -4,7 +4,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { UserProfileProvider } from "@/contexts/user-profile-context";
 import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip"; // Import TooltipProvider
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "next-themes"; // Added import
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,12 +33,19 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning={true}
       >
-        <UserProfileProvider>
-          <TooltipProvider> {/* Added TooltipProvider here */}
-            {children}
-            <Toaster />
-          </TooltipProvider>
-        </UserProfileProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <UserProfileProvider>
+            <TooltipProvider> {/* Added TooltipProvider here */}
+              {children}
+              <Toaster />
+            </TooltipProvider>
+          </UserProfileProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

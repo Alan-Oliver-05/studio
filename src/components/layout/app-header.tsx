@@ -2,6 +2,7 @@
 import { GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ThemeToggleButton } from "./theme-toggle-button"; // Added import
 
 export function AppHeader() {
   return (
@@ -13,7 +14,9 @@ export function AppHeader() {
         <GraduationCap className="h-6 w-6 text-primary" />
         <span className="text-gradient-primary font-bold">EduAI</span>
       </Link>
-      {/* Future: Add user menu or other header items here */}
+      <div className="ml-auto flex items-center gap-2">
+        <ThemeToggleButton />
+      </div>
     </header>
   );
 }
