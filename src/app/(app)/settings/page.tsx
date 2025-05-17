@@ -1,14 +1,19 @@
 
 "use client";
 
+import { useState } from "react";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3 } from "lucide-react";
+import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES } from "@/lib/constants";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 
 const DetailItem = ({ label, value }: { label: string; value: string | number | undefined | null }) => {
@@ -23,7 +28,10 @@ const DetailItem = ({ label, value }: { label: string; value: string | number | 
 
 
 export default function SettingsPage() {
-  const { profile, isLoading } = useUserProfile();
+  const { profile, isLoading, setProfile } = useUserProfile();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [notificationPreference, setNotificationPreference] = useState<string>("daily");
 
   if (isLoading) {
     return (
@@ -35,7 +43,7 @@ export default function SettingsPage() {
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8">
+      <div className="flex flex-col items-center justify-center h-full text-center p-8 mt-0">
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
         <h2 className="text-3xl font-semibold mb-3">Profile Not Found</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
@@ -53,16 +61,33 @@ export default function SettingsPage() {
   const countryLabel = COUNTRIES.find(c => c.value === profile.country)?.label || profile.country;
   const languageLabel = LANGUAGES.find(lang => lang.value === profile.preferredLanguage)?.label || profile.preferredLanguage;
 
+  const handlePasswordReset = () => {
+    toast({
+      title: "Password Reset Requested",
+      description: "If this account exists, a password reset link would be sent to your email (feature is illustrative).",
+    });
+  };
+
+  const handleLogout = () => {
+    setProfile(null); // Clears profile from context and localStorage
+    router.push('/onboarding');
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+      variant: "default",
+    });
+  };
+
 
   return (
     <div className="pb-8">
-       <div className="mb-8 flex flex-col sm:flex-row justify-between items-center pt-0">
+       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center mt-0">
           <div className="mb-4 sm:mb-0 text-center sm:text-left">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-primary flex items-center mt-0">
-              <SettingsIcon className="mr-3 h-7 w-7 sm:h-8 md:h-10 md:w-10" /> User Settings
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
+              <SettingsIcon className="mr-3 h-7 w-7 sm:h-8" /> User Settings
             </h1>
-            <p className="text-lg sm:text-xl text-muted-foreground mt-2">
-              View your profile information.
+            <p className="text-lg text-muted-foreground mt-1">
+              Manage your profile and app preferences.
             </p>
           </div>
           <Button variant="outline" asChild>
@@ -75,7 +100,6 @@ export default function SettingsPage() {
       <Card className="shadow-xl max-w-3xl mx-auto">
         <CardHeader className="items-center text-center border-b pb-6">
            <Avatar className="h-24 w-24 mb-4 border-4 border-primary shadow-md">
-            
             <AvatarFallback className="text-3xl bg-muted">
               {profile.name ? profile.name.charAt(0).toUpperCase() : <UserCircle2 />}
             </AvatarFallback>
@@ -121,8 +145,38 @@ export default function SettingsPage() {
               )}
             </dl>
           </div>
-          <p className="text-sm text-muted-foreground text-center pt-4">
-            Profile information is used to personalize your learning experience. To update these details, please go through the onboarding process again.
+
+          <div className="border-t pt-6">
+            <h3 className="text-xl font-semibold text-primary flex items-center mb-4"><Bell className="mr-2 h-5 w-5"/>Notification Preferences</h3>
+            <RadioGroup value={notificationPreference} onValueChange={setNotificationPreference} className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="daily" id="daily" />
+                <Label htmlFor="daily">Daily Summaries</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="weekly" id="weekly" />
+                <Label htmlFor="weekly">Weekly Summaries</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="off" id="off" />
+                <Label htmlFor="off">Turn Off Notifications</Label>
+              </div>
+            </RadioGroup>
+            <p className="text-xs text-muted-foreground mt-2">Current selection: {notificationPreference} (UI only, no backend implemented).</p>
+          </div>
+
+          <div className="border-t pt-6 space-y-4">
+            <h3 className="text-xl font-semibold text-primary flex items-center mb-4"><UserCircle2 className="mr-2 h-5 w-5"/>Account Actions</h3>
+            <Button variant="outline" onClick={handlePasswordReset} className="w-full sm:w-auto">
+              <KeyRound className="mr-2 h-4 w-4"/> Reset Password
+            </Button>
+            <Button variant="destructive" onClick={handleLogout} className="w-full sm:w-auto">
+              <LogOut className="mr-2 h-4 w-4"/> Logout
+            </Button>
+          </div>
+
+          <p className="text-sm text-muted-foreground text-center pt-4 border-t">
+            Profile information is used to personalize your learning experience. To update these details, please go through the onboarding process again via the "Update Profile" button.
           </p>
         </CardContent>
       </Card>
