@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from "react";
@@ -476,6 +475,9 @@ export function ChatInterface({
           </TooltipContent>
         </Tooltip>
       </form>
+      <div className="p-3 pt-0 text-center text-xs text-muted-foreground">
+        <p>AI responses are for informational purposes and may sometimes be inaccurate or incomplete. Always verify critical information.</p>
+      </div>
     </div>
   );
 }
