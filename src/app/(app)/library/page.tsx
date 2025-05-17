@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getConversations, formatConversationForAI, deleteConversation, updateConversationCustomTitle } from "@/lib/chat-storage";
+import { getConversations, deleteConversation, updateConversationCustomTitle } from "@/lib/chat-storage";
 import { summarizeConversation } from "@/ai/flows/summarize-conversation";
 import type { Conversation } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2 } from "lucide-react";
+import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2, PieChartIcon } from "lucide-react"; // Added PieChartIcon
 import { formatDistanceToNow } from 'date-fns';
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -59,10 +59,7 @@ export default function LibraryPage() {
 
         const groups: Record<string, Conversation[]> = {};
         convos.forEach(convo => {
-          let groupKey = convo.subjectContext || convo.topic || "Uncategorized";
-          if (groupKey === "AI Learning Assistant Chat") groupKey = "General AI Tutor";
-          if (groupKey === "LanguageLearningMode") groupKey = "Language Learning";
-          if (groupKey === "Homework Help") groupKey = "Homework Helper";
+          let groupKey = getGroupNameForConvo(convo);
 
           if (!groups[groupKey]) {
             groups[groupKey] = [];
@@ -122,10 +119,10 @@ export default function LibraryPage() {
       if (result.summary) {
         setSummaries(prev => ({ ...prev, [conversation.id]: result.summary }));
         
-        const convoToUpdate = getConversationById(conversation.id);
+        const convoToUpdate = getConversationById(conversation.id); // Re-fetch to ensure we have the latest
         if (convoToUpdate) {
             convoToUpdate.summary = result.summary;
-            saveConversation(convoToUpdate);
+            saveConversation(convoToUpdate); // Use imported saveConversation
         }
       } else {
         toast({ title: "Summary Error", description: "Could not generate summary.", variant: "destructive" });
@@ -167,8 +164,9 @@ export default function LibraryPage() {
   const getGroupNameForConvo = (convo: Conversation): string => {
     let groupKey = convo.subjectContext || convo.topic || "Uncategorized";
     if (groupKey === "AI Learning Assistant Chat") groupKey = "General AI Tutor";
-    if (groupKey === "LanguageLearningMode") groupKey = "Language Learning";
-    if (groupKey === "Homework Help") groupKey = "Homework Helper";
+    else if (groupKey === "LanguageLearningMode") groupKey = "Language Learning";
+    else if (groupKey === "Homework Help") groupKey = "Homework Helper";
+    else if (groupKey === "Visual Learning Focus" || groupKey === "Visual Learning") groupKey = "Visual Learning"; // Added for new page
     return groupKey;
   }
 
@@ -203,13 +201,13 @@ export default function LibraryPage() {
       baseHref = "/general-tutor";
     } else if (convo.topic === "LanguageLearningMode") {
       baseHref = "/language-learning";
+    } else if (convo.topic === "Visual Learning" || convo.topic === "Visual Learning Focus") { // Added for Visual Learning page
+      baseHref = "/visual-learning";
     } else if (convo.subjectContext && convo.lessonContext && convo.topic) {
-      
       baseHref = `/study-session/${encodeURIComponent(convo.subjectContext)}`;
       queryParams.append("lesson", encodeURIComponent(convo.lessonContext));
       queryParams.append("topic", encodeURIComponent(convo.topic));
     } else {
-        
         baseHref = `/study-session/${encodeURIComponent(convo.subjectContext || convo.topic || 'general')}`;
     }
     return `${baseHref}?${queryParams.toString()}`;
@@ -221,6 +219,7 @@ export default function LibraryPage() {
     if (groupName === "General AI Tutor") return <Brain className="mr-2 h-5 w-5" />;
     if (groupName === "Homework Helper") return <PenSquare className="mr-2 h-5 w-5" />;
     if (groupName === "Language Learning") return <Languages className="mr-2 h-5 w-5" />;
+    if (groupName === "Visual Learning") return <PieChartIcon className="mr-2 h-5 w-5" />; // Added for Visual Learning
     return <BookCopy className="mr-2 h-5 w-5" />;
   };
 
@@ -229,12 +228,13 @@ export default function LibraryPage() {
     
     if (convo.subjectContext && convo.lessonContext && convo.topic && convo.topic !== groupName) return convo.topic;
     
-    if (convo.topic && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "LanguageLearningMode" && convo.topic !== "Homework Help") return convo.topic;
+    if (convo.topic && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "LanguageLearningMode" && convo.topic !== "Homework Help" && convo.topic !== "Visual Learning" && convo.topic !== "Visual Learning Focus") return convo.topic;
     
-    
-    if (groupName === "General AI Tutor") return `General Chat (${new Date(convo.lastUpdatedAt).toLocaleDateString()})`;
-    if (groupName === "Language Learning") return `Language Practice (${new Date(convo.lastUpdatedAt).toLocaleDateString()})`;
-    if (groupName === "Homework Helper") return `Homework Session (${new Date(convo.lastUpdatedAt).toLocaleDateString()})`;
+    const dateSuffix = `(${new Date(convo.lastUpdatedAt).toLocaleDateString()})`;
+    if (groupName === "General AI Tutor") return `General Chat ${dateSuffix}`;
+    if (groupName === "Language Learning") return `Language Practice ${dateSuffix}`;
+    if (groupName === "Homework Helper") return `Homework Session ${dateSuffix}`;
+    if (groupName === "Visual Learning") return `Visual Session ${dateSuffix}`; // Added for Visual Learning
     if (convo.lessonContext) return `Lesson: ${convo.lessonContext}`;
 
     return convo.topic || 'General Discussion';
@@ -244,10 +244,10 @@ export default function LibraryPage() {
     <div className="pb-8 pr-0 md:pr-2 pt-0 mt-0">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center mt-0">
         <div className="mb-4 sm:mb-0 text-center sm:text-left">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-primary flex items-center mt-0">
-            <LibraryBig className="mr-3 h-7 w-7 sm:h-8 md:h-10 md:w-10" /> Your Learning Library
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
+            <LibraryBig className="mr-3 h-7 w-7 sm:h-8" /> Your Learning Library
           </h1>
-          <p className="text-md sm:text-lg md:text-xl text-muted-foreground mt-1 md:mt-2">
+          <p className="text-lg text-muted-foreground mt-1">
             Review your past study sessions. ({allConversations.length} total session{allConversations.length === 1 ? '' : 's'})
           </p>
         </div>
@@ -310,7 +310,7 @@ export default function LibraryPage() {
                                     <Layers className="mr-1.5 h-3 w-3"/> Subject: {convo.subjectContext}
                                 </p>
                               )}
-                               {(convo.subjectContext && convo.subjectContext === groupName && convo.lessonContext && convo.topic !== convo.lessonContext && !convo.customTitle && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "LanguageLearningMode" && convo.topic !== "Homework Help") && (
+                               {(convo.subjectContext && convo.subjectContext === groupName && convo.lessonContext && convo.topic !== convo.lessonContext && !convo.customTitle && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "LanguageLearningMode" && convo.topic !== "Homework Help" && convo.topic !== "Visual Learning" && convo.topic !== "Visual Learning Focus") && (
                                   <p className="text-xs text-muted-foreground flex items-center">
                                     <BookCopy className="mr-1.5 h-3 w-3"/> Lesson: {convo.lessonContext}
                                   </p>
@@ -412,4 +412,27 @@ export default function LibraryPage() {
       </AlertDialog>
     </div>
   );
+}
+
+// Helper to get conversation from localStorage by ID (if needed outside this component, move to chat-storage)
+function getConversationById(id: string): Conversation | null {
+  const conversations = getConversations();
+  return conversations.find(conv => conv.id === id) || null;
+}
+
+// Helper to save conversation (if needed outside this component, move to chat-storage)
+function saveConversation(conversation: Conversation): void {
+   if (typeof window === "undefined") return;
+  const conversations = getConversations();
+  const existingIndex = conversations.findIndex(c => c.id === conversation.id);
+  if (existingIndex > -1) {
+    conversations[existingIndex] = conversation;
+  } else {
+    conversations.unshift(conversation); 
+  }
+  try {
+    localStorage.setItem("eduai-conversations", JSON.stringify(conversations));
+  } catch (error) {
+    console.error("Error saving conversation to localStorage", error);
+  }
 }

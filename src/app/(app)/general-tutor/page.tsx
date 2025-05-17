@@ -2,7 +2,7 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Brain, MessageCircle, Languages, BarChart3 } from "lucide-react";
+import { Loader2, AlertTriangle, Brain, MessageCircle, Languages, BarChart3, PieChartIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,28 +26,17 @@ export default function AITutorPage() {
   const [mainChatConversationId, setMainChatConversationId] = useState<string | null>(null);
   const [mainChatKey, setMainChatKey] = useState<string>(''); 
 
-  const [visualLearningChatConversationId, setVisualLearningChatConversationId] = useState<string | null>(null);
-  const [visualLearningChatKey, setVisualLearningChatKey] = useState<string>('');
 
   useEffect(() => {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
-      // This logic primarily applies if the /general-tutor page itself is revisited with a specific session ID
-      // For distinct tabs, we'll use profile-based IDs.
       setMainChatConversationId(sessionIdFromQuery);
       setMainChatKey(sessionIdFromQuery); 
     } else if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
-      
-      // Main Chat
       const defaultMainChatId = `ai-tutor-chat-${profileIdentifier}`;
       setMainChatConversationId(defaultMainChatId);
       setMainChatKey(defaultMainChatId); 
-
-      // Visual Learning Chat
-      const defaultVisualLearningChatId = `visual-learning-focus-chat-${profileIdentifier}`;
-      setVisualLearningChatConversationId(defaultVisualLearningChatId);
-      setVisualLearningChatKey(defaultVisualLearningChatId);
     }
   }, [searchParams, profile]);
 
@@ -76,7 +65,7 @@ export default function AITutorPage() {
     );
   }
   
-  if (!mainChatConversationId || !visualLearningChatConversationId) {
+  if (!mainChatConversationId || !mainChatKey) {
      return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -86,8 +75,7 @@ export default function AITutorPage() {
   }
 
   const initialMainChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context.`;
-  const initialVisualLearningChatMessage = `Hi ${profile.name}! Welcome to Visual Learning. How can I help you visualize a concept today? Ask me to explain something with a chart, diagram, or suggest an image. For example: "Explain photosynthesis with a diagram" or "Show me a bar chart of planet sizes."`;
-
+  
   return (
     <div className="h-full flex flex-col mt-0 pt-0">
       <div className="mb-6 pt-0 mt-0">
@@ -100,7 +88,7 @@ export default function AITutorPage() {
       <Tabs defaultValue="chat" className="flex-grow flex flex-col">
         <TabsList className="mb-4 self-start">
           <TabsTrigger value="chat"><MessageCircle className="mr-2 h-4 w-4" />Chat</TabsTrigger>
-          <TabsTrigger value="visual-learning"><BarChart3 className="mr-2 h-4 w-4" />Visual Learning</TabsTrigger>
+          <TabsTrigger value="visual-learning"><PieChartIcon className="mr-2 h-4 w-4" />Visual Learning</TabsTrigger>
           <TabsTrigger value="language-learning"><Languages className="mr-2 h-4 w-4" />Language Learning</TabsTrigger>
         </TabsList>
 
@@ -118,16 +106,24 @@ export default function AITutorPage() {
         </TabsContent>
 
         <TabsContent value="visual-learning" className="flex-grow flex flex-col min-h-0">
-           {visualLearningChatKey && visualLearningChatConversationId && (
-            <DynamicChatInterface
-              key={visualLearningChatKey}
-              userProfile={profile}
-              topic="Visual Learning Focus"
-              conversationId={visualLearningChatConversationId}
-              initialSystemMessage={initialVisualLearningChatMessage}
-              placeholderText="Ask for a visual explanation..."
-            />
-           )}
+           <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-lg">Visual Learning Tools</CardTitle>
+              <CardDescription>Understand complex topics visually. Explore concepts with AI-generated interactive graphs, charts, and flowcharts tailored to your learning needs.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 text-sm">
+                <li>Dynamic visualizations to simplify difficult concepts.</li>
+                <li>AI generation of custom diagrams and images based on your questions.</li>
+                <li>Support for various chart types and flowcharts.</li>
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button asChild variant="accent">
+                <Link href="/visual-learning">Go to Visual Learning Hub</Link>
+              </Button>
+            </CardFooter>
+          </Card>
         </TabsContent>
         
         <TabsContent value="language-learning" className="flex-grow">
