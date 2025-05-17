@@ -22,29 +22,36 @@ export default function HomeworkAssistantPage() {
   const searchParams = useSearchParams();
   const router = useRouter(); 
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [chatKey, setChatKey] = useState(Date.now());
+  const [chatKey, setChatKey] = useState<string>('');
 
 
   useEffect(() => {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
       setCurrentConversationId(sessionIdFromQuery);
-      setChatKey(Number(sessionIdFromQuery.split('-').pop()) || Date.now()); 
-    } else if (profile?.id) {
-      const newTimestamp = Date.now();
-      setCurrentConversationId(`homework-assistant-${profile.id}-${newTimestamp}`);
-      setChatKey(newTimestamp);
+      setChatKey(sessionIdFromQuery); 
+    } else if (profile) { 
+      // Only generate a new ID if one isn't already set by a direct navigation or "New Session" click
+      // This mainly handles the initial load of the page without a specific session ID in the URL.
+      if (!currentConversationId) {
+        const profileIdentifier = profile.id || `user-${profile.name.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
+        const newTimestamp = Date.now(); // Safe inside useEffect
+        const newId = `homework-assistant-${profileIdentifier}-${newTimestamp}`;
+        setCurrentConversationId(newId);
+        setChatKey(newId);
+      }
     }
-  }, [searchParams, profile?.id]);
+  }, [searchParams, profile, currentConversationId]);
 
 
   const handleNewSession = () => {
-    
     router.push('/homework-assistant', { scroll: false }); 
-    if (profile?.id) {
+    if (profile) {
+        const profileIdentifier = profile.id || `user-${profile.name.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
         const newTimestamp = Date.now();
-        setCurrentConversationId(`homework-assistant-${profile.id}-${newTimestamp}`);
-        setChatKey(newTimestamp);
+        const newId = `homework-assistant-${profileIdentifier}-${newTimestamp}`;
+        setCurrentConversationId(newId);
+        setChatKey(newId);
     }
   };
 
@@ -73,9 +80,9 @@ export default function HomeworkAssistantPage() {
 
   if (!currentConversationId) {
     return (
-        <div className="flex items-center justify-center h-full mt-0 pt-0">
+        <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="ml-2">Initializing session...</p>
+            <p className="mt-4 text-muted-foreground">Initializing session...</p>
         </div>
     );
   }
@@ -86,24 +93,27 @@ export default function HomeworkAssistantPage() {
     <div className="h-full flex flex-col mt-0 pt-0">
       <div className="flex justify-between items-center mb-6 pt-0 mt-0">
         <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
                 <PenSquare className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Homework Assistant
             </h1>
-            <p className="text-muted-foreground">Get help with your homework, assignments, and tricky questions.</p>
+            <p className="text-muted-foreground mt-1">Get help with your homework, assignments, and tricky questions.</p>
         </div>
         <Button onClick={handleNewSession} variant="outline">
           <RotateCcw className="mr-2 h-4 w-4" /> New Homework Session
         </Button>
       </div>
       <div className="flex-grow min-h-0">
-        <DynamicChatInterface
-          key={chatKey} 
-          userProfile={profile}
-          topic="Homework Help" 
-          conversationId={currentConversationId}
-          initialSystemMessage={initialMessage}
-          placeholderText="Describe your homework problem or ask a question..."
-        />
+        {/* Ensure chatKey is not an empty string when passed if ChatInterface expects a truthy key */}
+        {chatKey && currentConversationId && (
+          <DynamicChatInterface
+            key={chatKey} 
+            userProfile={profile}
+            topic="Homework Help" 
+            conversationId={currentConversationId}
+            initialSystemMessage={initialMessage}
+            placeholderText="Describe your homework problem or ask a question..."
+          />
+        )}
       </div>
     </div>
   );

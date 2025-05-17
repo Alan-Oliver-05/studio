@@ -22,7 +22,7 @@ export default function LanguageLearningPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const searchParams = useSearchParams();
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [chatKey, setChatKey] = useState(Date.now().toString());
+  const [chatKey, setChatKey] = useState<string>('');
 
 
   useEffect(() => {
@@ -30,16 +30,17 @@ export default function LanguageLearningPage() {
     if (sessionIdFromQuery) {
       setCurrentConversationId(sessionIdFromQuery);
       setChatKey(sessionIdFromQuery);
-    } else if (profile?.id) {
-      const defaultId = `language-learning-chat-${profile.id}`;
+    } else if (profile) {
+      const profileIdentifier = profile.id || `user-${profile.name.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
+      const defaultId = `language-learning-chat-${profileIdentifier}`;
       setCurrentConversationId(defaultId);
       setChatKey(defaultId);
     }
-  }, [searchParams, profile?.id]);
+  }, [searchParams, profile]);
 
   if (profileLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full pt-0 mt-0">
+      <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading Language Learning Hub...</p>
       </div>
@@ -48,7 +49,7 @@ export default function LanguageLearningPage() {
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8 pt-0 mt-0">
+      <div className="flex flex-col items-center justify-center h-full text-center p-8 mt-0 pt-0">
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
         <h2 className="text-3xl font-semibold mb-3">Profile Required</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
@@ -63,7 +64,7 @@ export default function LanguageLearningPage() {
 
    if (!currentConversationId) {
      return (
-      <div className="flex flex-col items-center justify-center h-full pt-0 mt-0">
+      <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Initializing chat...</p>
       </div>
@@ -74,15 +75,16 @@ export default function LanguageLearningPage() {
 
   return (
     <div className="h-full flex flex-col mt-0 pt-0">
-      <div className="mb-6 pt-0">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
+      <div className="mb-6 pt-0 mt-0">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
             <Languages className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Language Learning Hub
         </h1>
-        <p className="text-muted-foreground">Your personal AI language tutor.</p>
+        <p className="text-muted-foreground mt-1">Your personal AI language tutor.</p>
       </div>
       
       <div className="flex-grow min-h-0">
-        <DynamicChatInterface
+        {chatKey && currentConversationId && (
+          <DynamicChatInterface
             key={chatKey}
             userProfile={profile}
             topic="LanguageLearningMode" 
@@ -90,6 +92,7 @@ export default function LanguageLearningPage() {
             initialSystemMessage={initialChatMessage}
             placeholderText="Type to practice your language skills..."
           />
+        )}
       </div>
     </div>
   );
