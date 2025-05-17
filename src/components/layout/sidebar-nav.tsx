@@ -14,7 +14,7 @@ import {
   GraduationCap,
   ListChecks, 
   Languages,
-  BarChartBig, // Added BarChartBig icon
+  BarChartBig,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -30,14 +30,14 @@ import {
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/study-session", icon: BookOpen, label: "Study Session", isDynamic: true }, // isDynamic indicates base path
+  { href: "/study-session", icon: BookOpen, label: "Study Session", isDynamic: true }, 
   { href: "/library", icon: LibraryBig, label: "Library" },
   { href: "/todo", icon: ListChecks, label: "To-Do List" }, 
   { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
   { href: "/notepad", icon: NotebookText, label: "Note Pad" },
   { href: "/general-tutor", icon: Brain, label: "General Tutor" },
   { href: "/language-learning", icon: Languages, label: "Language Learning" },
-  { href: "/analytics", icon: BarChartBig, label: "Analytics" }, // Added Analytics item
+  { href: "/analytics", icon: BarChartBig, label: "Analytics" },
 ];
 
 const settingsItem = { href: "/settings", icon: Settings, label: "Settings" };
@@ -57,11 +57,11 @@ export function SidebarNav() {
   const sidebarOpen = !isMobile && sidebarState === "expanded";
 
   return (
-    <Sidebar className="border-r" collapsible="icon">
+    <Sidebar className="border-r border-border/50" collapsible="icon">
       <SidebarHeader className="p-4">
         <Link href="/dashboard" className="flex items-center gap-2">
           <GraduationCap className="h-8 w-8 text-primary" />
-          {sidebarOpen && <span className="text-xl font-semibold text-primary">EduAI</span>}
+          {sidebarOpen && <span className="text-xl font-bold text-gradient-primary">EduAI</span>}
         </Link>
       </SidebarHeader>
       <SidebarContent className="flex-grow p-2">
@@ -69,18 +69,19 @@ export function SidebarNav() {
           {navItems.map((item) => {
             if (item.isDynamic && item.href === "/study-session") return null;
             
+            const isActive = isNavItemActive(item.href, item.isDynamic);
             return (
             <SidebarMenuItem key={item.href}>
               <Link href={item.href} legacyBehavior passHref>
                 <SidebarMenuButton
                   asChild
-                  isActive={isNavItemActive(item.href, item.isDynamic)}
+                  isActive={isActive}
                   tooltip={sidebarOpen ? undefined : item.label}
                   className="justify-start"
                 >
                   <a>
-                    <item.icon className="h-5 w-5" />
-                    {sidebarOpen && <span>{item.label}</span>}
+                    <item.icon className={cn("h-5 w-5", isActive ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70 group-hover:text-sidebar-accent-foreground")} />
+                    {sidebarOpen && <span className={cn(isActive && "font-semibold")}>{item.label}</span>}
                   </a>
                 </SidebarMenuButton>
               </Link>
@@ -88,7 +89,7 @@ export function SidebarNav() {
           )})}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-2 border-t">
+      <SidebarFooter className="p-2 border-t border-border/50">
          <SidebarMenu>
             <SidebarMenuItem>
               <Link href={settingsItem.href} legacyBehavior passHref>
@@ -99,8 +100,8 @@ export function SidebarNav() {
                   className="justify-start"
                 >
                   <a>
-                    <settingsItem.icon className="h-5 w-5" />
-                     {sidebarOpen && <span>{settingsItem.label}</span>}
+                    <settingsItem.icon className={cn("h-5 w-5", pathname === settingsItem.href ? "text-sidebar-accent-foreground" : "text-sidebar-foreground/70 group-hover:text-sidebar-accent-foreground")} />
+                     {sidebarOpen && <span className={cn(pathname === settingsItem.href && "font-semibold")}>{settingsItem.label}</span>}
                   </a>
                 </SidebarMenuButton>
               </Link>
