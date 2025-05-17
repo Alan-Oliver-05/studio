@@ -8,6 +8,8 @@ import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation'; // Import useSearchParams
+import { useEffect, useState } from "react"; // Import useEffect and useState
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -19,10 +21,27 @@ const DynamicChatInterface = dynamic(() =>
 
 export default function AITutorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
+  const searchParams = useSearchParams();
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [chatKey, setChatKey] = useState(Date.now().toString()); // Key for re-rendering ChatInterface
+
+  useEffect(() => {
+    const sessionIdFromQuery = searchParams.get('sessionId');
+    if (sessionIdFromQuery) {
+      setCurrentConversationId(sessionIdFromQuery);
+      setChatKey(sessionIdFromQuery); // Use sessionId as key when revisiting
+    } else if (profile?.id) {
+      const defaultId = `ai-tutor-chat-${profile.id}`;
+      setCurrentConversationId(defaultId);
+      setChatKey(defaultId); // Use default ID as key for new/default session
+    }
+    // No explicit "new session" button here, revisiting always loads the same general chat.
+  }, [searchParams, profile?.id]);
+
 
   if (profileLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 mt-0">
+      <div className="flex flex-col items-center justify-center h-full pt-0 mt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading AI Tutor...</p>
       </div>
@@ -31,7 +50,7 @@ export default function AITutorPage() {
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8 mt-0">
+      <div className="flex flex-col items-center justify-center h-full text-center p-8 pt-0 mt-0">
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
         <h2 className="text-3xl font-semibold mb-3">Profile Required</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
@@ -44,11 +63,19 @@ export default function AITutorPage() {
     );
   }
   
-  const chatConversationId = `ai-tutor-chat-${profile.id || 'default'}`;
+  if (!currentConversationId) {
+     return (
+      <div className="flex flex-col items-center justify-center h-full pt-0 mt-0">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Initializing chat...</p>
+      </div>
+    );
+  }
+
   const initialChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context.`;
 
   return (
-    <div className="h-full flex flex-col mt-0">
+    <div className="h-full flex flex-col mt-0 pt-0">
       <div className="mb-6 pt-0">
         <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
             <Brain className="mr-3 h-8 w-8"/> AI Learning Assistant
@@ -65,9 +92,10 @@ export default function AITutorPage() {
 
         <TabsContent value="chat" className="flex-grow flex flex-col min-h-0">
           <DynamicChatInterface
+            key={chatKey} // Use key to re-mount if conversationId changes explicitly (e.g. for new sessions)
             userProfile={profile}
             topic="AI Learning Assistant Chat" 
-            conversationId={chatConversationId}
+            conversationId={currentConversationId}
             initialSystemMessage={initialChatMessage}
             placeholderText="Ask anything or upload an image..."
           />
@@ -114,3 +142,5 @@ export default function AITutorPage() {
     </div>
   );
 }
+
+    

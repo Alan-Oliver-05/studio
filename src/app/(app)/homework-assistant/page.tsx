@@ -1,12 +1,13 @@
 
 "use client";
 
-import { useState } from "react"; // Added useState
+import { useState, useEffect } from "react"; 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, PenSquare, RotateCcw } from "lucide-react"; // Added RotateCcw
+import { Loader2, AlertTriangle, PenSquare, RotateCcw } from "lucide-react"; 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
+import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -18,10 +19,33 @@ const DynamicChatInterface = dynamic(() =>
 
 export default function HomeworkAssistantPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
-  const [sessionTimestamp, setSessionTimestamp] = useState(Date.now()); // Added sessionTimestamp state
+  const searchParams = useSearchParams();
+  const router = useRouter(); // Added router
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [chatKey, setChatKey] = useState(Date.now());
+
+
+  useEffect(() => {
+    const sessionIdFromQuery = searchParams.get('sessionId');
+    if (sessionIdFromQuery) {
+      setCurrentConversationId(sessionIdFromQuery);
+      setChatKey(Number(sessionIdFromQuery.split('-').pop()) || Date.now()); // Use timestamp from ID or new one
+    } else if (profile?.id) {
+      const newTimestamp = Date.now();
+      setCurrentConversationId(`homework-assistant-${profile.id}-${newTimestamp}`);
+      setChatKey(newTimestamp);
+    }
+  }, [searchParams, profile?.id]);
+
 
   const handleNewSession = () => {
-    setSessionTimestamp(Date.now()); // Update timestamp to start a new session
+    // Navigate to the base page to clear query params, then generate new ID
+    router.push('/homework-assistant', { scroll: false }); // scroll:false to prevent scroll jump
+    if (profile?.id) {
+        const newTimestamp = Date.now();
+        setCurrentConversationId(`homework-assistant-${profile.id}-${newTimestamp}`);
+        setChatKey(newTimestamp);
+    }
   };
 
   if (profileLoading) {
@@ -47,8 +71,15 @@ export default function HomeworkAssistantPage() {
     );
   }
 
-  // Incorporate sessionTimestamp into conversationId to make it unique per session
-  const conversationId = `homework-assistant-${profile.id || 'default'}-${sessionTimestamp}`;
+  if (!currentConversationId) {
+    return (
+        <div className="flex items-center justify-center h-full mt-0 pt-0">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="ml-2">Initializing session...</p>
+        </div>
+    );
+  }
+
   const initialMessage = `Hi ${profile.name}! I'm here to help with your homework. Ask me math problems, science questions, historical facts, or anything else you need step-by-step solutions or direct answers for. You can also upload an image of your problem.`;
 
   return (
@@ -66,10 +97,10 @@ export default function HomeworkAssistantPage() {
       </div>
       <div className="flex-grow min-h-0">
         <DynamicChatInterface
-          key={sessionTimestamp} // Force re-mount of ChatInterface on new session
+          key={chatKey} 
           userProfile={profile}
-          topic="Homework Help" // This topic identifies it as a homework session in localStorage
-          conversationId={conversationId}
+          topic="Homework Help" 
+          conversationId={currentConversationId}
           initialSystemMessage={initialMessage}
           placeholderText="Describe your homework problem or ask a question..."
         />
@@ -77,3 +108,5 @@ export default function HomeworkAssistantPage() {
     </div>
   );
 }
+
+    

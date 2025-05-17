@@ -121,6 +121,12 @@ export default function LibraryPage() {
       const result = await summarizeConversation({ conversationHistory: conversationText });
       if (result.summary) {
         setSummaries(prev => ({ ...prev, [conversation.id]: result.summary }));
+        // Persist summary to localStorage
+        const convoToUpdate = getConversationById(conversation.id);
+        if (convoToUpdate) {
+            convoToUpdate.summary = result.summary;
+            saveConversation(convoToUpdate);
+        }
       } else {
         toast({ title: "Summary Error", description: "Could not generate summary.", variant: "destructive" });
       }
@@ -146,15 +152,15 @@ export default function LibraryPage() {
   };
 
   const handleDeleteClick = (convo: Conversation) => {
-    setConversationToDelete(convo); // Set the conversation to be deleted, this will trigger the AlertDialog
+    setConversationToDelete(convo); 
   };
 
   const handleDeleteConfirmed = () => {
     if (conversationToDelete) {
       deleteConversation(conversationToDelete.id);
-      setConversationToDelete(null); // Clear it
-      loadConversations(); // Reload to reflect changes
-      toast({ title: "Conversation Deleted", description: `"${conversationToDelete.customTitle || conversationToDelete.topic}" has been deleted.`, variant: "destructive" });
+      setConversationToDelete(null); 
+      loadConversations(); 
+      toast({ title: "Conversation Deleted", description: `"${getConversationDisplayTitle(conversationToDelete, getGroupNameForConvo(conversationToDelete))}" has been deleted.`, variant: "destructive" });
     }
   };
 
@@ -169,7 +175,7 @@ export default function LibraryPage() {
 
   if (isLoading || !isClient) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 mt-0">
+      <div className="flex flex-col items-center justify-center h-full pt-0 mt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="mt-4 text-muted-foreground">Loading your learning library...</p>
       </div>
@@ -187,11 +193,26 @@ export default function LibraryPage() {
   }
 
   const getRevisitLink = (convo: Conversation) => {
-    if (convo.topic === "Homework Help") return "/homework-assistant";
-    if (convo.topic === "AI Learning Assistant Chat") return "/general-tutor"; 
-    if (convo.topic === "LanguageLearningMode") return "/language-learning";
-    const subjectForLink = convo.subjectContext || convo.topic;
-    return `/study-session/${encodeURIComponent(subjectForLink || 'general')}`;
+    let baseHref = "";
+    const queryParams = new URLSearchParams();
+    queryParams.append("sessionId", convo.id);
+
+    if (convo.topic === "Homework Help") {
+      baseHref = "/homework-assistant";
+    } else if (convo.topic === "AI Learning Assistant Chat") {
+      baseHref = "/general-tutor";
+    } else if (convo.topic === "LanguageLearningMode") {
+      baseHref = "/language-learning";
+    } else if (convo.subjectContext && convo.lessonContext && convo.topic) {
+      // This is a specific study session
+      baseHref = `/study-session/${encodeURIComponent(convo.subjectContext)}`;
+      queryParams.append("lesson", encodeURIComponent(convo.lessonContext));
+      queryParams.append("topic", encodeURIComponent(convo.topic));
+    } else {
+        // Fallback for older or less specific study sessions, might just go to subject page
+        baseHref = `/study-session/${encodeURIComponent(convo.subjectContext || convo.topic || 'general')}`;
+    }
+    return `${baseHref}?${queryParams.toString()}`;
   };
   
   const sortedGroupNames = Object.keys(groupedConversations).sort((a, b) => a.localeCompare(b));
@@ -205,18 +226,22 @@ export default function LibraryPage() {
 
   const getConversationDisplayTitle = (convo: Conversation, groupName: string) => {
     if (convo.customTitle) return convo.customTitle;
-    if (convo.topic !== groupName && convo.topic !== "LanguageLearningMode" && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "Homework Help") return convo.topic;
+    // For specific study sessions, use the topic as the title.
+    if (convo.subjectContext && convo.lessonContext && convo.topic && convo.topic !== groupName) return convo.topic;
+    // For general types, if there's a specific topic that's not the generic group name, use it.
+    if (convo.topic && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "LanguageLearningMode" && convo.topic !== "Homework Help") return convo.topic;
+    
+    // Fallback titles for generic session types
+    if (groupName === "General AI Tutor") return `General Chat (${new Date(convo.lastUpdatedAt).toLocaleDateString()})`;
+    if (groupName === "Language Learning") return `Language Practice (${new Date(convo.lastUpdatedAt).toLocaleDateString()})`;
+    if (groupName === "Homework Helper") return `Homework Session (${new Date(convo.lastUpdatedAt).toLocaleDateString()})`;
     if (convo.lessonContext) return `Lesson: ${convo.lessonContext}`;
-    // For general chats within a group context, use a generic title if no specific topic/lesson.
-    if (groupName === "General AI Tutor" && convo.topic === "AI Learning Assistant Chat") return "General Chat";
-    if (groupName === "Language Learning" && convo.topic === "LanguageLearningMode") return "Language Practice";
-    if (groupName === "Homework Helper" && convo.topic === "Homework Help") return "Homework Session";
 
     return convo.topic || 'General Discussion';
   };
 
   return (
-    <div className="pb-8 pr-4 md:pr-6 pt-0">
+    <div className="pb-8 pr-4 md:pr-6 pt-0 mt-0">
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center mt-0">
         <div className="mb-4 sm:mb-0 text-center sm:text-left">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-primary flex items-center mt-0">
@@ -285,7 +310,7 @@ export default function LibraryPage() {
                                     <Layers className="mr-1.5 h-3 w-3"/> Subject: {convo.subjectContext}
                                 </p>
                               )}
-                               {(convo.subjectContext && convo.subjectContext === groupName && convo.lessonContext && convo.topic !== convo.lessonContext && !convo.customTitle) && (
+                               {(convo.subjectContext && convo.subjectContext === groupName && convo.lessonContext && convo.topic !== convo.lessonContext && !convo.customTitle && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "LanguageLearningMode" && convo.topic !== "Homework Help") && (
                                   <p className="text-xs text-muted-foreground flex items-center">
                                     <BookCopy className="mr-1.5 h-3 w-3"/> Lesson: {convo.lessonContext}
                                   </p>
@@ -338,10 +363,10 @@ export default function LibraryPage() {
                             ))}
                             {convo.messages.length > 5 && <p className="italic">...and {convo.messages.length - 5} more messages.</p>}
                           </div>
-                          {summaries[convo.id] ? (
+                          {summaries[convo.id] || convo.summary ? (
                             <div className="mt-2 p-2 border border-dashed rounded-md bg-primary/5">
                               <h4 className="font-semibold text-primary text-xs flex items-center"><FileText className="h-3 w-3 mr-1.5"/>AI Summary:</h4>
-                              <p className="text-xs text-foreground whitespace-pre-wrap">{summaries[convo.id]}</p>
+                              <p className="text-xs text-foreground whitespace-pre-wrap">{summaries[convo.id] || convo.summary}</p>
                             </div>
                           ) : (
                             <Button 
@@ -376,7 +401,7 @@ export default function LibraryPage() {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the conversation
-              {conversationToDelete ? ` titled "${conversationToDelete.customTitle || getConversationDisplayTitle(conversationToDelete, getGroupNameForConvo(conversationToDelete))}"` : ''}.
+              {conversationToDelete ? ` titled "${getConversationDisplayTitle(conversationToDelete, getGroupNameForConvo(conversationToDelete))}"` : ''}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -388,6 +413,8 @@ export default function LibraryPage() {
     </div>
   );
 }
+    
+
     
 
     

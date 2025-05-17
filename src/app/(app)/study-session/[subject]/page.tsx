@@ -2,12 +2,12 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-// import { ChatInterface } from "../components/chat-interface"; // Removed direct import
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import type { Lesson, Topic, UserProfile as UserProfileType } from "@/types";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import type { Lesson, Topic, UserProfile as UserProfileType, Conversation } from "@/types";
 import { getLessonsForSubject, GetLessonsForSubjectInput } from "@/ai/flows/get-lessons-for-subject";
 import { getTopicsForLesson, GetTopicsForLessonInput } from "@/ai/flows/get-topics-for-lesson";
+import { getConversationById } from "@/lib/chat-storage";
 import { Loader2, AlertTriangle, ChevronRight, BookOpen, Lightbulb, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -30,6 +30,7 @@ export default function StudySessionPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const subjectName = typeof params.subject === 'string' ? decodeURIComponent(params.subject) : "Selected Topic";
 
@@ -39,122 +40,161 @@ export default function StudySessionPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [revisitConversationId, setRevisitConversationId] = useState<string | null>(null);
+  const [chatKey, setChatKey] = useState<string | number>(Date.now());
+
+
+  const fetchLessonsForSubject = useCallback(async (currentProfile: UserProfileType, currentSubjectName: string) => {
+    setIsLoading(true); // Use a generic loading state if needed
+    setErrorMessage(null);
+    try {
+      const input: GetLessonsForSubjectInput = {
+        subjectName: currentSubjectName,
+        studentProfile: {
+          ...currentProfile,
+          age: Number(currentProfile.age) 
+        } as UserProfileType & { age: number }, 
+      };
+      const result = await getLessonsForSubject(input);
+      if (result && result.lessons && result.lessons.length > 0) {
+        setLessons(result.lessons);
+        return result.lessons;
+      } else {
+        setErrorMessage(`No lessons found for ${currentSubjectName}. Try another subject or use the General Tutor.`);
+        setCurrentStep("error");
+        return [];
+      }
+    } catch (e) {
+      console.error("Failed to fetch lessons:", e);
+      setErrorMessage("Failed to load lessons. Please try again or check your connection.");
+      setCurrentStep("error");
+      return [];
+    } finally {
+       // setIsLoading(false); // Might set this later depending on flow
+    }
+  }, []);
+
+
+  const fetchTopicsForLesson = useCallback(async (currentProfile: UserProfileType, currentSubjectName: string, lesson: Lesson) => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+        const input: GetTopicsForLessonInput = {
+        subjectName: currentSubjectName,
+        lessonName: lesson.name,
+        studentProfile: {
+          ...currentProfile,
+          age: Number(currentProfile.age)
+        } as UserProfileType & { age: number },
+        };
+        const result = await getTopicsForLesson(input);
+        if (result && result.topics && result.topics.length > 0) {
+          setTopics(result.topics);
+          return result.topics;
+        } else {
+          setErrorMessage(`No topics found for lesson "${lesson.name}". Please select another lesson or go back.`);
+          setCurrentStep("error"); 
+          return [];
+        }
+    } catch (e) {
+        console.error("Failed to fetch topics:", e);
+        setErrorMessage("Failed to load topics. Please try again.");
+        setCurrentStep("error");
+        return [];
+    } finally {
+        // setIsLoading(false);
+    }
+  }, []);
 
 
   useEffect(() => {
     if (!profileLoading && profile && subjectName) {
-      setCurrentStep("loading");
-      setErrorMessage(null);
-      const fetchLessons = async () => {
-        try {
-          const input: GetLessonsForSubjectInput = {
-            subjectName,
-            studentProfile: {
-              ...profile,
-              age: Number(profile.age) 
-            } as UserProfileType & { age: number }, 
-          };
-          const result = await getLessonsForSubject(input);
-          if (result && result.lessons && result.lessons.length > 0) {
-            setLessons(result.lessons);
-            setCurrentStep("selectLesson");
-          } else {
-            setErrorMessage(`No lessons found for ${subjectName}. Try another subject or use the General Tutor.`);
-            setCurrentStep("error");
-          }
-        } catch (e) {
-          console.error("Failed to fetch lessons:", e);
-          setErrorMessage("Failed to load lessons. Please try again or check your connection.");
-          setCurrentStep("error");
+      const sessionIdParam = searchParams.get('sessionId');
+      const lessonParam = searchParams.get('lesson');
+      const topicParam = searchParams.get('topic');
+
+      if (sessionIdParam && lessonParam && topicParam) {
+        // Attempting to revisit a specific session
+        setRevisitConversationId(sessionIdParam);
+        setChatKey(sessionIdParam);
+        
+        const conversation = getConversationById(sessionIdParam);
+        if (conversation && 
+            decodeURIComponent(params.subject as string) === conversation.subjectContext &&
+            lessonParam === conversation.lessonContext &&
+            topicParam === conversation.topic) {
+
+            setSelectedLesson({ name: conversation.lessonContext, description: "Revisiting session" });
+            setSelectedTopic({ name: conversation.topic, description: "Revisiting session" });
+            setCurrentStep("chat");
+            // No need to fetch lessons/topics if we are jumping straight to chat
+            return; 
+        } else {
+            // If params don't match stored conversation, or convo not found, proceed to selection
+            console.warn("Revisit parameters do not match stored conversation or conversation not found. Proceeding to selection.");
         }
-      };
-      fetchLessons();
+      }
+
+      // If not revisiting, or revisit params are mismatched, fetch lessons
+      setCurrentStep("loading");
+      fetchLessonsForSubject(profile, subjectName).then(fetchedLessons => {
+        if (fetchedLessons.length > 0) {
+          setCurrentStep("selectLesson");
+        }
+      });
+
+    } else if (!profileLoading && !profile) {
+        setCurrentStep("error"); // Or redirect to onboarding
+        setErrorMessage("User profile not found. Please complete onboarding.");
     }
-  }, [profile, profileLoading, subjectName]);
+  }, [profile, profileLoading, subjectName, params.subject, searchParams, fetchLessonsForSubject]);
+
 
   const handleSelectLesson = async (lesson: Lesson) => {
     setSelectedLesson(lesson);
     setCurrentStep("loading");
-    setErrorMessage(null);
     if(profile){
-        try {
-            const input: GetTopicsForLessonInput = {
-            subjectName,
-            lessonName: lesson.name,
-            studentProfile: {
-              ...profile,
-              age: Number(profile.age)
-            } as UserProfileType & { age: number },
-            };
-            const result = await getTopicsForLesson(input);
-            if (result && result.topics && result.topics.length > 0) {
-            setTopics(result.topics);
-            setCurrentStep("selectTopic");
-            } else {
-            setErrorMessage(`No topics found for lesson "${lesson.name}". Please select another lesson or go back.`);
-            setCurrentStep("error"); 
-            }
-        } catch (e) {
-            console.error("Failed to fetch topics:", e);
-            setErrorMessage("Failed to load topics. Please try again.");
-            setCurrentStep("error");
-        }
+       fetchTopicsForLesson(profile, subjectName, lesson).then(fetchedTopics => {
+           if (fetchedTopics.length > 0) {
+               setCurrentStep("selectTopic");
+           }
+       });
     }
   };
 
   const handleSelectTopic = (topic: Topic) => {
     setSelectedTopic(topic);
+    const newConversationId = `study-session-${profile?.id || 'default'}-${subjectName.replace(/\s+/g, '_')}-${selectedLesson?.name.replace(/\s+/g, '_')}-${topic.name.replace(/\s+/g, '_')}`.toLowerCase();
+    setRevisitConversationId(newConversationId); // For new sessions, this becomes the ID
+    setChatKey(newConversationId);
     setCurrentStep("chat");
   };
   
   const handleRetry = () => {
-    if (selectedLesson && currentStep === "error" && errorMessage?.includes("topics")) {
-        handleSelectLesson(selectedLesson);
-    } else {
-         if (!profileLoading && profile && subjectName) {
-            setCurrentStep("loading");
-            setErrorMessage(null);
-            const fetchLessons = async () => {
-                try {
-                const input: GetLessonsForSubjectInput = {
-                    subjectName,
-                    studentProfile: {
-                    ...profile,
-                    age: Number(profile.age)
-                    } as UserProfileType & { age: number }, 
-                };
-                const result = await getLessonsForSubject(input);
-                if (result && result.lessons && result.lessons.length > 0) {
-                    setLessons(result.lessons);
-                    setCurrentStep("selectLesson");
-                } else {
-                    setErrorMessage(`No lessons found for ${subjectName}. Try another subject or use the General Tutor.`);
-                    setCurrentStep("error");
-                }
-                } catch (e) {
-                console.error("Failed to fetch lessons:", e);
-                setErrorMessage("Failed to load lessons. Please try again or check your connection.");
-                setCurrentStep("error");
-                }
-            };
-            fetchLessons();
-            }
+    if (profile && subjectName) {
+        if (selectedLesson && currentStep === "error" && errorMessage?.includes("topics")) {
+            fetchTopicsForLesson(profile, subjectName, selectedLesson);
+        } else {
+            fetchLessonsForSubject(profile, subjectName).then(fetchedLessons => {
+                if(fetchedLessons.length > 0) setCurrentStep("selectLesson");
+            });
+        }
     }
   };
 
 
   if (profileLoading || (currentStep === "loading" && !errorMessage)) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 mt-0 pt-0">
+      <div className="flex flex-col items-center justify-center h-full pt-0 mt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
         <p className="text-muted-foreground">Loading study materials for {subjectName}...</p>
       </div>
     );
   }
 
-  if (!profile) {
+  if (!profile && !profileLoading) { // Added !profileLoading to prevent flash of this screen
      return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8 mt-0 pt-0">
+      <div className="flex flex-col items-center justify-center h-full text-center p-8 pt-0 mt-0">
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
         <h2 className="text-3xl font-semibold mb-3">Profile Required</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
@@ -169,7 +209,7 @@ export default function StudySessionPage() {
 
   if (currentStep === "error" && errorMessage) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 mt-0 pt-0">
+      <div className="flex flex-col items-center justify-center h-full pt-0 mt-0">
         <Alert variant="destructive" className="max-w-lg text-center">
             <AlertTriangle className="h-5 w-5" />
             <AlertTitle>Error Loading Content</AlertTitle>
@@ -240,18 +280,24 @@ export default function StudySessionPage() {
               </ScrollArea>
             </CardContent>
             <CardFooter className="flex justify-between">
-                <Button variant="ghost" onClick={() => {setSelectedLesson(null); setTopics([]); setCurrentStep("selectLesson");}}>Back to Lessons</Button>
+                <Button variant="ghost" onClick={() => {setSelectedTopic(null); setTopics([]); setCurrentStep("selectLesson");}}>Back to Lessons</Button>
             </CardFooter>
           </Card>
         );
       case "chat":
-        if (selectedTopic && selectedLesson && profile) {
-          const conversationId = `study-session-${profile.id || 'default'}-${subjectName.replace(/\s+/g, '_')}-${selectedLesson.name.replace(/\s+/g, '_')}-${selectedTopic.name.replace(/\s+/g, '_')}`.toLowerCase();
+        if (selectedTopic && selectedLesson && profile && revisitConversationId) {
           const initialMessage = `Hello ${profile.name}! Let's start our Q&A session on "${selectedTopic.name}" from the lesson "${selectedLesson.name}" in "${subjectName}". What aspect of "${selectedTopic.name}" would you like to explore first?`;
           return (
             <div className="h-full flex flex-col">
                 <div className="mb-2 pt-0">
-                    <Button variant="link" size="sm" className="text-muted-foreground p-0 h-auto" onClick={() => {setSelectedTopic(null); setCurrentStep("selectTopic")}}>
+                    <Button variant="link" size="sm" className="text-muted-foreground p-0 h-auto" onClick={() => {
+                        setSelectedTopic(null); 
+                        setRevisitConversationId(null); // Clear revisit ID when going back to topic selection
+                        setChatKey(Date.now()); // Ensure chat interface remounts if user comes back to a "new" session for same topic
+                        setCurrentStep("selectTopic");
+                        // Refetch topics for the current lesson if needed, or rely on cached `topics` state
+                        if(profile && selectedLesson) fetchTopicsForLesson(profile, subjectName, selectedLesson);
+                      }}>
                         &larr; Back to Topics in {selectedLesson.name}
                     </Button>
                     <h1 className="text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
@@ -261,9 +307,10 @@ export default function StudySessionPage() {
                 </div>
                  <div className="flex-grow min-h-0">
                     <DynamicChatInterface
+                    key={chatKey} // Use chatKey to control re-mount
                     userProfile={profile}
                     topic={selectedTopic.name} 
-                    conversationId={conversationId}
+                    conversationId={revisitConversationId} // Use the specific ID for this session
                     initialSystemMessage={initialMessage}
                     placeholderText={`Ask about ${selectedTopic.name}...`}
                     context={{ subject: subjectName, lesson: selectedLesson.name }}
@@ -272,7 +319,7 @@ export default function StudySessionPage() {
             </div>
           );
         }
-        return <p>Error: Topic not selected.</p>; 
+        return <p>Error: Chat session details are incomplete.</p>; 
       default:
         return <p>Loading or invalid state...</p>;
     }
@@ -294,3 +341,4 @@ export default function StudySessionPage() {
   );
 }
 
+    
