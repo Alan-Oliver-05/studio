@@ -20,44 +20,54 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (profile && profile.name) { // Ensure profile is loaded and valid
-      const fetchSubjects = async () => {
-        setIsLoadingSubjects(true);
+    if (!profileLoading) { // Only proceed if profile loading state is settled
+      if (profile && profile.name) {
+        // Profile is available and valid
+        setIsLoadingSubjects(true); 
         setError(null);
-        try {
-          // Map UserProfileType to GeneratePersonalizedSubjectsInput
-          const input: GeneratePersonalizedSubjectsInput = {
-            name: profile.name,
-            age: Number(profile.age), // Ensure age is a number
-            gender: profile.gender,
-            country: profile.country,
-            state: profile.state,
-            preferredLanguage: profile.preferredLanguage,
-            educationQualification: { // This directly maps if UserProfileType.educationQualification is structured correctly
-              boardExams: profile.educationQualification.boardExams,
-              competitiveExams: profile.educationQualification.competitiveExams,
-              universityExams: profile.educationQualification.universityExams,
-            },
-          };
-          
-          const result = await generatePersonalizedSubjects(input);
-          if (result && result.subjects) {
-            setSubjects(result.subjects);
-          } else {
-            setSubjects([]); // Handle case where AI returns no subjects
-             setError("AI could not generate subjects for your profile. Please try again later or check your profile settings.");
+        const fetchSubjects = async () => {
+          try {
+            const input: GeneratePersonalizedSubjectsInput = {
+              name: profile.name,
+              age: Number(profile.age), 
+              gender: profile.gender,
+              country: profile.country,
+              state: profile.state,
+              preferredLanguage: profile.preferredLanguage,
+              educationQualification: { 
+                boardExams: profile.educationQualification.boardExams,
+                competitiveExams: profile.educationQualification.competitiveExams,
+                universityExams: profile.educationQualification.universityExams,
+              },
+            };
+            
+            const result = await generatePersonalizedSubjects(input);
+            if (result && result.subjects) {
+              setSubjects(result.subjects);
+            } else {
+              setSubjects([]); 
+              setError("AI could not generate subjects for your profile. Please try again later or check your profile settings.");
+            }
+          } catch (e) {
+            console.error("Failed to fetch subjects:", e);
+            setError("Failed to load personalized subjects. Please try again later.");
+            setSubjects([]);
+          } finally {
+            setIsLoadingSubjects(false);
           }
-        } catch (e) {
-          console.error("Failed to fetch subjects:", e);
-          setError("Failed to load personalized subjects. Please try again later.");
-          setSubjects([]);
-        } finally {
-          setIsLoadingSubjects(false);
-        }
-      };
-      fetchSubjects();
-    } else if (!profileLoading) {
-      setIsLoadingSubjects(false);
+        };
+        fetchSubjects();
+      } else {
+        // Profile is not available (either null or invalid after loading)
+        setSubjects([]); // Clear any existing subjects
+        setIsLoadingSubjects(false); // Stop loading subjects
+         if (!profile) setError("Profile not available. Please complete onboarding to see personalized subjects.");
+      }
+    } else {
+      // Profile is still loading
+      setSubjects([]); // Clear subjects while profile is loading to prevent flash of old data
+      setIsLoadingSubjects(true); // Indicate subjects are also pending profile
+      setError(null); // Clear previous errors
     }
   }, [profile, profileLoading]);
 
@@ -70,17 +80,20 @@ export default function DashboardPage() {
     );
   }
 
-  if (error) {
+  if (error && (!profile || !profile.name)) { // Show error more prominently if profile is missing
     return (
-      <Alert variant="destructive" className="max-w-2xl mx-auto mt-10 pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-theme(spacing.20))] text-center pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
+        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+        <h2 className="text-2xl font-semibold mb-2">Profile Issue</h2>
+        <p className="text-muted-foreground mb-4">{error}</p>
+        <Button asChild>
+          <Link href="/onboarding">Go to Onboarding</Link>
+        </Button>
+      </div>
     );
   }
   
-  if (!profile || !profile.name) {
+  if (!profile || !profile.name) { // This should be caught by the above if error is set.
      return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-theme(spacing.20))] text-center pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
         <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
@@ -92,9 +105,21 @@ export default function DashboardPage() {
       </div>
     );
   }
+  
+  // If there's an error but profile exists (e.g., AI failed to generate subjects)
+  if (error) {
+     return (
+      <Alert variant="destructive" className="max-w-2xl mx-auto mt-10 pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Subject Loading Error</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
+  }
+
 
   return (
-    <div className="pr-4 md:pr-6 pb-4 md:pb-6 pt-0"> {/* Added padding here, removed left padding */}
+    <div className="pr-4 md:pr-6 pb-4 md:pb-6 pt-0">
       <div className="mb-6 text-center pt-0">
         <h1 className="text-4xl font-bold tracking-tight text-primary mt-0">Welcome, {profile.name}!</h1>
         <p className="text-xl text-muted-foreground mt-2">Here are your personalized study recommendations.</p>
@@ -111,8 +136,8 @@ export default function DashboardPage() {
           <CardContent className="p-4">
             <p className="text-muted-foreground">
               We couldn't find any specific subject recommendations for you at the moment.
-              This might be due to your unique profile combination.
-              You can still explore general topics using our AI Tutor.
+              This might be due to your unique profile combination or a temporary issue.
+              You can still explore general topics using our AI Tutor or try reloading.
             </p>
           </CardContent>
           <CardFooter className="justify-center p-4">
@@ -166,3 +191,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

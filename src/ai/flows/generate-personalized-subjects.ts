@@ -56,9 +56,9 @@ const prompt = ai.definePrompt({
   name: 'generatePersonalizedSubjectsPrompt',
   input: {schema: GeneratePersonalizedSubjectsInputSchema},
   output: {schema: GeneratePersonalizedSubjectsOutputSchema},
-  prompt: `You are an AI education platform. Your task is to generate a list of highly relevant academic subjects and key study topics for a student based on their detailed profile.
-  The subjects should align with typical official curricula or syllabuses for the student's specific educational context (country, state, language, board, standard, exam type, or university course).
-  Ensure that for the exact same student profile input, you consistently return the same list of subjects and their descriptions. Avoid variations unless the input profile itself changes.
+  prompt: `You are an AI education platform. Your primary task is to generate a list of highly relevant academic subjects and key study topics for a student, meticulously based on their detailed profile.
+  The subjects MUST strictly align with typical official curricula or syllabuses for the student's specific educational context (country, state, language, board, standard, exam type, or university course). Prioritize accuracy and relevance above all.
+  CRITICAL: For the exact same student profile input, you MUST consistently return the exact same list of subjects and their descriptions. Avoid any variations unless the input profile itself changes. This consistency is paramount.
 
   Student Profile:
   Name: {{{name}}}
@@ -72,32 +72,33 @@ const prompt = ai.definePrompt({
   {{#if educationQualification.boardExams.board}}
   Board: {{{educationQualification.boardExams.board}}}
   Standard/Grade: {{{educationQualification.boardExams.standard}}}
-  Focus: School curriculum (Board Exams)
+  Focus: School curriculum (Board Exams) for {{{educationQualification.boardExams.board}}}, standard {{{educationQualification.boardExams.standard}}} in {{{country}}}.
   {{/if}}
   {{#if educationQualification.competitiveExams.examType}}
   Competitive Exam Category: {{{educationQualification.competitiveExams.examType}}}
   Specific Exam: {{{educationQualification.competitiveExams.specificExam}}}
-  Focus: Competitive Exam Preparation
+  Focus: Competitive Exam Preparation for {{{educationQualification.competitiveExams.specificExam}}} ({{{educationQualification.competitiveExams.examType}}}) in {{{country}}}.
   {{/if}}
   {{#if educationQualification.universityExams.universityName}}
   University: {{{educationQualification.universityExams.universityName}}}
   {{#if educationQualification.universityExams.collegeName}}College: {{{educationQualification.universityExams.collegeName}}}{{/if}}
   Course/Major: {{{educationQualification.universityExams.course}}}
   Current Year: {{{educationQualification.universityExams.currentYear}}}
-  Focus: University Curriculum
+  Focus: University Curriculum for {{{educationQualification.universityExams.course}}}, year {{{educationQualification.universityExams.currentYear}}} at {{{educationQualification.universityExams.universityName}}} in {{{country}}}.
   {{/if}}
 
   Based on this precise profile, generate a list of subjects. For each subject:
-  1.  Provide a "name" (e.g., "Physics for 12th Standard CBSE", "Quantitative Aptitude for Banking Exams", "Thermodynamics for Mechanical Engineering Year 2").
-  2.  Provide a "description" tailored to this student.
-  3.  List key "studyMaterials" (which are core topics or chapters) relevant to their specific syllabus or exam pattern.
+  1.  Provide a "name" precisely reflecting the educational context (e.g., "Physics for 12th Standard CBSE", "Quantitative Aptitude for Banking Exams - India", "Thermodynamics for Mechanical Engineering Year 2 - Stanford University").
+  2.  Provide a "description" tailored to this student and their curriculum.
+  3.  List key "studyMaterials" (which are core topics or chapters) directly relevant to their specific syllabus or exam pattern.
 
-  Output must be in the specified JSON format. If no specific education focus is clear, provide general knowledge subjects appropriate for the age and location.
-  Consider the student's country: {{{country}}} and state: {{{state}}} to infer regional curriculum variations if applicable (e.g., for state boards).
-  The output language for subject names and descriptions should be English, but the content focus should be based on the student's {{{preferredLanguage}}} learning context if specified for their curriculum.
+  Output must be in the specified JSON format. If no specific education focus is clear (e.g., "Other" education category with no details), provide general knowledge subjects appropriate for the age and location, still maintaining consistency.
+  Consider the student's country: {{{country}}} and state: {{{state}}} to infer regional curriculum variations if applicable (e.g., for state boards in India).
+  The output language for subject names and descriptions should be English, but the content focus must be based on the student's curriculum (derived from their profile, including {{{preferredLanguage}}} if relevant to the curriculum itself).
+  Double-check that the generated subjects and topics are standard for the specified education level and region.
   `,
   config: {
-    temperature: 0.1, // Lower temperature for more deterministic/consistent and curriculum-focused output
+    temperature: 0.05, // Further lowered temperature for maximum consistency and curriculum focus
   }
 });
 
@@ -114,6 +115,7 @@ const generatePersonalizedSubjectsFlow = ai.defineFlow(
         return output;
     }
     // Fallback if output is not as expected
+    console.warn("AI output for subjects was malformed or missing. Input was:", JSON.stringify(input));
     return { subjects: [] };
   }
 );
