@@ -38,7 +38,6 @@ export default function SettingsPage() {
   const [remindPendingTodos, setRemindPendingTodos] = useState(true);
   const [remindHomeworkHelper, setRemindHomeworkHelper] = useState(true);
   const [remindGeneralTutor, setRemindGeneralTutor] = useState(true);
-  const [remindLanguageTranslator, setRemindLanguageTranslator] = useState(true); // Renamed
   const [remindVisualLearning, setRemindVisualLearning] = useState(true);
 
 
@@ -202,12 +201,6 @@ export default function SettingsPage() {
                     <Brain className="mr-2 h-4 w-4 text-primary" /> Unfinished General Tutor
                   </Label>
                   <Switch id="remindGeneralTutor" checked={remindGeneralTutor} onCheckedChange={setRemindGeneralTutor} />
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
-                  <Label htmlFor="remindLanguageTranslator" className="flex items-center font-normal"> {/* Renamed ID and label */}
-                    <LanguagesIcon className="mr-2 h-4 w-4 text-primary" /> Unfinished Language Translation
-                  </Label>
-                  <Switch id="remindLanguageTranslator" checked={remindLanguageTranslator} onCheckedChange={setRemindLanguageTranslator} />
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
                   <Label htmlFor="remindVisualLearning" className="flex items-center font-normal">
