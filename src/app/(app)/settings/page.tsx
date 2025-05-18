@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch"; // Added Switch import
+import { Switch } from "@/components/ui/switch";
 import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES } from "@/lib/constants";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -34,12 +34,11 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [notificationPreference, setNotificationPreference] = useState<string>("daily");
 
-  // State for new specific notification toggles
   const [remindIncompleteStudy, setRemindIncompleteStudy] = useState(true);
   const [remindPendingTodos, setRemindPendingTodos] = useState(true);
   const [remindHomeworkHelper, setRemindHomeworkHelper] = useState(true);
   const [remindGeneralTutor, setRemindGeneralTutor] = useState(true);
-  const [remindLanguageLearning, setRemindLanguageLearning] = useState(true);
+  const [remindLanguageTranslator, setRemindLanguageTranslator] = useState(true); // Renamed
   const [remindVisualLearning, setRemindVisualLearning] = useState(true);
 
 
@@ -79,7 +78,7 @@ export default function SettingsPage() {
   };
 
   const handleLogout = () => {
-    setProfile(null); // Clears profile from context and localStorage
+    setProfile(null); 
     router.push('/onboarding');
     toast({
       title: "Logged Out",
@@ -205,10 +204,10 @@ export default function SettingsPage() {
                   <Switch id="remindGeneralTutor" checked={remindGeneralTutor} onCheckedChange={setRemindGeneralTutor} />
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
-                  <Label htmlFor="remindLanguageLearning" className="flex items-center font-normal">
-                    <LanguagesIcon className="mr-2 h-4 w-4 text-primary" /> Unfinished Language Learning
+                  <Label htmlFor="remindLanguageTranslator" className="flex items-center font-normal"> {/* Renamed ID and label */}
+                    <LanguagesIcon className="mr-2 h-4 w-4 text-primary" /> Unfinished Language Translation
                   </Label>
-                  <Switch id="remindLanguageLearning" checked={remindLanguageLearning} onCheckedChange={setRemindLanguageLearning} />
+                  <Switch id="remindLanguageTranslator" checked={remindLanguageTranslator} onCheckedChange={setRemindLanguageTranslator} />
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
                   <Label htmlFor="remindVisualLearning" className="flex items-center font-normal">
@@ -239,4 +238,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

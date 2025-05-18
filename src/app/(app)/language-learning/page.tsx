@@ -18,7 +18,7 @@ const DynamicChatInterface = dynamic(() =>
   }
 );
 
-export default function LanguageLearningPage() {
+export default function LanguageTranslatorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const searchParams = useSearchParams();
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export default function LanguageLearningPage() {
       setChatKey(sessionIdFromQuery);
     } else if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
-      const defaultId = `language-learning-chat-${profileIdentifier}`;
+      const defaultId = `language-translator-chat-${profileIdentifier}`;
       setCurrentConversationId(defaultId);
       setChatKey(defaultId);
     }
@@ -42,7 +42,7 @@ export default function LanguageLearningPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading Language Learning Hub...</p>
+        <p className="mt-4 text-muted-foreground">Loading Language Translator...</p>
       </div>
     );
   }
@@ -53,7 +53,7 @@ export default function LanguageLearningPage() {
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
         <h2 className="text-3xl font-semibold mb-3">Profile Required</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
-          To use the Language Learning Hub, we need your profile information. Please complete the onboarding process first.
+          To use the Language Translator, we need your profile information. Please complete the onboarding process first.
         </p>
         <Button asChild size="lg">
           <Link href="/onboarding">Go to Onboarding</Link>
@@ -66,20 +66,20 @@ export default function LanguageLearningPage() {
      return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Initializing chat...</p>
+        <p className="mt-4 text-muted-foreground">Initializing translator...</p>
       </div>
     );
   }
   
-  const initialChatMessage = `Hello ${profile.name}! Welcome to the Language Learning Hub. Which language would you like to learn or practice today? I can help you with vocabulary, grammar, translations, and conversational practice.`;
+  const initialChatMessage = `Hello ${profile.name}! Welcome to the Language Translator. What text would you like to translate, and to which language? For example, "Translate 'Hello, how are you?' to Spanish."`;
 
   return (
     <div className="h-full flex flex-col mt-0 pt-0">
       <div className="mb-6 pt-0 mt-0">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
-            <Languages className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Language Learning Hub
+            <Languages className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Language Translator
         </h1>
-        <p className="text-muted-foreground mt-1">Your personal AI language tutor.</p>
+        <p className="text-muted-foreground mt-1">Translate text between languages.</p>
       </div>
       
       <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
@@ -87,14 +87,13 @@ export default function LanguageLearningPage() {
           <DynamicChatInterface
             key={chatKey}
             userProfile={profile}
-            topic="LanguageLearningMode" 
+            topic="LanguageTranslatorMode" 
             conversationId={currentConversationId}
             initialSystemMessage={initialChatMessage}
-            placeholderText="Type to practice your language skills..."
+            placeholderText="Enter text to translate..."
           />
         )}
       </div>
     </div>
   );
 }
-

@@ -15,7 +15,7 @@ import {
   ListChecks, 
   Languages,
   BarChartBig,
-  PieChartIcon, // Added PieChartIcon
+  PieChartIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -37,8 +37,8 @@ const navItems = [
   { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
   { href: "/notepad", icon: NotebookText, label: "Note Pad" },
   { href: "/general-tutor", icon: Brain, label: "General Tutor" },
-  { href: "/language-learning", icon: Languages, label: "Language Learning" },
-  { href: "/visual-learning", icon: PieChartIcon, label: "Visual Learning" }, // Added Visual Learning
+  { href: "/language-learning", icon: Languages, label: "Language Translator" }, // Renamed label
+  { href: "/visual-learning", icon: PieChartIcon, label: "Visual Learning" },
   { href: "/analytics", icon: BarChartBig, label: "Analytics" },
 ];
 
