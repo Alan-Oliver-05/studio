@@ -65,7 +65,7 @@ const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
   input: {schema: AIGuidedStudySessionInputSchema},
   output: {schema: AIGuidedStudySessionOutputSchema},
-  model: 'googleai/gemini-1.5-flash-latest', 
+  model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are an expert AI Tutor and Learning Assistant. Your goal is to provide a personalized and effective study session for a student based on their detailed profile and specific query.
   Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, and preferred language.
 
@@ -99,6 +99,8 @@ const prompt = ai.definePrompt({
     {{#if universityExam.currentYear}}Year: {{{universityExam.currentYear}}}{{/if}}
     Curriculum Focus: Material relevant to the {{#if universityExam.course}}{{{universityExam.course}}} curriculum{{/if}}{{#if universityExam.currentYear}} for year {{{universityExam.currentYear}}}{{/if}} at {{{universityExam.universityName}}} in {{{studentProfile.country}}}.
     {{/if}}
+  {{else}}
+    No specific educational qualification details provided. Focus on general knowledge appropriate for the student's age and location, or respond based on the direct question.
   {{/with}}
 
   Current Study Focus:
@@ -154,7 +156,7 @@ const prompt = ai.definePrompt({
   11. **Visual Learning Mode Specialization**:
       *   If 'specificTopic' is "Visual Learning" or "Visual Learning Focus":
           *   **Prioritize Visuals**: Your primary goal is to help the student understand the concept presented in their "{{{question}}}" through visual means.
-          *   **Image Generation Focus**: If the concept can be effectively illustrated with a diagram, an image, or a visual representation, strongly consider providing an 'image_generation_prompt' in the 'visualElement' output. Be descriptive in your image prompt (e.g., "Generate a detailed anatomical diagram of a human heart with labels for chambers and major vessels.").
+          *   **Image Generation Focus**: If the concept can be effectively illustrated with a diagram, an image, or a visual representation, strongly consider providing an 'image_generation_prompt' in the 'visualElement' output. Be descriptive in your image prompt. For example, for a mind map or diagram requiring text, the prompt should explicitly state: "Generate a [type of visual, e.g., mind map, diagram] of [concept]. Ensure all text labels are clear, prominent, and concise."
           *   **Charts and Flowcharts**: If structured data (like comparisons, trends, processes) is more suitable, suggest 'bar_chart_data', 'line_chart_data', or 'flowchart_description' as appropriate. Ensure chart data is specific and useful.
           *   **Explain the Visual**: In your main 'response' text, explain the concept and how the suggested visual (or the image you're proposing to generate) helps in understanding it.
           *   **Interactive Queries**: Encourage the student to ask for variations or refinements of the visuals (e.g., "Can you show that as a line chart instead?" or "Generate that image from a different angle.").
@@ -164,7 +166,7 @@ const prompt = ai.definePrompt({
   If 'specificTopic' is "General Discussion" or "AI Learning Assistant Chat", adapt your response to be a general academic assistant, still using the student's profile for context but without a narrow predefined topic unless specified in the question.
   `,
   config: {
-    temperature: 0.5, 
+    temperature: 0.5,
      safetySettings: [
       {
         category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -194,6 +196,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
   },
   async input => {
     // Ensure educationQualification is at least an empty object if not provided
+    // This helps prevent errors if the profile data is sparse.
     const robustInput = {
       ...input,
       studentProfile: {
@@ -202,13 +205,13 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
       },
     };
     const {output} = await prompt(robustInput);
-    
+
     if (output && output.response && Array.isArray(output.suggestions)) {
         // visualElement is optional, so we don't need to check for its presence for a valid output
         return output;
     }
-    
-    console.warn("AI output was malformed or missing. Input was:", JSON.stringify(robustInput)); 
+
+    console.warn("AI output was malformed or missing. Input was:", JSON.stringify(robustInput));
     // Fallback response if AI output is malformed
     return {
         response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else? Please ensure your question is clear and any uploaded image is relevant.",
@@ -216,5 +219,3 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
-
-    
