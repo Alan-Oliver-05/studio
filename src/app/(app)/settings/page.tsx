@@ -5,11 +5,12 @@ import { useState } from "react";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut } from "lucide-react";
+import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut, BookOpen, ListChecks, PenSquare, Brain, PieChartIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch"; // Added Switch import
 import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES } from "@/lib/constants";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,15 @@ export default function SettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [notificationPreference, setNotificationPreference] = useState<string>("daily");
+
+  // State for new specific notification toggles
+  const [remindIncompleteStudy, setRemindIncompleteStudy] = useState(true);
+  const [remindPendingTodos, setRemindPendingTodos] = useState(true);
+  const [remindHomeworkHelper, setRemindHomeworkHelper] = useState(true);
+  const [remindGeneralTutor, setRemindGeneralTutor] = useState(true);
+  const [remindLanguageLearning, setRemindLanguageLearning] = useState(true);
+  const [remindVisualLearning, setRemindVisualLearning] = useState(true);
+
 
   if (isLoading) {
     return (
@@ -80,11 +90,11 @@ export default function SettingsPage() {
 
 
   return (
-    <div className="pb-8">
+    <div className="pb-8 pt-0">
        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center mt-0">
           <div className="mb-4 sm:mb-0 text-center sm:text-left">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-              <SettingsIcon className="mr-3 h-7 w-7 sm:h-8" /> User Settings
+              <SettingsIcon className="mr-3 h-7 w-7 sm:h-8 sm:w-8" /> User Settings
             </h1>
             <p className="text-lg text-muted-foreground mt-1">
               Manage your profile and app preferences.
@@ -147,22 +157,68 @@ export default function SettingsPage() {
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="text-xl font-semibold text-primary flex items-center mb-4"><Bell className="mr-2 h-5 w-5"/>Notification Preferences</h3>
-            <RadioGroup value={notificationPreference} onValueChange={setNotificationPreference} className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="daily" id="daily" />
-                <Label htmlFor="daily">Daily Summaries</Label>
+            <h3 className="text-xl font-semibold text-primary flex items-center mb-2"><Bell className="mr-2 h-5 w-5"/>Notification Preferences</h3>
+            
+            <div className="mb-6">
+              <Label className="text-md font-medium text-muted-foreground mb-2 block">Overall Summary Frequency</Label>
+              <RadioGroup value={notificationPreference} onValueChange={setNotificationPreference} className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="daily" id="daily" />
+                  <Label htmlFor="daily" className="font-normal">Daily Summaries</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="weekly" id="weekly" />
+                  <Label htmlFor="weekly" className="font-normal">Weekly Summaries</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="off" id="off" />
+                  <Label htmlFor="off" className="font-normal">Turn Off Summaries</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div>
+              <Label className="text-md font-medium text-muted-foreground mb-3 block">Specific Reminders</Label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
+                  <Label htmlFor="remindIncompleteStudy" className="flex items-center font-normal">
+                    <BookOpen className="mr-2 h-4 w-4 text-primary" /> Incomplete Study Q&A
+                  </Label>
+                  <Switch id="remindIncompleteStudy" checked={remindIncompleteStudy} onCheckedChange={setRemindIncompleteStudy} />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
+                  <Label htmlFor="remindPendingTodos" className="flex items-center font-normal">
+                    <ListChecks className="mr-2 h-4 w-4 text-primary" /> Pending To-Do Items
+                  </Label>
+                  <Switch id="remindPendingTodos" checked={remindPendingTodos} onCheckedChange={setRemindPendingTodos} />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
+                  <Label htmlFor="remindHomeworkHelper" className="flex items-center font-normal">
+                    <PenSquare className="mr-2 h-4 w-4 text-primary" /> Unfinished Homework Helper
+                  </Label>
+                  <Switch id="remindHomeworkHelper" checked={remindHomeworkHelper} onCheckedChange={setRemindHomeworkHelper} />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
+                  <Label htmlFor="remindGeneralTutor" className="flex items-center font-normal">
+                    <Brain className="mr-2 h-4 w-4 text-primary" /> Unfinished General Tutor
+                  </Label>
+                  <Switch id="remindGeneralTutor" checked={remindGeneralTutor} onCheckedChange={setRemindGeneralTutor} />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
+                  <Label htmlFor="remindLanguageLearning" className="flex items-center font-normal">
+                    <LanguagesIcon className="mr-2 h-4 w-4 text-primary" /> Unfinished Language Learning
+                  </Label>
+                  <Switch id="remindLanguageLearning" checked={remindLanguageLearning} onCheckedChange={setRemindLanguageLearning} />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
+                  <Label htmlFor="remindVisualLearning" className="flex items-center font-normal">
+                    <PieChartIcon className="mr-2 h-4 w-4 text-primary" /> Unfinished Visual Learning
+                  </Label>
+                  <Switch id="remindVisualLearning" checked={remindVisualLearning} onCheckedChange={setRemindVisualLearning} />
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="weekly" id="weekly" />
-                <Label htmlFor="weekly">Weekly Summaries</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="off" id="off" />
-                <Label htmlFor="off">Turn Off Notifications</Label>
-              </div>
-            </RadioGroup>
-            <p className="text-xs text-muted-foreground mt-2">Current selection: {notificationPreference} (UI only, no backend implemented).</p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">Notification settings are for demonstration (UI only).</p>
           </div>
 
           <div className="border-t pt-6 space-y-4">
@@ -175,7 +231,7 @@ export default function SettingsPage() {
             </Button>
           </div>
 
-          <p className="text-sm text-muted-foreground text-center pt-4 border-t">
+          <p className="text-sm text-muted-foreground text-center pt-4 border-t mt-6">
             Profile information is used to personalize your learning experience. To update these details, please go through the onboarding process again via the "Update Profile" button.
           </p>
         </CardContent>
@@ -183,3 +239,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
