@@ -165,7 +165,7 @@ export default function DashboardPage() {
                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                 </div>
                 <CardTitle className="text-xl font-semibold text-foreground">{subject.name}</CardTitle>
-                <CardDescription className="text-sm text-muted-foreground h-12 line-clamp-2">{subject.description}</CardDescription>
+                <CardDescription className="text-sm text-muted-foreground h-16 line-clamp-3">{subject.description}</CardDescription>
               </CardHeader>
               <CardContent className="flex-grow p-4 pt-2">
                 {subject.studyMaterials && subject.studyMaterials.length > 0 && (
