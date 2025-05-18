@@ -2,11 +2,11 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Languages } from "lucide-react";
+import { Loader2, AlertTriangle, Languages, RotateCcw } from "lucide-react"; // Added RotateCcw
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
-import { useSearchParams } from 'next/navigation'; 
+import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
 import { useEffect, useState } from "react"; 
 
 
@@ -21,6 +21,7 @@ const DynamicChatInterface = dynamic(() =>
 export default function LanguageTranslatorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const searchParams = useSearchParams();
+  const router = useRouter(); // Added router
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>('');
 
@@ -32,11 +33,24 @@ export default function LanguageTranslatorPage() {
       setChatKey(sessionIdFromQuery);
     } else if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
-      const defaultId = `language-translator-chat-${profileIdentifier}`;
+      const newTimestamp = Date.now(); // Used for new sessions
+      const defaultId = `language-translator-chat-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(defaultId);
       setChatKey(defaultId);
     }
   }, [searchParams, profile]);
+
+  const handleNewSession = () => {
+    router.push('/language-learning', { scroll: false }); // Navigate to base path
+    if (profile) {
+        const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
+        const newTimestamp = Date.now();
+        const newId = `language-translator-chat-${profileIdentifier}-${newTimestamp}`;
+        setCurrentConversationId(newId);
+        setChatKey(newId);
+    }
+  };
+
 
   if (profileLoading) {
     return (
@@ -75,11 +89,16 @@ export default function LanguageTranslatorPage() {
 
   return (
     <div className="h-full flex flex-col mt-0 pt-0">
-      <div className="mb-6 pt-0 mt-0">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
-            <Languages className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Language Translator
-        </h1>
-        <p className="text-muted-foreground mt-1">Translate text between languages.</p>
+      <div className="flex justify-between items-center mb-6 pt-0 mt-0">
+        <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
+                <Languages className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Language Translator
+            </h1>
+            <p className="text-muted-foreground mt-1">Translate text between languages.</p>
+        </div>
+        <Button onClick={handleNewSession} variant="outline">
+          <RotateCcw className="mr-2 h-4 w-4" /> New Translation Session
+        </Button>
       </div>
       
       <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
