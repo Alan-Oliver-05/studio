@@ -65,7 +65,7 @@ const generateImageFromPromptFlow = ai.defineFlow(
         return { imageDataUri: media.url };
       } else {
         console.warn(`Image generation for prompt: "${input.prompt}" did not return media URL. Media object:`, JSON.stringify(media, null, 2));
-        throw new Error(`Image generation succeeded but no media URL was returned. Prompt: "${input.prompt}". This might be due to safety filters or an issue with the model's output.`);
+        throw new Error(`Image generation succeeded but no media URL was returned for prompt: "${input.prompt}". This might be due to safety filters or an issue with the model's output.`);
       }
     } catch (flowError) {
       console.error(`Error during generateImageFromPromptFlow execution for prompt "${input.prompt}":`, flowError instanceof Error ? flowError.message : flowError);
@@ -80,3 +80,4 @@ const generateImageFromPromptFlow = ai.defineFlow(
     }
   }
 );
+

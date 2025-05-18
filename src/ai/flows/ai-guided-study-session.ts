@@ -156,7 +156,7 @@ const prompt = ai.definePrompt({
   11. **Visual Learning Mode Specialization**:
       *   If 'specificTopic' is "Visual Learning" or "Visual Learning Focus":
           *   **Prioritize Visuals**: Your primary goal is to help the student understand the concept presented in their "{{{question}}}" through visual means.
-          *   **Image Generation Focus**: If the concept can be effectively illustrated with a diagram, an image, or a visual representation, strongly consider providing an 'image_generation_prompt' in the 'visualElement' output. Be descriptive in your image prompt. For example, for a mind map or diagram requiring text, the prompt should explicitly state: "Generate a [type of visual, e.g., mind map, diagram] of [concept]. Ensure all text labels are clear, prominent, and concise."
+          *   **Image Generation Focus**: If the concept can be effectively illustrated with a diagram, an image, or a visual representation, strongly consider providing an 'image_generation_prompt' in the 'visualElement' output. Be descriptive in your image prompt. For example, for a mind map or diagram requiring text, the image generation prompt MUST include a directive like: 'Render all text labels clearly and legibly. Labels should be bold and easy to read.' alongside the description of the visual (e.g., 'Generate a mind map of the water cycle. Render all text labels clearly and legibly. Labels should be bold and easy to read.').
           *   **Charts and Flowcharts**: If structured data (like comparisons, trends, processes) is more suitable, suggest 'bar_chart_data', 'line_chart_data', or 'flowchart_description' as appropriate. Ensure chart data is specific and useful.
           *   **Explain the Visual**: In your main 'response' text, explain the concept and how the suggested visual (or the image you're proposing to generate) helps in understanding it.
           *   **Interactive Queries**: Encourage the student to ask for variations or refinements of the visuals (e.g., "Can you show that as a line chart instead?" or "Generate that image from a different angle.").
@@ -219,3 +219,4 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
+
