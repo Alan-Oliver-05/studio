@@ -38,7 +38,7 @@ const AIGuidedStudySessionInputSchema = z.object({
   }).describe('The student profile information from the onboarding form.'),
   subject: z.string().optional().describe('The main subject of study (e.g., "Physics for 12th Standard CBSE").'),
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
-  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode" if it is a language translator session).'),
+  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode" if it is a language translator session, "Visual Learning", "Visual Learning Focus").'),
   question: z.string().describe('The student\'s question or request for the study session.'),
   photoDataUri: z.string().optional().nullable().describe("An optional photo uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
@@ -151,6 +151,14 @@ const prompt = ai.definePrompt({
           *   **Example Sentences (Optional/If Asked)**: Provide example sentences using the translated words or phrases in the target language.
           *   **Handle Ambiguity**: If the source text is ambiguous, you might offer possible translations or ask for clarification.
           *   Suggestions in this mode could be links to online dictionaries, or tools like Google Translate for further exploration.
+  11. **Visual Learning Mode Specialization**:
+      *   If 'specificTopic' is "Visual Learning" or "Visual Learning Focus":
+          *   **Prioritize Visuals**: Your primary goal is to help the student understand the concept presented in their "{{{question}}}" through visual means.
+          *   **Image Generation Focus**: If the concept can be effectively illustrated with a diagram, an image, or a visual representation, strongly consider providing an 'image_generation_prompt' in the 'visualElement' output. Be descriptive in your image prompt (e.g., "Generate a detailed anatomical diagram of a human heart with labels for chambers and major vessels.").
+          *   **Charts and Flowcharts**: If structured data (like comparisons, trends, processes) is more suitable, suggest 'bar_chart_data', 'line_chart_data', or 'flowchart_description' as appropriate. Ensure chart data is specific and useful.
+          *   **Explain the Visual**: In your main 'response' text, explain the concept and how the suggested visual (or the image you're proposing to generate) helps in understanding it.
+          *   **Interactive Queries**: Encourage the student to ask for variations or refinements of the visuals (e.g., "Can you show that as a line chart instead?" or "Generate that image from a different angle.").
+          *   Reference the uploaded image if provided to help generate or explain a visual.
 
   Consider the student's country ({{{studentProfile.country}}}) and state ({{{studentProfile.state}}}) for tailoring content, especially if state-specific curriculum or resources are relevant.
   If 'specificTopic' is "General Discussion" or "AI Learning Assistant Chat", adapt your response to be a general academic assistant, still using the student's profile for context but without a narrow predefined topic unless specified in the question.
@@ -208,3 +216,5 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
+
+    

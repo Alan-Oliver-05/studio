@@ -69,7 +69,8 @@ export default function VisualLearningPage() {
     );
   }
   
-  const initialChatMessage = `Hi ${profile.name}! Welcome to Visual Learning. How can I help you visualize a concept today? Ask me to explain something with a chart, diagram, or suggest an image. For example: "Explain photosynthesis with a diagram" or "Show me a bar chart of planet sizes."`;
+  const initialChatMessage = `Hi ${profile.name}! Welcome to Visual Learning. How can I help you visualize a concept today? Ask me to **generate an image** (e.g., 'generate an image of a plant cell with labels'), explain something with a chart, or describe a flowchart. For example: 'Show a bar chart of planet sizes.' or 'Create a diagram of the water cycle.'`;
+
 
   return (
     <div className="h-full flex flex-col mt-0 pt-0">
@@ -96,3 +97,4 @@ export default function VisualLearningPage() {
   );
 }
 
+    
