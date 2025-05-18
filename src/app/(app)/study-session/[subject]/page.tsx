@@ -41,7 +41,7 @@ export default function StudySessionPage() {
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [revisitConversationId, setRevisitConversationId] = useState<string | null>(null);
-  const [chatKey, setChatKey] = useState<string>('');
+  const [chatKey, setChatKey] = useState<string>(''); // Initialize empty for safe hydration
 
 
   const fetchLessonsForSubject = useCallback(async (currentProfile: UserProfileType, currentSubjectName: string) => {
@@ -69,8 +69,6 @@ export default function StudySessionPage() {
       setErrorMessage("Failed to load lessons. Please try again or check your connection.");
       setCurrentStep("error");
       return [];
-    } finally {
-       
     }
   }, []);
 
@@ -101,46 +99,43 @@ export default function StudySessionPage() {
         setErrorMessage("Failed to load topics. Please try again.");
         setCurrentStep("error");
         return [];
-    } finally {
-        
     }
   }, []);
 
 
   useEffect(() => {
     if (!profileLoading && profile && subjectName) {
-      const sessionIdParam = searchParams.get('sessionId');
-      const lessonParam = searchParams.get('lesson');
-      const topicParam = searchParams.get('topic');
+      const sessionIdFromQuery = searchParams.get('sessionId');
+      // Query params for lesson and topic are secondary; sessionId is primary for revisit
+      // const lessonFromQuery = searchParams.get('lesson'); 
+      // const topicFromQuery = searchParams.get('topic');
 
-      if (sessionIdParam) {
-        const conversation = getConversationById(sessionIdParam);
+      if (sessionIdFromQuery) {
+        const conversation = getConversationById(sessionIdFromQuery);
         if (conversation && 
-            decodeURIComponent(params.subject as string) === conversation.subjectContext &&
-            lessonParam === conversation.lessonContext &&
-            topicParam === conversation.topic) {
+            conversation.subjectContext === subjectName && // Ensure subject matches path
+            conversation.lessonContext && 
+            conversation.topic) {
             
-            setRevisitConversationId(sessionIdParam);
-            setChatKey(sessionIdParam);
-            setSelectedLesson({ name: conversation.lessonContext!, description: "Revisiting session" });
-            setSelectedTopic({ name: conversation.topic, description: "Revisiting session" });
+            setSelectedLesson({ name: conversation.lessonContext, description: "Revisiting specific session" });
+            setSelectedTopic({ name: conversation.topic, description: "Revisiting specific session" });
+            setRevisitConversationId(sessionIdFromQuery);
+            setChatKey(sessionIdFromQuery); // Use session ID as key to force remount/update of ChatInterface
             setCurrentStep("chat");
-            return; 
-        } else if (sessionIdParam && (!lessonParam || !topicParam)) {
-           // If sessionId is present but lesson/topic context is missing, it's likely a non-study-session type of chat
-           // This page is only for subject-based study sessions. Redirect or show error.
-           console.warn("Study Session page loaded with session ID but missing lesson/topic context. Redirecting.");
-           setErrorMessage("This session cannot be directly revisited here. Please access it from its original page in the Library.");
-           setCurrentStep("error");
-           return;
+            return; // Stop further processing if we're revisiting a specific chat
+        } else {
+          // Session ID provided but no matching conversation, or context incomplete/mismatched
+          console.warn(`Session ID ${sessionIdFromQuery} invalid or context mismatch for subject ${subjectName}. Proceeding to lesson selection.`);
+          // Fall through to normal lesson fetching
         }
       }
       
-      // If not revisiting a specific chat, or if revisit params are incomplete for a study session
+      // If not revisiting a specific chat via sessionId, or if sessionId was invalid, proceed with normal flow
       setCurrentStep("loading");
       fetchLessonsForSubject(profile, subjectName).then(fetchedLessons => {
         if (fetchedLessons.length > 0) {
           setCurrentStep("selectLesson");
+          // Optional: could add logic here to pre-select lesson/topic based on query params if not a full session revisit
         }
       });
 
@@ -168,7 +163,7 @@ export default function StudySessionPage() {
     const profileIdentifier = profile?.id || profile?.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous-user';
     const newConversationId = `study-session-${profileIdentifier}-${subjectName.replace(/\s+/g, '_')}-${selectedLesson?.name.replace(/\s+/g, '_')}-${topic.name.replace(/\s+/g, '_')}`.toLowerCase();
     setRevisitConversationId(newConversationId); 
-    setChatKey(newConversationId);
+    setChatKey(newConversationId); // Use the new conversation ID as the key
     setCurrentStep("chat");
   };
   
@@ -185,6 +180,16 @@ export default function StudySessionPage() {
                 if(fetchedLessons.length > 0) setCurrentStep("selectLesson");
             });
         }
+    }
+  };
+
+  const handleBackToTopics = () => {
+    setSelectedTopic(null);
+    setRevisitConversationId(null); // Clear revisit ID
+    setChatKey(`topics-for-${selectedLesson?.name.replace(/\s+/g, '_') || Date.now()}`); // Generate a new key for topic selection context
+    setCurrentStep("selectTopic");
+    if (profile && selectedLesson) {
+      fetchTopicsForLesson(profile, subjectName, selectedLesson); // Re-fetch topics for the current lesson
     }
   };
 
@@ -296,14 +301,7 @@ export default function StudySessionPage() {
           return (
             <div className="h-full flex flex-col">
                 <div className="mb-2 pt-0">
-                    <Button variant="link" size="sm" className="text-muted-foreground p-0 h-auto" onClick={() => {
-                        setSelectedTopic(null); 
-                        setRevisitConversationId(null); 
-                        setChatKey(Date.now().toString()); 
-                        setCurrentStep("selectTopic");
-                        
-                        if(profile && selectedLesson) fetchTopicsForLesson(profile, subjectName, selectedLesson);
-                      }}>
+                    <Button variant="link" size="sm" className="text-muted-foreground p-0 h-auto" onClick={handleBackToTopics}>
                         &larr; Back to Topics in {selectedLesson.name}
                     </Button>
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
@@ -312,15 +310,17 @@ export default function StudySessionPage() {
                     <p className="text-sm text-muted-foreground">Subject: {subjectName} &gt; Lesson: {selectedLesson.name}</p>
                 </div>
                  <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
-                    <DynamicChatInterface
-                    key={chatKey} 
-                    userProfile={profile}
-                    topic={selectedTopic.name} 
-                    conversationId={revisitConversationId} 
-                    initialSystemMessage={initialMessage}
-                    placeholderText={`Ask about ${selectedTopic.name}...`}
-                    context={{ subject: subjectName, lesson: selectedLesson.name }}
-                    />
+                    { chatKey && revisitConversationId && ( // Ensure key and ID are set before rendering
+                        <DynamicChatInterface
+                        key={chatKey} 
+                        userProfile={profile}
+                        topic={selectedTopic.name} 
+                        conversationId={revisitConversationId} 
+                        initialSystemMessage={initialMessage}
+                        placeholderText={`Ask about ${selectedTopic.name}...`}
+                        context={{ subject: subjectName, lesson: selectedLesson.name }}
+                        />
+                    )}
                 </div>
             </div>
           );
@@ -346,4 +346,4 @@ export default function StudySessionPage() {
     </div>
   );
 }
-
+    
