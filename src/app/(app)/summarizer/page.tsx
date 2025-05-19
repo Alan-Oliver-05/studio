@@ -10,7 +10,7 @@ import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Pr
 import { useToast } from "@/hooks/use-toast";
 import { summarizeText, SummarizeTextInput } from "@/ai/flows/summarize-text-flow";
 import { cn } from "@/lib/utils";
-import React from "react"; 
+import React from "react";
 
 type InputType = "text" | "recording" | "pdf" | "powerpoint" | "video";
 
@@ -48,12 +48,7 @@ export default function SummarizerPage() {
     }
   }, [inputText, activeInputType]);
 
-  const handleSummarize = async () => {
-    if (activeInputType !== "text") {
-      handleFeatureNotAvailable();
-      return;
-    }
-
+  const handleSummarizeText = async () => {
     if (inputText.trim().length < 10) {
       toast({
         title: "Input too short",
@@ -96,14 +91,24 @@ export default function SummarizerPage() {
       setIsLoading(false);
     }
   };
-  
-  const handleFeatureNotAvailable = () => {
+
+  const handleFeatureUnderDevelopment = (inputType: InputType) => {
+    const typeLabel = inputTypeOptions.find(opt => opt.value === inputType)?.label || inputType;
     toast({
-        title: "Feature Not Available",
-        description: `Generating notes from ${activeInputType} content is not yet implemented. Please use the Text input for now.`,
+        title: `${typeLabel} Summarization Under Development`,
+        description: `Generating notes from ${typeLabel} content is not yet implemented. Please use the Text input for now.`,
         variant: "default",
       });
   }
+
+  const handleMainGenerateClick = () => {
+    if (activeInputType === "text") {
+      handleSummarizeText();
+    } else {
+      handleFeatureUnderDevelopment(activeInputType);
+    }
+  };
+
 
   const showGeneralPageTitle = activeInputType !== "powerpoint" && activeInputType !== "video" && activeInputType !== "recording" && activeInputType !== "pdf";
 
@@ -117,10 +122,10 @@ export default function SummarizerPage() {
               variant={activeInputType === option.value ? "secondary" : "ghost"}
               onClick={() => {
                 setActiveInputType(option.value);
-                setGeneratedNote(""); 
+                setGeneratedNote("");
                 setError(null);
-                setInputText(""); 
-                setVideoUrl(""); 
+                setInputText("");
+                setVideoUrl("");
               }}
               className={cn(
                 "px-3 py-1.5 h-auto text-xs sm:text-sm rounded-md flex items-center gap-1.5 sm:gap-2",
@@ -160,10 +165,10 @@ export default function SummarizerPage() {
             />
             <div className="mt-3 flex justify-between items-center">
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleFeatureNotAvailable} className="text-xs">
+                <Button variant="outline" size="sm" onClick={() => handleFeatureUnderDevelopment("text")} className="text-xs">
                   <FileUp className="mr-1.5 h-3.5 w-3.5" /> Select file
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleFeatureNotAvailable} className="text-xs">
+                <Button variant="outline" size="sm" onClick={() => handleFeatureUnderDevelopment("text")} className="text-xs">
                   <UploadCloud className="mr-1.5 h-3.5 w-3.5" /> Upload from drive
                 </Button>
               </div>
@@ -174,21 +179,6 @@ export default function SummarizerPage() {
               )}
             </div>
           </div>
-          <div className="mt-6 text-center">
-            <Button 
-              onClick={handleSummarize} 
-              disabled={isLoading || !inputText.trim() || (activeInputType === "text" && characterCount > MAX_CHARACTERS)} 
-              size="lg"
-              className="px-8 py-3 text-base"
-            >
-              {isLoading ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                <Wand2 className="mr-2 h-5 w-5" />
-              )}
-              Generate note
-            </Button>
-          </div>
         </div>
       )}
 
@@ -198,39 +188,28 @@ export default function SummarizerPage() {
                 AI Lecture Note Taker
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Just drop in your lecture — audio, video, or even a transcript — and Sai will turn it into clean, organized notes in &lt;30 seconds.
+                 Transform your audio lectures, meetings, or voice notes into structured summaries. Extract key points, decisions, and actionable items effortlessly.
             </p>
-            <div className="p-6 md:p-8 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl bg-card shadow-sm min-h-[300px] flex flex-col items-center justify-center">
-                <Mic2 className="h-16 w-16 text-primary opacity-70 mb-6" />
+            <div className="p-6 md:p-8 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl bg-card shadow-sm min-h-[300px] flex flex-col items-center justify-center relative">
+                <Mic2 className="h-16 w-16 text-primary opacity-70 mb-6" data-ai-hint="microphone audio" />
                 <p className="text-lg font-semibold text-foreground mb-6">Live recording or upload audio</p>
                 <div className="space-y-3 w-full max-w-xs">
-                    <Button variant="accent" size="lg" onClick={handleFeatureNotAvailable} className="w-full text-base py-3">
+                    <Button variant="accent" size="lg" onClick={() => handleFeatureUnderDevelopment("recording")} className="w-full text-base py-3">
                         Start recording
                     </Button>
-                    <Button variant="outline" size="lg" onClick={handleFeatureNotAvailable} className="w-full text-base py-3">
+                    <Button variant="outline" size="lg" onClick={() => handleFeatureUnderDevelopment("recording")} className="w-full text-base py-3">
                         Select file
                     </Button>
                 </div>
-                <button 
+                <button
                     className="mt-6 text-sm text-primary hover:underline"
-                    onClick={(e) => { e.stopPropagation(); handleFeatureNotAvailable();}}
+                    onClick={(e) => { e.stopPropagation(); handleFeatureUnderDevelopment("recording");}}
                 >
                     Or, upload from Google Drive
                 </button>
                 <p className="text-xs text-muted-foreground mt-8 absolute bottom-4 text-center w-full px-2">
                     Supported Format: MP3, MPGA, WAV, WEBM, M4A, OPUS, AAC, FLAC, PCM; Max size: 500MB; Max duration: 4 hours.
                 </p>
-            </div>
-             <div className="mt-6 text-center">
-                <Button 
-                    onClick={handleFeatureNotAvailable} 
-                    disabled={isLoading}
-                    size="lg"
-                    className="px-8 py-3 text-base"
-                >
-                    {isLoading ? ( <Loader2 className="mr-2 h-5 w-5 animate-spin" /> ) : ( <Wand2 className="mr-2 h-5 w-5" /> )}
-                    Generate note
-                </Button>
             </div>
         </div>
       )}
@@ -241,45 +220,30 @@ export default function SummarizerPage() {
                 AI PDF Summarizer
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Upload any PDF and in &lt;30 seconds, get full, easy-to-read notes that actually help you understand faster and study smarter.
+                Unlock insights from your PDF documents. Upload research papers, reports, or textbooks and receive comprehensive summaries covering main arguments, findings, and critical conclusions.
             </p>
-            <div 
+            <div
                 className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
-                onClick={handleFeatureNotAvailable}
+                onClick={() => handleFeatureUnderDevelopment("pdf")}
             >
                 <FileTextIcon className="h-16 w-16 text-muted-foreground/70 mb-4" data-ai-hint="PDF document"/>
                 <p className="text-lg font-semibold text-foreground mb-1">or drag and drop your file here</p>
                 <p className="text-xs text-muted-foreground mb-6">
                     Supported Formats: Images, PDF, Doc, Docs, PPT, PPTX; Max size: 20MB.
                 </p>
-                <Button variant="accent" size="lg" onClick={handleFeatureNotAvailable} className="px-8 mb-3">
+                <Button variant="accent" size="lg" onClick={(e) => { e.stopPropagation(); handleFeatureUnderDevelopment("pdf"); }} className="px-8 mb-3">
                     <FileUp className="mr-2 h-5 w-5" /> Select file
                 </Button>
-                <button 
+                <button
                     className="text-sm text-primary hover:underline"
-                    onClick={(e) => { e.stopPropagation(); handleFeatureNotAvailable();}}
+                    onClick={(e) => { e.stopPropagation(); handleFeatureUnderDevelopment("pdf");}}
                 >
                     Or, upload from Google Drive
                 </button>
             </div>
-             <div className="mt-6 text-center">
-                <Button 
-                onClick={handleFeatureNotAvailable} 
-                disabled={isLoading}
-                size="lg"
-                className="px-8 py-3 text-base"
-                >
-                {isLoading ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                    <Wand2 className="mr-2 h-5 w-5" />
-                )}
-                Generate note
-                </Button>
-            </div>
         </div>
       )}
-      
+
       {activeInputType === "powerpoint" && (
         <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary mb-2">
@@ -288,28 +252,28 @@ export default function SummarizerPage() {
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
                 Instantly transform your presentations (PPT, PPTX, PDF slides) into actionable study notes. Get core messages per slide, narrative analysis, and key takeaways to master your material.
             </p>
-            <div 
+            <div
                 className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
-                onClick={handleFeatureNotAvailable}
+                onClick={() => handleFeatureUnderDevelopment("powerpoint")}
             >
-                <UploadCloud className="h-16 w-16 text-muted-foreground/70 mb-4" data-ai-hint="cloud upload"/>
+                <UploadCloud className="h-16 w-16 text-muted-foreground/70 mb-4" data-ai-hint="cloud upload presentation"/>
                 <p className="text-lg font-semibold text-foreground mb-1">or drag and drop your file here</p>
                 <p className="text-xs text-muted-foreground mb-6">
                     Supported Formats: Images, PDF, Doc, Docs, PPT, PPTX; Max size: 20MB.
                 </p>
-                <Button variant="accent" size="lg" onClick={handleFeatureNotAvailable} className="px-8 mb-3">
+                <Button variant="accent" size="lg" onClick={(e) => { e.stopPropagation(); handleFeatureUnderDevelopment("powerpoint");}} className="px-8 mb-3">
                     <FileUp className="mr-2 h-5 w-5" /> Select file
                 </Button>
-                <button 
+                <button
                     className="text-sm text-primary hover:underline"
-                    onClick={(e) => { e.stopPropagation(); handleFeatureNotAvailable();}}
+                    onClick={(e) => { e.stopPropagation(); handleFeatureUnderDevelopment("powerpoint");}}
                 >
                     Or, upload from Google Drive
                 </button>
             </div>
              <div className="mt-6 text-center">
-                <Button 
-                onClick={handleFeatureNotAvailable} 
+                <Button
+                onClick={() => handleFeatureUnderDevelopment("powerpoint")}
                 disabled={isLoading}
                 size="lg"
                 className="px-8 py-3 text-base"
@@ -336,7 +300,7 @@ export default function SummarizerPage() {
             <Card className="shadow-lg bg-card/70 backdrop-blur-sm border-border/50">
                 <CardContent className="p-6 sm:p-8">
                     <div className="flex justify-center mb-6">
-                        <VideoIconLucide className="h-20 w-20 text-primary opacity-70" data-ai-hint="video play"/>
+                        <VideoIconLucide className="h-20 w-20 text-primary opacity-70" data-ai-hint="video play youtube"/>
                     </div>
                     <div className="relative mb-6">
                         <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -349,36 +313,36 @@ export default function SummarizerPage() {
                             disabled={isLoading}
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
-                                    handleFeatureNotAvailable();
+                                     handleFeatureUnderDevelopment("video");
                                 }
                             }}
                         />
                     </div>
-                    <Button 
-                        variant="accent" 
-                        size="lg" 
-                        onClick={handleFeatureNotAvailable} 
+                    <Button
+                        variant="accent"
+                        size="lg"
+                        onClick={() => handleFeatureUnderDevelopment("video")}
                         className="w-full text-base py-3"
                         disabled={isLoading || (activeInputType === "video" && !videoUrl.trim())}
                     >
                          {isLoading ? (
                             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                         ) : (
-                            <Wand2 className="mr-2 h-5 w-5" /> 
+                            <Wand2 className="mr-2 h-5 w-5" />
                         )}
                         Summarize
                     </Button>
-                    <button 
+                    <button
                         className="mt-4 text-sm text-primary hover:underline"
-                        onClick={(e) => { e.stopPropagation(); handleFeatureNotAvailable();}}
+                        onClick={(e) => { e.stopPropagation(); handleFeatureUnderDevelopment("video");}}
                     >
                         Or, upload from Google Drive
                     </button>
                 </CardContent>
             </Card>
              <div className="mt-6 text-center">
-                <Button 
-                onClick={handleFeatureNotAvailable} 
+                <Button
+                onClick={() => handleFeatureUnderDevelopment("video")}
                 disabled={isLoading || (activeInputType === "video" && !videoUrl.trim())}
                 size="lg"
                 className="px-8 py-3 text-base"
@@ -391,6 +355,24 @@ export default function SummarizerPage() {
                 Generate note
                 </Button>
             </div>
+        </div>
+      )}
+
+      {(activeInputType === "text" || activeInputType === "recording" || activeInputType === "pdf") && (
+        <div className="mt-6 text-center">
+            <Button
+            onClick={handleMainGenerateClick}
+            disabled={isLoading || (activeInputType === "text" && (!inputText.trim() || characterCount > MAX_CHARACTERS))}
+            size="lg"
+            className="px-8 py-3 text-base"
+            >
+            {isLoading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+                <Wand2 className="mr-2 h-5 w-5" />
+            )}
+            Generate note
+            </Button>
         </div>
       )}
 
@@ -419,4 +401,3 @@ export default function SummarizerPage() {
     </div>
   );
 }
-    
