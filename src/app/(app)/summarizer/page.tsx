@@ -144,7 +144,7 @@ export default function SummarizerPage() {
              AI Note Taker
           </h1>
           <p className="text-muted-foreground mt-2 max-w-2xl mx-auto text-sm sm:text-base">
-            Give Sai any content — textbooks, videos, slides, or screenshots — and in &lt;30 seconds, it'll instantly read and turn it into clear, organized notes you can actually use.
+            Give Sai any content — textbooks, videos, slides, or screenshots — and in &lt;30 seconds, it’ll instantly read and turn it into clear, organized notes you can actually use.
           </p>
         </div>
       )}
@@ -347,7 +347,7 @@ export default function SummarizerPage() {
              <div className="mt-6 text-center">
                 <Button 
                 onClick={handleFeatureNotAvailable} 
-                disabled={isLoading || !videoUrl.trim()}
+                disabled={isLoading || (activeInputType === "video" && !videoUrl.trim())}
                 size="lg"
                 className="px-8 py-3 text-base"
                 >
