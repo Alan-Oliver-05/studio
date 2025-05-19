@@ -16,6 +16,7 @@ import {
   Languages,
   BarChartBig,
   PieChartIcon,
+  FileText, // Added FileText icon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -34,10 +35,11 @@ const navItems = [
   { href: "/study-session", icon: BookOpen, label: "Study Session", isDynamic: true }, 
   { href: "/library", icon: LibraryBig, label: "Library" },
   { href: "/todo", icon: ListChecks, label: "To-Do List" }, 
+  { href: "/summarizer", icon: FileText, label: "Summarizer" }, // Added Summarizer
   { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
   { href: "/notepad", icon: NotebookText, label: "Note Pad" },
   { href: "/general-tutor", icon: Brain, label: "General Tutor" },
-  { href: "/language-learning", icon: Languages, label: "Language Translator" }, // Renamed label
+  { href: "/language-learning", icon: Languages, label: "Language Translator" },
   { href: "/visual-learning", icon: PieChartIcon, label: "Visual Learning" },
   { href: "/analytics", icon: BarChartBig, label: "Analytics" },
 ];
