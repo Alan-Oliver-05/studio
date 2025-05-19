@@ -47,7 +47,7 @@ export default function SummarizerPage() {
       toast({
         title: "Feature Not Available",
         description: `Generating notes from ${activeInputType} is not yet implemented. Please use the Text input for now.`,
-        variant: "default", // Changed from destructive to default for "not yet implemented"
+        variant: "default",
       });
       return;
     }
@@ -135,14 +135,16 @@ export default function SummarizerPage() {
         </div>
       </div>
 
-      <div className="text-center mb-8 mt-0">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary">
-           AI Note Taker
-        </h1>
-        <p className="text-muted-foreground mt-2 max-w-2xl mx-auto text-sm sm:text-base">
-          Give Sai any content — textbooks, videos, slides, or screenshots — and in &lt;30 seconds, it'll instantly read and turn it into clear, organized notes you can actually use.
-        </p>
-      </div>
+      {activeInputType !== "powerpoint" && (
+        <div className="text-center mb-8 mt-0">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary">
+             AI Note Taker
+          </h1>
+          <p className="text-muted-foreground mt-2 max-w-2xl mx-auto text-sm sm:text-base">
+            Give Sai any content — textbooks, videos, slides, or screenshots — and in &lt;30 seconds, it'll instantly read and turn it into clear, organized notes you can actually use.
+          </p>
+        </div>
+      )}
 
 
       {activeInputType === "text" && (
@@ -241,7 +243,37 @@ export default function SummarizerPage() {
         </Card>
       )}
       
-      {(activeInputType === "powerpoint" || activeInputType === "video") && (
+      {activeInputType === "powerpoint" && (
+        <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary mb-2">
+                Slide Summary
+            </h1>
+            <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
+                Give Sai your slides and in under &lt;30 seconds, you'll get smart, clear notes that help you study stress-free.
+            </p>
+            <div 
+                className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
+                onClick={handleFeatureNotAvailable}
+            >
+                <UploadCloud className="h-16 w-16 text-muted-foreground/70 mb-4" />
+                <p className="text-lg font-semibold text-foreground mb-1">or drag and drop your file here</p>
+                <p className="text-xs text-muted-foreground mb-6">
+                    Supported Formats: Images, PDF, Doc, Docs, PPT, PPTX; Max size: 20MB.
+                </p>
+                <Button variant="accent" size="lg" onClick={handleFeatureNotAvailable} className="px-8 mb-3">
+                    <FileUp className="mr-2 h-5 w-5" /> Select file
+                </Button>
+                <button 
+                    className="text-sm text-primary hover:underline"
+                    onClick={(e) => { e.stopPropagation(); handleFeatureNotAvailable();}}
+                >
+                    Or, upload from Google Drive
+                </button>
+            </div>
+        </div>
+      )}
+
+      {activeInputType === "video" && (
          <Card className="shadow-lg max-w-3xl mx-auto text-center">
           <CardHeader>
             <CardTitle className="text-xl">AI Note Taker for {inputTypeOptions.find(opt => opt.value === activeInputType)?.label}</CardTitle>
@@ -290,3 +322,4 @@ export default function SummarizerPage() {
     </div>
   );
 }
+
