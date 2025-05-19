@@ -227,7 +227,7 @@ export default function SummarizerPage() {
                 onClick={() => handleFeatureUnderDevelopment("pdf")}
                 data-ai-hint="PDF document file"
             >
-                <FileTextIcon className="h-16 w-16 text-muted-foreground/70 mb-4" />
+                <FileTextIcon className="h-16 w-16 text-muted-foreground/70 mb-4" data-ai-hint="pdf document"/>
                 <p className="text-lg font-semibold text-foreground mb-1">or drag and drop your file here</p>
                 <p className="text-xs text-muted-foreground mb-6">
                     Supported Formats: Images, PDF, Doc, Docs, PPT, PPTX; Max size: 20MB.
@@ -258,7 +258,7 @@ export default function SummarizerPage() {
                 onClick={() => handleFeatureUnderDevelopment("powerpoint")}
                 data-ai-hint="cloud upload presentation"
             >
-                <UploadCloud className="h-16 w-16 text-muted-foreground/70 mb-4" />
+                <UploadCloud className="h-16 w-16 text-muted-foreground/70 mb-4" data-ai-hint="powerpoint presentation"/>
                 <p className="text-lg font-semibold text-foreground mb-1">or drag and drop your file here</p>
                 <p className="text-xs text-muted-foreground mb-6">
                     Supported Formats: Images, PDF, Doc, Docs, PPT, PPTX; Max size: 20MB.
@@ -312,7 +312,7 @@ export default function SummarizerPage() {
                             value={videoUrl}
                             onChange={(e) => setVideoUrl(e.target.value)}
                             className="pl-10 text-sm"
-                            disabled={isLoading} // isLoading here refers to the main text summarizer
+                            disabled={isLoading} 
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                      handleFeatureUnderDevelopment("video");
@@ -320,20 +320,7 @@ export default function SummarizerPage() {
                             }}
                         />
                     </div>
-                    <Button
-                        variant="accent"
-                        size="lg"
-                        onClick={() => handleFeatureUnderDevelopment("video")}
-                        className="w-full text-base py-3"
-                        disabled={isLoading || (activeInputType === "video" && !videoUrl.trim())}
-                    >
-                         {isLoading ? (
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        ) : (
-                            <Wand2 className="mr-2 h-5 w-5" />
-                        )}
-                        Summarize
-                    </Button>
+                    
                     <button
                         className="mt-4 text-sm text-primary hover:underline"
                         onClick={(e) => { e.stopPropagation(); handleFeatureUnderDevelopment("video");}}
@@ -354,7 +341,7 @@ export default function SummarizerPage() {
                 ) : (
                     <Wand2 className="mr-2 h-5 w-5" />
                 )}
-                Generate note
+                Summarize
                 </Button>
             </div>
         </div>
@@ -403,5 +390,7 @@ export default function SummarizerPage() {
     </div>
   );
 }
+
+    
 
     
