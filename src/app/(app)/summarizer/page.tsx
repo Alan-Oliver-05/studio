@@ -48,7 +48,7 @@ export default function SummarizerPage() {
     }
   }, [inputText, activeInputType]);
 
-  const handleGenerateNote = async () => {
+  const handleSummarize = async () => {
     if (activeInputType !== "text") {
       handleFeatureNotAvailable();
       return;
@@ -105,7 +105,7 @@ export default function SummarizerPage() {
       });
   }
 
-  const showGeneralPageTitle = activeInputType !== "powerpoint" && activeInputType !== "video" && activeInputType !== "recording";
+  const showGeneralPageTitle = activeInputType !== "powerpoint" && activeInputType !== "video" && activeInputType !== "recording" && activeInputType !== "pdf";
 
   return (
     <div className="pb-8 pt-0">
@@ -176,7 +176,7 @@ export default function SummarizerPage() {
           </div>
           <div className="mt-6 text-center">
             <Button 
-              onClick={handleGenerateNote} 
+              onClick={handleSummarize} 
               disabled={isLoading || !inputText.trim() || (activeInputType === "text" && characterCount > MAX_CHARACTERS)} 
               size="lg"
               className="px-8 py-3 text-base"
@@ -236,29 +236,48 @@ export default function SummarizerPage() {
       )}
 
       {activeInputType === "pdf" && (
-        <Card className="shadow-lg max-w-3xl mx-auto text-center">
-          <CardHeader>
-            <CardTitle className="text-xl">Upload PDF Document</CardTitle>
-            <CardDescription>Unlock insights from your PDF documents. Upload research papers, reports, or textbooks and receive comprehensive summaries covering main arguments, findings, and critical conclusions.</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary mb-2">
+                AI PDF Summarizer
+            </h1>
+            <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
+                Upload any PDF and in &lt;30 seconds, get full, easy-to-read notes that actually help you understand faster and study smarter.
+            </p>
             <div 
-                className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg min-h-[200px] bg-muted/30 cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
+                className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
                 onClick={handleFeatureNotAvailable}
             >
-              <FileTextIcon className="h-16 w-16 text-muted-foreground mb-4" />
-              <p className="text-lg font-semibold text-foreground mb-1">Drag & Drop PDF or Click to Upload</p>
-              <p className="text-sm text-muted-foreground">
-                Supported format: .pdf (Max 20MB)
-              </p>
+                <FileTextIcon className="h-16 w-16 text-muted-foreground/70 mb-4" data-ai-hint="PDF document"/>
+                <p className="text-lg font-semibold text-foreground mb-1">or drag and drop your file here</p>
+                <p className="text-xs text-muted-foreground mb-6">
+                    Supported Formats: Images, PDF, Doc, Docs, PPT, PPTX; Max size: 20MB.
+                </p>
+                <Button variant="accent" size="lg" onClick={handleFeatureNotAvailable} className="px-8 mb-3">
+                    <FileUp className="mr-2 h-5 w-5" /> Select file
+                </Button>
+                <button 
+                    className="text-sm text-primary hover:underline"
+                    onClick={(e) => { e.stopPropagation(); handleFeatureNotAvailable();}}
+                >
+                    Or, upload from Google Drive
+                </button>
             </div>
-          </CardContent>
-           <CardFooter className="justify-center">
-            <Button variant="outline" onClick={handleFeatureNotAvailable}>
-              <FileUp className="mr-2 h-4 w-4" /> Upload PDF
-            </Button>
-          </CardFooter>
-        </Card>
+             <div className="mt-6 text-center">
+                <Button 
+                onClick={handleFeatureNotAvailable} 
+                disabled={isLoading}
+                size="lg"
+                className="px-8 py-3 text-base"
+                >
+                {isLoading ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                    <Wand2 className="mr-2 h-5 w-5" />
+                )}
+                Generate note
+                </Button>
+            </div>
+        </div>
       )}
       
       {activeInputType === "powerpoint" && (
@@ -273,7 +292,7 @@ export default function SummarizerPage() {
                 className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
                 onClick={handleFeatureNotAvailable}
             >
-                <UploadCloud className="h-16 w-16 text-muted-foreground/70 mb-4" />
+                <UploadCloud className="h-16 w-16 text-muted-foreground/70 mb-4" data-ai-hint="cloud upload"/>
                 <p className="text-lg font-semibold text-foreground mb-1">or drag and drop your file here</p>
                 <p className="text-xs text-muted-foreground mb-6">
                     Supported Formats: Images, PDF, Doc, Docs, PPT, PPTX; Max size: 20MB.
@@ -317,7 +336,7 @@ export default function SummarizerPage() {
             <Card className="shadow-lg bg-card/70 backdrop-blur-sm border-border/50">
                 <CardContent className="p-6 sm:p-8">
                     <div className="flex justify-center mb-6">
-                        <VideoIconLucide className="h-20 w-20 text-primary opacity-70" />
+                        <VideoIconLucide className="h-20 w-20 text-primary opacity-70" data-ai-hint="video play"/>
                     </div>
                     <div className="relative mb-6">
                         <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -340,7 +359,7 @@ export default function SummarizerPage() {
                         size="lg" 
                         onClick={handleFeatureNotAvailable} 
                         className="w-full text-base py-3"
-                        disabled={isLoading || !videoUrl.trim()}
+                        disabled={isLoading || (activeInputType === "video" && !videoUrl.trim())}
                     >
                          {isLoading ? (
                             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -400,5 +419,4 @@ export default function SummarizerPage() {
     </div>
   );
 }
-
     
