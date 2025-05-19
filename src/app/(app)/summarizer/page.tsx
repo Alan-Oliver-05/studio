@@ -9,6 +9,7 @@ import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Pr
 import { useToast } from "@/hooks/use-toast";
 import { summarizeText, SummarizeTextInput } from "@/ai/flows/summarize-text-flow";
 import { cn } from "@/lib/utils";
+import React from "react"; // Added React import
 
 type InputType = "text" | "recording" | "pdf" | "powerpoint" | "video";
 
@@ -100,6 +101,14 @@ export default function SummarizerPage() {
       description: `${featureName} functionality is under development.`,
     });
   };
+  
+  const handleFeatureNotAvailable = () => {
+    toast({
+        title: "Feature Not Available",
+        description: `Generating notes from ${activeInputType} content is not yet implemented. Please use the Text input.`,
+        variant: "default",
+      });
+  }
 
   return (
     <div className="pb-8 pt-0">
@@ -109,7 +118,11 @@ export default function SummarizerPage() {
             <Button
               key={option.value}
               variant={activeInputType === option.value ? "secondary" : "ghost"}
-              onClick={() => setActiveInputType(option.value)}
+              onClick={() => {
+                setActiveInputType(option.value);
+                setGeneratedNote(""); // Clear previous summary when changing type
+                setError(null);
+              }}
               className={cn(
                 "px-3 py-1.5 h-auto text-xs sm:text-sm rounded-md flex items-center gap-1.5 sm:gap-2",
                 activeInputType === option.value && "shadow-md bg-background"
@@ -176,10 +189,36 @@ export default function SummarizerPage() {
         </div>
       )}
 
-      {activeInputType !== "text" && (
+      {activeInputType === "recording" && (
         <Card className="shadow-lg max-w-3xl mx-auto text-center">
           <CardHeader>
-            <CardTitle>AI Note Taker for {inputTypeOptions.find(opt => opt.value === activeInputType)?.label}</CardTitle>
+            <CardTitle className="text-xl">Upload Your Audio Recording</CardTitle>
+            <CardDescription>Get notes from your lectures or voice memos.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div 
+                className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg min-h-[200px] bg-muted/30 cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
+                onClick={handleFeatureNotAvailable}
+            >
+              <UploadCloud className="h-16 w-16 text-muted-foreground mb-4" />
+              <p className="text-lg font-semibold text-foreground mb-1">Drag & Drop or Click to Upload</p>
+              <p className="text-sm text-muted-foreground">
+                Supported formats: MP3, WAV, M4A (Max 50MB)
+              </p>
+            </div>
+          </CardContent>
+           <CardFooter className="justify-center">
+            <Button variant="outline" onClick={handleFeatureNotAvailable}>
+              <Mic2 className="mr-2 h-4 w-4" /> Upload Recording
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+      
+      {(activeInputType === "pdf" || activeInputType === "powerpoint" || activeInputType === "video") && (
+         <Card className="shadow-lg max-w-3xl mx-auto text-center">
+          <CardHeader>
+            <CardTitle className="text-xl">AI Note Taker for {inputTypeOptions.find(opt => opt.value === activeInputType)?.label}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg min-h-[200px] bg-muted/30">
@@ -199,6 +238,7 @@ export default function SummarizerPage() {
           </CardFooter>
         </Card>
       )}
+
 
       {error && activeInputType === "text" && (
         <Alert variant="destructive" className="mt-6 max-w-3xl mx-auto">
@@ -224,3 +264,4 @@ export default function SummarizerPage() {
     </div>
   );
 }
+    
