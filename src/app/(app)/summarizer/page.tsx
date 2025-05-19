@@ -50,7 +50,7 @@ export default function SummarizerPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }; // Ensure this closing brace is present and correct
 
   return (
     <div className="pb-8 pt-0">
@@ -110,7 +110,6 @@ export default function SummarizerPage() {
             </div>
           </CardContent>
         </Card>
-      </Card>
       )}
     </div>
   );
