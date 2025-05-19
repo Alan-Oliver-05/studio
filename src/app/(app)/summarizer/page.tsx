@@ -3,9 +3,10 @@
 
 import { useState, useEffect, ReactElement } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIcon, FileUp, UploadCloud } from "lucide-react";
+import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIconLucide, FileUp, UploadCloud, Youtube } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { summarizeText, SummarizeTextInput } from "@/ai/flows/summarize-text-flow";
 import { cn } from "@/lib/utils";
@@ -24,13 +25,14 @@ const inputTypeOptions: InputTypeOption[] = [
   { value: "recording", label: "Recording", icon: Mic2 },
   { value: "pdf", label: "PDF", icon: FileTextIcon },
   { value: "powerpoint", label: "PowerPoint", icon: Presentation },
-  { value: "video", label: "Video", icon: VideoIcon },
+  { value: "video", label: "Video", icon: VideoIconLucide },
 ];
 
 const MAX_CHARACTERS = 10000;
 
 export default function SummarizerPage() {
   const [inputText, setInputText] = useState<string>("");
+  const [videoUrl, setVideoUrl] = useState<string>("");
   const [generatedNote, setGeneratedNote] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,10 +107,12 @@ export default function SummarizerPage() {
   const handleFeatureNotAvailable = () => {
     toast({
         title: "Feature Not Available",
-        description: `Generating notes from ${activeInputType} content is not yet implemented. Please use the Text input.`,
+        description: `Generating notes from ${activeInputType} content is not yet implemented. Please use the Text input for now.`,
         variant: "default",
       });
   }
+
+  const showMainPageTitle = activeInputType !== "powerpoint" && activeInputType !== "video";
 
   return (
     <div className="pb-8 pt-0">
@@ -122,6 +126,8 @@ export default function SummarizerPage() {
                 setActiveInputType(option.value);
                 setGeneratedNote(""); 
                 setError(null);
+                setInputText(""); // Clear text input when switching types
+                setVideoUrl(""); // Clear video URL when switching types
               }}
               className={cn(
                 "px-3 py-1.5 h-auto text-xs sm:text-sm rounded-md flex items-center gap-1.5 sm:gap-2",
@@ -135,7 +141,7 @@ export default function SummarizerPage() {
         </div>
       </div>
 
-      {activeInputType !== "powerpoint" && (
+      {showMainPageTitle && (
         <div className="text-center mb-8 mt-0">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary">
              AI Note Taker
@@ -274,27 +280,53 @@ export default function SummarizerPage() {
       )}
 
       {activeInputType === "video" && (
-         <Card className="shadow-lg max-w-3xl mx-auto text-center">
-          <CardHeader>
-            <CardTitle className="text-xl">AI Note Taker for {inputTypeOptions.find(opt => opt.value === activeInputType)?.label}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg min-h-[200px] bg-muted/30">
-              {React.createElement(inputTypeOptions.find(opt => opt.value === activeInputType)?.icon || AlertTriangle, { className: "h-16 w-16 text-muted-foreground mb-4" })}
-              <p className="text-lg text-muted-foreground">
-                Generating notes from {activeInputType} files is coming soon!
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                For now, please use the "Text" input option.
-              </p>
-            </div>
-          </CardContent>
-           <CardFooter className="justify-center">
-            <Button variant="outline" onClick={() => setActiveInputType("text")}>
-              Switch to Text Input
-            </Button>
-          </CardFooter>
-        </Card>
+         <div className="max-w-xl mx-auto text-center">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary mb-2">
+                AI Video Summarizer
+            </h1>
+            <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
+                Give Sai Youtube video and in &lt;30 seconds, you'll get clear, organized notes you can actually use to study better.
+            </p>
+            <Card className="shadow-lg bg-card/70 backdrop-blur-sm border-border/50">
+                <CardContent className="p-6 sm:p-8">
+                    <div className="flex justify-center mb-6">
+                        {/* Placeholder for the custom video icon. Using Lucide Video icon for now */}
+                        <VideoIconLucide className="h-20 w-20 text-primary opacity-70" />
+                    </div>
+                    <div className="relative mb-6">
+                        <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                            type="url"
+                            placeholder="https://www.youtube.com/watch?v=..."
+                            value={videoUrl}
+                            onChange={(e) => setVideoUrl(e.target.value)}
+                            className="pl-10 text-sm"
+                            disabled={isLoading}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleFeatureNotAvailable();
+                                }
+                            }}
+                        />
+                    </div>
+                    <Button 
+                        variant="accent" 
+                        size="lg" 
+                        onClick={handleFeatureNotAvailable} 
+                        className="w-full text-base py-3"
+                        disabled={isLoading}
+                    >
+                        Summarize
+                    </Button>
+                    <button 
+                        className="mt-4 text-sm text-primary hover:underline"
+                        onClick={(e) => { e.stopPropagation(); handleFeatureNotAvailable();}}
+                    >
+                        Or, upload from Google Drive
+                    </button>
+                </CardContent>
+            </Card>
+        </div>
       )}
 
 
@@ -322,4 +354,3 @@ export default function SummarizerPage() {
     </div>
   );
 }
-
