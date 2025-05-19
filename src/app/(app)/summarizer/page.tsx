@@ -50,11 +50,7 @@ export default function SummarizerPage() {
 
   const handleGenerateNote = async () => {
     if (activeInputType !== "text") {
-      toast({
-        title: "Feature Not Available",
-        description: `Generating notes from ${activeInputType} content is not yet implemented. Please use the Text input for now.`,
-        variant: "default",
-      });
+      handleFeatureNotAvailable();
       return;
     }
 
@@ -109,7 +105,7 @@ export default function SummarizerPage() {
       });
   }
 
-  const showMainPageTitle = activeInputType !== "powerpoint" && activeInputType !== "video";
+  const showGeneralPageTitle = activeInputType !== "powerpoint" && activeInputType !== "video" && activeInputType !== "recording";
 
   return (
     <div className="pb-8 pt-0">
@@ -138,7 +134,7 @@ export default function SummarizerPage() {
         </div>
       </div>
 
-      {showMainPageTitle && (
+      {showGeneralPageTitle && (
         <div className="text-center mb-8 mt-0">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary">
              AI Note Taker
@@ -197,29 +193,46 @@ export default function SummarizerPage() {
       )}
 
       {activeInputType === "recording" && (
-        <Card className="shadow-lg max-w-3xl mx-auto text-center">
-          <CardHeader>
-            <CardTitle className="text-xl">Upload Your Audio Recording</CardTitle>
-            <CardDescription>Transform your audio lectures, meetings, or voice notes into structured summaries. Extract key points, decisions, and actionable items effortlessly.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div 
-                className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg min-h-[200px] bg-muted/30 cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
-                onClick={handleFeatureNotAvailable}
-            >
-              <UploadCloud className="h-16 w-16 text-muted-foreground mb-4" />
-              <p className="text-lg font-semibold text-foreground mb-1">Drag & Drop or Click to Upload Audio</p>
-              <p className="text-sm text-muted-foreground">
-                Supported formats: MP3, WAV, M4A (Max 50MB)
-              </p>
+        <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary mb-2">
+                AI Lecture Note Taker
+            </h1>
+            <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
+                Just drop in your lecture — audio, video, or even a transcript — and Sai will turn it into clean, organized notes in &lt;30 seconds.
+            </p>
+            <div className="p-6 md:p-8 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl bg-card shadow-sm min-h-[300px] flex flex-col items-center justify-center">
+                <Mic2 className="h-16 w-16 text-primary opacity-70 mb-6" />
+                <p className="text-lg font-semibold text-foreground mb-6">Live recording or upload audio</p>
+                <div className="space-y-3 w-full max-w-xs">
+                    <Button variant="accent" size="lg" onClick={handleFeatureNotAvailable} className="w-full text-base py-3">
+                        Start recording
+                    </Button>
+                    <Button variant="outline" size="lg" onClick={handleFeatureNotAvailable} className="w-full text-base py-3">
+                        Select file
+                    </Button>
+                </div>
+                <button 
+                    className="mt-6 text-sm text-primary hover:underline"
+                    onClick={(e) => { e.stopPropagation(); handleFeatureNotAvailable();}}
+                >
+                    Or, upload from Google Drive
+                </button>
+                <p className="text-xs text-muted-foreground mt-8 absolute bottom-4 text-center w-full px-2">
+                    Supported Format: MP3, MPGA, WAV, WEBM, M4A, OPUS, AAC, FLAC, PCM; Max size: 500MB; Max duration: 4 hours.
+                </p>
             </div>
-          </CardContent>
-           <CardFooter className="justify-center">
-            <Button variant="outline" onClick={handleFeatureNotAvailable}>
-              <Mic2 className="mr-2 h-4 w-4" /> Upload Recording
-            </Button>
-          </CardFooter>
-        </Card>
+             <div className="mt-6 text-center">
+                <Button 
+                    onClick={handleFeatureNotAvailable} 
+                    disabled={isLoading}
+                    size="lg"
+                    className="px-8 py-3 text-base"
+                >
+                    {isLoading ? ( <Loader2 className="mr-2 h-5 w-5 animate-spin" /> ) : ( <Wand2 className="mr-2 h-5 w-5" /> )}
+                    Generate note
+                </Button>
+            </div>
+        </div>
       )}
 
       {activeInputType === "pdf" && (
@@ -257,7 +270,7 @@ export default function SummarizerPage() {
                 Instantly transform your presentations (PPT, PPTX, PDF slides) into actionable study notes. Get core messages per slide, narrative analysis, and key takeaways to master your material.
             </p>
             <div 
-                className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
+                className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
                 onClick={handleFeatureNotAvailable}
             >
                 <UploadCloud className="h-16 w-16 text-muted-foreground/70 mb-4" />
