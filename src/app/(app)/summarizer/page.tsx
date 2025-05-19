@@ -154,7 +154,7 @@ export default function SummarizerPage() {
         <div className="max-w-3xl mx-auto">
           <div className="p-4 sm:p-6 border-2 border-dashed border-primary/50 rounded-xl bg-card shadow-sm">
             <Textarea
-              placeholder="Type or paste your Text here, or paste a YouTube link"
+              placeholder="Paste your article, essay, or any text here. Get concise summaries, key takeaways, and organized notes instantly."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               rows={12}
@@ -200,7 +200,7 @@ export default function SummarizerPage() {
         <Card className="shadow-lg max-w-3xl mx-auto text-center">
           <CardHeader>
             <CardTitle className="text-xl">Upload Your Audio Recording</CardTitle>
-            <CardDescription>Upload your audio (MP3, WAV, M4A). If transcribed, the AI will summarize key points, decisions, and action items.</CardDescription>
+            <CardDescription>Transform your audio lectures, meetings, or voice notes into structured summaries. Extract key points, decisions, and actionable items effortlessly.</CardDescription>
           </CardHeader>
           <CardContent>
             <div 
@@ -208,7 +208,7 @@ export default function SummarizerPage() {
                 onClick={handleFeatureNotAvailable}
             >
               <UploadCloud className="h-16 w-16 text-muted-foreground mb-4" />
-              <p className="text-lg font-semibold text-foreground mb-1">Drag & Drop or Click to Upload</p>
+              <p className="text-lg font-semibold text-foreground mb-1">Drag & Drop or Click to Upload Audio</p>
               <p className="text-sm text-muted-foreground">
                 Supported formats: MP3, WAV, M4A (Max 50MB)
               </p>
@@ -226,7 +226,7 @@ export default function SummarizerPage() {
         <Card className="shadow-lg max-w-3xl mx-auto text-center">
           <CardHeader>
             <CardTitle className="text-xl">Upload PDF Document</CardTitle>
-            <CardDescription>Upload your PDF document. The AI will aim to extract the main arguments, methodology, findings, and conclusions if this feature were active.</CardDescription>
+            <CardDescription>Unlock insights from your PDF documents. Upload research papers, reports, or textbooks and receive comprehensive summaries covering main arguments, findings, and critical conclusions.</CardDescription>
           </CardHeader>
           <CardContent>
             <div 
@@ -254,7 +254,7 @@ export default function SummarizerPage() {
                 Slide Summary
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Give Sai your slides and in under &lt;30 seconds, you'll get smart, clear notes that help you study stress-free. Get summaries of core messages per slide, overall narrative, and key takeaways.
+                Upload your presentations (PPT, PPTX, PDF slides) and instantly get core messages per slide, overall narrative analysis, and key actionable takeaways to supercharge your study.
             </p>
             <div 
                 className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
@@ -299,7 +299,7 @@ export default function SummarizerPage() {
                 AI Video Summarizer
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Paste a YouTube link. The AI will aim to summarize main topics, arguments, and examples to help you study better.
+                Paste any YouTube video link to extract crucial topics, detailed arguments, and illustrative examples. Turn long videos into focused study notes in seconds.
             </p>
             <Card className="shadow-lg bg-card/70 backdrop-blur-sm border-border/50">
                 <CardContent className="p-6 sm:p-8">
@@ -332,7 +332,7 @@ export default function SummarizerPage() {
                          {isLoading ? (
                             <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                         ) : (
-                            <Wand2 className="mr-2 h-5 w-5" /> /* Using Wand2 as a generic 'generate' icon */
+                            <Wand2 className="mr-2 h-5 w-5" /> 
                         )}
                         Summarize
                     </Button>
