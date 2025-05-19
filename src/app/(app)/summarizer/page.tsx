@@ -44,7 +44,7 @@ export default function SummarizerPage() {
     if (activeInputType === "text") {
       setCharacterCount(inputText.length);
     } else {
-      setCharacterCount(0);
+      setCharacterCount(0); // Reset for other types
     }
   }, [inputText, activeInputType]);
 
@@ -60,7 +60,7 @@ export default function SummarizerPage() {
     if (inputText.length > MAX_CHARACTERS) {
       toast({
         title: "Input too long",
-        description: `Please enter text less than ${MAX_CHARACTERS} characters.`,
+        description: `Please enter text less than ${MAX_CHARACTERS} characters. Current: ${inputText.length}.`,
         variant: "destructive",
       });
       return;
@@ -99,7 +99,7 @@ export default function SummarizerPage() {
         description: `Generating notes from ${typeLabel} content is not yet implemented. Please use the Text input for now.`,
         variant: "default",
       });
-  }
+  };
 
   const handleMainGenerateClick = () => {
     if (activeInputType === "text") {
@@ -109,7 +109,6 @@ export default function SummarizerPage() {
     }
     // For PowerPoint and Video, their specific buttons already call handleFeatureUnderDevelopment
   };
-
 
   const showGeneralPageTitle = activeInputType !== "powerpoint" && activeInputType !== "video" && activeInputType !== "recording" && activeInputType !== "pdf";
 
@@ -146,7 +145,7 @@ export default function SummarizerPage() {
              AI Note Taker
           </h1>
           <p className="text-muted-foreground mt-2 max-w-2xl mx-auto text-sm sm:text-base">
-            Unlock understanding, instantly. Feed Sai any content—textbooks, articles, web pages—and watch it transform complex information into clear, concise, and actionable notes in under 30 seconds.
+            Give Sai any content — textbooks, videos, slides, or screenshots — and in &lt;30 seconds, it’ll instantly read and turn it into clear, organized notes you can actually use.
           </p>
         </div>
       )}
@@ -156,7 +155,7 @@ export default function SummarizerPage() {
         <div className="max-w-3xl mx-auto">
           <div className="p-4 sm:p-6 border-2 border-dashed border-primary/50 rounded-xl bg-card shadow-sm">
             <Textarea
-              placeholder="Paste your text, research paper, or web content here. Unlock key insights, structured summaries, and actionable takeaways in seconds."
+              placeholder="Paste your article, essay, or any text here. Get concise summaries, key takeaways, and organized notes instantly."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               rows={12}
@@ -189,7 +188,7 @@ export default function SummarizerPage() {
                 AI Lecture Note Taker
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                 Never miss a beat. Upload your lectures, meetings, or voice notes (audio, video, or transcript), and Sai will meticulously transcribe and summarize, delivering structured notes with key points and action items in under 30 seconds.
+                 Transform your audio lectures, meetings, or voice notes into structured summaries. Extract key points, decisions, and actionable items effortlessly.
             </p>
             <div className="p-6 md:p-8 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl bg-card shadow-sm min-h-[300px] flex flex-col items-center justify-center relative">
                 <Mic2 className="h-16 w-16 text-primary opacity-70 mb-6" data-ai-hint="microphone audio" />
@@ -221,13 +220,14 @@ export default function SummarizerPage() {
                 AI PDF Summarizer
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Conquer dense documents. Upload any PDF—research papers, reports, textbooks—and Sai will distill the core arguments, methodologies, and critical conclusions into comprehensive, easy-to-digest notes in under 30 seconds, accelerating your comprehension.
+                Unlock insights from your PDF documents. Upload research papers, reports, or textbooks and receive comprehensive summaries covering main arguments, findings, and critical conclusions.
             </p>
             <div
                 className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
                 onClick={() => handleFeatureUnderDevelopment("pdf")}
+                data-ai-hint="PDF document file"
             >
-                <FileTextIcon className="h-16 w-16 text-muted-foreground/70 mb-4" data-ai-hint="PDF document"/>
+                <FileTextIcon className="h-16 w-16 text-muted-foreground/70 mb-4" />
                 <p className="text-lg font-semibold text-foreground mb-1">or drag and drop your file here</p>
                 <p className="text-xs text-muted-foreground mb-6">
                     Supported Formats: Images, PDF, Doc, Docs, PPT, PPTX; Max size: 20MB.
@@ -251,13 +251,14 @@ export default function SummarizerPage() {
                 Slide Summary
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Master presentations effortlessly. Upload your slides (PPT, PPTX, PDF) and Sai will intelligently extract core messages, analyze the narrative flow, and generate actionable notes with key takeaways per slide, ensuring you grasp every critical point.
+                Instantly transform your presentations (PPT, PPTX, PDF slides) into actionable study notes. Get core messages per slide, narrative analysis, and key takeaways to master your material.
             </p>
             <div
                 className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
                 onClick={() => handleFeatureUnderDevelopment("powerpoint")}
+                data-ai-hint="cloud upload presentation"
             >
-                <UploadCloud className="h-16 w-16 text-muted-foreground/70 mb-4" data-ai-hint="cloud upload presentation"/>
+                <UploadCloud className="h-16 w-16 text-muted-foreground/70 mb-4" />
                 <p className="text-lg font-semibold text-foreground mb-1">or drag and drop your file here</p>
                 <p className="text-xs text-muted-foreground mb-6">
                     Supported Formats: Images, PDF, Doc, Docs, PPT, PPTX; Max size: 20MB.
@@ -296,7 +297,7 @@ export default function SummarizerPage() {
                 AI Video Summarizer
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Learn faster from videos. Paste any YouTube link, and Sai will rapidly extract crucial topics, detailed arguments, and illustrative examples, converting long-form video content into focused, actionable study notes in seconds.
+                 Convert any YouTube video into concise, focused study notes. Extract crucial topics, detailed arguments, and illustrative examples in seconds to accelerate your learning.
             </p>
             <Card className="shadow-lg bg-card/70 backdrop-blur-sm border-border/50">
                 <CardContent className="p-6 sm:p-8">
@@ -311,7 +312,7 @@ export default function SummarizerPage() {
                             value={videoUrl}
                             onChange={(e) => setVideoUrl(e.target.value)}
                             className="pl-10 text-sm"
-                            disabled={isLoading}
+                            disabled={isLoading} // isLoading here refers to the main text summarizer
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                      handleFeatureUnderDevelopment("video");
