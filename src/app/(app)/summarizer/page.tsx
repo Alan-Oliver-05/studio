@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactElement } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Pr
 import { useToast } from "@/hooks/use-toast";
 import { summarizeText, SummarizeTextInput } from "@/ai/flows/summarize-text-flow";
 import { cn } from "@/lib/utils";
-import React from "react"; // Added React import
+import React from "react"; 
 
 type InputType = "text" | "recording" | "pdf" | "powerpoint" | "video";
 
@@ -47,7 +47,7 @@ export default function SummarizerPage() {
       toast({
         title: "Feature Not Available",
         description: `Generating notes from ${activeInputType} is not yet implemented. Please use the Text input for now.`,
-        variant: "destructive",
+        variant: "default", // Changed from destructive to default for "not yet implemented"
       });
       return;
     }
@@ -120,7 +120,7 @@ export default function SummarizerPage() {
               variant={activeInputType === option.value ? "secondary" : "ghost"}
               onClick={() => {
                 setActiveInputType(option.value);
-                setGeneratedNote(""); // Clear previous summary when changing type
+                setGeneratedNote(""); 
                 setError(null);
               }}
               className={cn(
@@ -214,8 +214,34 @@ export default function SummarizerPage() {
           </CardFooter>
         </Card>
       )}
+
+      {activeInputType === "pdf" && (
+        <Card className="shadow-lg max-w-3xl mx-auto text-center">
+          <CardHeader>
+            <CardTitle className="text-xl">Upload PDF Document</CardTitle>
+            <CardDescription>Extract key points from your PDF files.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div 
+                className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg min-h-[200px] bg-muted/30 cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
+                onClick={handleFeatureNotAvailable}
+            >
+              <FileTextIcon className="h-16 w-16 text-muted-foreground mb-4" />
+              <p className="text-lg font-semibold text-foreground mb-1">Drag & Drop PDF or Click to Upload</p>
+              <p className="text-sm text-muted-foreground">
+                Supported format: .pdf (Max 20MB)
+              </p>
+            </div>
+          </CardContent>
+           <CardFooter className="justify-center">
+            <Button variant="outline" onClick={handleFeatureNotAvailable}>
+              <FileUp className="mr-2 h-4 w-4" /> Upload PDF
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
       
-      {(activeInputType === "pdf" || activeInputType === "powerpoint" || activeInputType === "video") && (
+      {(activeInputType === "powerpoint" || activeInputType === "video") && (
          <Card className="shadow-lg max-w-3xl mx-auto text-center">
           <CardHeader>
             <CardTitle className="text-xl">AI Note Taker for {inputTypeOptions.find(opt => opt.value === activeInputType)?.label}</CardTitle>
@@ -264,4 +290,3 @@ export default function SummarizerPage() {
     </div>
   );
 }
-    
