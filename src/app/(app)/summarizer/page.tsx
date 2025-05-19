@@ -41,14 +41,18 @@ export default function SummarizerPage() {
   const [characterCount, setCharacterCount] = useState<number>(0);
 
   useEffect(() => {
-    setCharacterCount(inputText.length);
-  }, [inputText]);
+    if (activeInputType === "text") {
+      setCharacterCount(inputText.length);
+    } else {
+      setCharacterCount(0);
+    }
+  }, [inputText, activeInputType]);
 
   const handleGenerateNote = async () => {
     if (activeInputType !== "text") {
       toast({
         title: "Feature Not Available",
-        description: `Generating notes from ${activeInputType} is not yet implemented. Please use the Text input for now.`,
+        description: `Generating notes from ${activeInputType} content is not yet implemented. Please use the Text input for now.`,
         variant: "default",
       });
       return;
@@ -96,13 +100,6 @@ export default function SummarizerPage() {
       setIsLoading(false);
     }
   };
-
-  const handlePlaceholderButtonClick = (featureName: string) => {
-    toast({
-      title: "Coming Soon!",
-      description: `${featureName} functionality is under development.`,
-    });
-  };
   
   const handleFeatureNotAvailable = () => {
     toast({
@@ -126,8 +123,8 @@ export default function SummarizerPage() {
                 setActiveInputType(option.value);
                 setGeneratedNote(""); 
                 setError(null);
-                setInputText(""); // Clear text input when switching types
-                setVideoUrl(""); // Clear video URL when switching types
+                setInputText(""); 
+                setVideoUrl(""); 
               }}
               className={cn(
                 "px-3 py-1.5 h-auto text-xs sm:text-sm rounded-md flex items-center gap-1.5 sm:gap-2",
@@ -167,22 +164,24 @@ export default function SummarizerPage() {
             />
             <div className="mt-3 flex justify-between items-center">
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handlePlaceholderButtonClick("Select file")} className="text-xs">
+                <Button variant="outline" size="sm" onClick={handleFeatureNotAvailable} className="text-xs">
                   <FileUp className="mr-1.5 h-3.5 w-3.5" /> Select file
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handlePlaceholderButtonClick("Upload from drive")} className="text-xs">
+                <Button variant="outline" size="sm" onClick={handleFeatureNotAvailable} className="text-xs">
                   <UploadCloud className="mr-1.5 h-3.5 w-3.5" /> Upload from drive
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {characterCount}/{MAX_CHARACTERS} characters
-              </p>
+              {activeInputType === "text" && (
+                <p className="text-xs text-muted-foreground">
+                  {characterCount}/{MAX_CHARACTERS} characters
+                </p>
+              )}
             </div>
           </div>
           <div className="mt-6 text-center">
             <Button 
               onClick={handleGenerateNote} 
-              disabled={isLoading || !inputText.trim() || characterCount > MAX_CHARACTERS} 
+              disabled={isLoading || !inputText.trim() || (activeInputType === "text" && characterCount > MAX_CHARACTERS)} 
               size="lg"
               className="px-8 py-3 text-base"
             >
@@ -201,7 +200,7 @@ export default function SummarizerPage() {
         <Card className="shadow-lg max-w-3xl mx-auto text-center">
           <CardHeader>
             <CardTitle className="text-xl">Upload Your Audio Recording</CardTitle>
-            <CardDescription>Get notes from your lectures or voice memos.</CardDescription>
+            <CardDescription>Upload your audio (MP3, WAV, M4A). If transcribed, the AI will summarize key points, decisions, and action items.</CardDescription>
           </CardHeader>
           <CardContent>
             <div 
@@ -227,7 +226,7 @@ export default function SummarizerPage() {
         <Card className="shadow-lg max-w-3xl mx-auto text-center">
           <CardHeader>
             <CardTitle className="text-xl">Upload PDF Document</CardTitle>
-            <CardDescription>Extract key points from your PDF files.</CardDescription>
+            <CardDescription>Upload your PDF document. The AI will aim to extract the main arguments, methodology, findings, and conclusions if this feature were active.</CardDescription>
           </CardHeader>
           <CardContent>
             <div 
@@ -255,7 +254,7 @@ export default function SummarizerPage() {
                 Slide Summary
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Give Sai your slides and in under &lt;30 seconds, you'll get smart, clear notes that help you study stress-free.
+                Give Sai your slides and in under &lt;30 seconds, you'll get smart, clear notes that help you study stress-free. Get summaries of core messages per slide, overall narrative, and key takeaways.
             </p>
             <div 
                 className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
@@ -276,6 +275,21 @@ export default function SummarizerPage() {
                     Or, upload from Google Drive
                 </button>
             </div>
+             <div className="mt-6 text-center">
+                <Button 
+                onClick={handleFeatureNotAvailable} 
+                disabled={isLoading}
+                size="lg"
+                className="px-8 py-3 text-base"
+                >
+                {isLoading ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                    <Wand2 className="mr-2 h-5 w-5" />
+                )}
+                Generate note
+                </Button>
+            </div>
         </div>
       )}
 
@@ -285,12 +299,11 @@ export default function SummarizerPage() {
                 AI Video Summarizer
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Give Sai Youtube video and in &lt;30 seconds, you'll get clear, organized notes you can actually use to study better.
+                Paste a YouTube link. The AI will aim to summarize main topics, arguments, and examples to help you study better.
             </p>
             <Card className="shadow-lg bg-card/70 backdrop-blur-sm border-border/50">
                 <CardContent className="p-6 sm:p-8">
                     <div className="flex justify-center mb-6">
-                        {/* Placeholder for the custom video icon. Using Lucide Video icon for now */}
                         <VideoIconLucide className="h-20 w-20 text-primary opacity-70" />
                     </div>
                     <div className="relative mb-6">
@@ -314,8 +327,13 @@ export default function SummarizerPage() {
                         size="lg" 
                         onClick={handleFeatureNotAvailable} 
                         className="w-full text-base py-3"
-                        disabled={isLoading}
+                        disabled={isLoading || !videoUrl.trim()}
                     >
+                         {isLoading ? (
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        ) : (
+                            <Wand2 className="mr-2 h-5 w-5" /> /* Using Wand2 as a generic 'generate' icon */
+                        )}
                         Summarize
                     </Button>
                     <button 
@@ -326,6 +344,21 @@ export default function SummarizerPage() {
                     </button>
                 </CardContent>
             </Card>
+             <div className="mt-6 text-center">
+                <Button 
+                onClick={handleFeatureNotAvailable} 
+                disabled={isLoading || !videoUrl.trim()}
+                size="lg"
+                className="px-8 py-3 text-base"
+                >
+                {isLoading ? (
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                    <Wand2 className="mr-2 h-5 w-5" />
+                )}
+                Generate note
+                </Button>
+            </div>
         </div>
       )}
 
@@ -354,3 +387,4 @@ export default function SummarizerPage() {
     </div>
   );
 }
+

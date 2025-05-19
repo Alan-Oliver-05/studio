@@ -29,8 +29,13 @@ const prompt = ai.definePrompt({
   name: 'summarizeTextPrompt',
   input: {schema: SummarizeTextInputSchema},
   output: {schema: SummarizeTextOutputSchema},
-  prompt: `Please provide a concise and coherent summary of the following text.
-Focus on the main points and key information.
+  prompt: `You are an expert summarizer. Please provide a concise, coherent, and well-structured summary of the following text.
+Your summary should:
+1. Identify the main idea or thesis.
+2. Outline key arguments or points.
+3. Briefly mention any critical supporting details or examples.
+4. Conclude with the overall takeaway or conclusion of the text.
+Ensure the summary is easy to understand and captures the essence of the original content. Avoid jargon where possible and aim for clarity suitable for quick understanding.
 
 Text to summarize:
 {{{textToSummarize}}}
@@ -54,3 +59,4 @@ const summarizeTextFlow = ai.defineFlow(
     return output;
   }
 );
+
