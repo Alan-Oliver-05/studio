@@ -254,7 +254,7 @@ export default function SummarizerPage() {
                 Slide Summary
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Upload your presentations (PPT, PPTX, PDF slides) and instantly get core messages per slide, overall narrative analysis, and key actionable takeaways to supercharge your study.
+                Instantly transform your presentations (PPT, PPTX, PDF slides) into actionable study notes. Get core messages per slide, narrative analysis, and key takeaways to master your material.
             </p>
             <div 
                 className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
@@ -299,7 +299,7 @@ export default function SummarizerPage() {
                 AI Video Summarizer
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Paste any YouTube video link to extract crucial topics, detailed arguments, and illustrative examples. Turn long videos into focused study notes in seconds.
+                Convert any YouTube video into concise, focused study notes. Extract crucial topics, detailed arguments, and illustrative examples in seconds to accelerate your learning.
             </p>
             <Card className="shadow-lg bg-card/70 backdrop-blur-sm border-border/50">
                 <CardContent className="p-6 sm:p-8">
@@ -388,3 +388,4 @@ export default function SummarizerPage() {
   );
 }
 
+    
