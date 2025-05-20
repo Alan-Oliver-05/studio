@@ -16,7 +16,7 @@ import {
   Languages,
   BarChartBig,
   PieChartIcon,
-  FileText, // Added FileText icon
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -32,16 +32,17 @@ import {
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/study-session", icon: BookOpen, label: "Study Session", isDynamic: true }, 
-  { href: "/library", icon: LibraryBig, label: "Library" },
-  { href: "/todo", icon: ListChecks, label: "To-Do List" }, 
-  { href: "/summarizer", icon: FileText, label: "Summarizer" }, // Added Summarizer
-  { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
-  { href: "/notepad", icon: NotebookText, label: "Note Pad" },
   { href: "/general-tutor", icon: Brain, label: "General Tutor" },
-  { href: "/language-learning", icon: Languages, label: "Language Translator" },
+  { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
   { href: "/visual-learning", icon: PieChartIcon, label: "Visual Learning" },
+  { href: "/language-learning", icon: Languages, label: "Language Translator" },
+  { href: "/summarizer", icon: FileText, label: "Summarizer" },
+  { href: "/todo", icon: ListChecks, label: "To-Do List" }, 
+  { href: "/notepad", icon: NotebookText, label: "Note Pad" },
+  { href: "/library", icon: LibraryBig, label: "Library" },
   { href: "/analytics", icon: BarChartBig, label: "Analytics" },
+  // Study Session is dynamic and not listed here if it's purely for navigation target
+  // { href: "/study-session", icon: BookOpen, label: "Study Session", isDynamic: true }, 
 ];
 
 const settingsItem = { href: "/settings", icon: Settings, label: "Settings" };
@@ -53,6 +54,8 @@ export function SidebarNav() {
 
   const isNavItemActive = (itemHref: string, isDynamic?: boolean) => {
     if (isDynamic) {
+      // For dynamic routes like /study-session/[subject], this ensures the base link is active
+      // when any of its sub-routes are active.
       return pathname.startsWith(itemHref);
     }
     return pathname === itemHref;
@@ -71,7 +74,8 @@ export function SidebarNav() {
       <SidebarContent className="flex-grow p-2">
         <SidebarMenu>
           {navItems.map((item) => {
-            if (item.isDynamic && item.href === "/study-session") return null;
+            // This condition prevents rendering a generic "/study-session" link if it's meant to be dynamic only
+            if (item.href === "/study-session" && item.isDynamic) return null; 
             
             const isActive = isNavItemActive(item.href, item.isDynamic);
             return (
