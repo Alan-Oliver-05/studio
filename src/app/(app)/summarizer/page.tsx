@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIconLucide, FileUp, UploadCloud, Youtube } from "lucide-react";
+import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIconLucide, FileUp, UploadCloud, Youtube, Key, Brain, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { summarizeText, SummarizeTextInput } from "@/ai/flows/summarize-text-flow";
+import { summarizeText, SummarizeTextInput, SummarizeTextOutput } from "@/ai/flows/summarize-text-flow";
 import { cn } from "@/lib/utils";
 import React from "react";
 
@@ -33,7 +33,7 @@ const MAX_CHARACTERS = 10000;
 export default function SummarizerPage() {
   const [inputText, setInputText] = useState<string>("");
   const [videoUrl, setVideoUrl] = useState<string>("");
-  const [generatedNote, setGeneratedNote] = useState<string>("");
+  const [generatedNoteOutput, setGeneratedNoteOutput] = useState<SummarizeTextOutput | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -44,7 +44,7 @@ export default function SummarizerPage() {
     if (activeInputType === "text") {
       setCharacterCount(inputText.length);
     } else {
-      setCharacterCount(0); // Reset for other types
+      setCharacterCount(0); 
     }
   }, [inputText, activeInputType]);
 
@@ -68,12 +68,12 @@ export default function SummarizerPage() {
 
     setIsLoading(true);
     setError(null);
-    setGeneratedNote("");
+    setGeneratedNoteOutput(null);
 
     try {
       const input: SummarizeTextInput = { textToSummarize: inputText };
       const result = await summarizeText(input);
-      setGeneratedNote(result.summary);
+      setGeneratedNoteOutput(result);
       toast({
         title: "Note Generated",
         description: "Your content has been successfully processed into a note.",
@@ -95,8 +95,8 @@ export default function SummarizerPage() {
   const handleFeatureUnderDevelopment = (inputType: InputType) => {
     const typeLabel = inputTypeOptions.find(opt => opt.value === inputType)?.label || inputType;
     toast({
-        title: `${typeLabel} Summarization Under Development`,
-        description: `Generating notes from ${typeLabel} content is not yet implemented. Please use the Text input for now.`,
+        title: `${typeLabel} Summarization - Coming Soon!`,
+        description: `Generating notes from ${typeLabel} content is a feature we're actively developing. Please use the Text input for now.`,
         variant: "default",
       });
   };
@@ -107,7 +107,6 @@ export default function SummarizerPage() {
     } else if (activeInputType === "recording" || activeInputType === "pdf" ) {
       handleFeatureUnderDevelopment(activeInputType);
     }
-    // For PowerPoint and Video, their specific buttons already call handleFeatureUnderDevelopment
   };
 
   const showGeneralPageTitle = activeInputType !== "powerpoint" && activeInputType !== "video" && activeInputType !== "recording" && activeInputType !== "pdf";
@@ -122,7 +121,7 @@ export default function SummarizerPage() {
               variant={activeInputType === option.value ? "secondary" : "ghost"}
               onClick={() => {
                 setActiveInputType(option.value);
-                setGeneratedNote("");
+                setGeneratedNoteOutput(null);
                 setError(null);
                 setInputText("");
                 setVideoUrl("");
@@ -155,7 +154,7 @@ export default function SummarizerPage() {
         <div className="max-w-3xl mx-auto">
           <div className="p-4 sm:p-6 border-2 border-dashed border-primary/50 rounded-xl bg-card shadow-sm">
             <Textarea
-              placeholder="Paste your article, essay, or any text here. Get concise summaries, key takeaways, and organized notes instantly."
+              placeholder="Paste your article, essay, research paper, or any text here. Get concise summaries, key takeaways, and organized notes instantly."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               rows={12}
@@ -188,7 +187,7 @@ export default function SummarizerPage() {
                 AI Lecture Note Taker
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                 Transform your audio lectures, meetings, or voice notes into structured summaries. Extract key points, decisions, and actionable items effortlessly.
+                 Unpack your lectures and meetings. Sai transcribes and summarizes audio, pinpointing key discussions, decisions, and actionable insights in seconds.
             </p>
             <div className="p-6 md:p-8 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl bg-card shadow-sm min-h-[300px] flex flex-col items-center justify-center relative">
                 <Mic2 className="h-16 w-16 text-primary opacity-70 mb-6" data-ai-hint="microphone audio" />
@@ -208,7 +207,7 @@ export default function SummarizerPage() {
                     Or, upload from Google Drive
                 </button>
                 <p className="text-xs text-muted-foreground mt-8 absolute bottom-4 text-center w-full px-2">
-                    Supported Format: MP3, MPGA, WAV, WEBM, M4A, OPUS, AAC, FLAC, PCM; Max size: 500MB; Max duration: 4 hours.
+                    Upcoming Feature: Supports MP3, WAV, M4A. Max size: 500MB.
                 </p>
             </div>
         </div>
@@ -220,17 +219,16 @@ export default function SummarizerPage() {
                 AI PDF Summarizer
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Unlock insights from your PDF documents. Upload research papers, reports, or textbooks and receive comprehensive summaries covering main arguments, findings, and critical conclusions.
+                Master your documents. Upload any PDF and Sai extracts core arguments, methodology, findings, and conclusions, delivering comprehensive notes for faster understanding.
             </p>
             <div
                 className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
                 onClick={() => handleFeatureUnderDevelopment("pdf")}
-                data-ai-hint="PDF document file"
             >
                 <FileTextIcon className="h-16 w-16 text-muted-foreground/70 mb-4" data-ai-hint="pdf document"/>
                 <p className="text-lg font-semibold text-foreground mb-1">or drag and drop your file here</p>
                 <p className="text-xs text-muted-foreground mb-6">
-                    Supported Formats: Images, PDF, Doc, Docs, PPT, PPTX; Max size: 20MB.
+                    Upcoming Feature: Supports PDF, DOCX. Max size: 20MB.
                 </p>
                 <Button variant="accent" size="lg" onClick={(e) => { e.stopPropagation(); handleFeatureUnderDevelopment("pdf"); }} className="px-8 mb-3">
                     <FileUp className="mr-2 h-5 w-5" /> Select file
@@ -248,20 +246,19 @@ export default function SummarizerPage() {
       {activeInputType === "powerpoint" && (
         <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary mb-2">
-                Slide Summary
+                Slide Summary Pro
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                Instantly transform your presentations (PPT, PPTX, PDF slides) into actionable study notes. Get core messages per slide, narrative analysis, and key takeaways to master your material.
+                Ace your presentations. Sai instantly converts PPT, PPTX, or PDF slides into actionable study notes, detailing core messages per slide, narrative flow, and key takeaways.
             </p>
             <div
                 className="flex flex-col items-center justify-center p-8 md:p-12 border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl min-h-[250px] bg-card shadow-sm cursor-pointer hover:border-primary dark:hover:border-primary transition-colors"
                 onClick={() => handleFeatureUnderDevelopment("powerpoint")}
-                data-ai-hint="cloud upload presentation"
             >
                 <UploadCloud className="h-16 w-16 text-muted-foreground/70 mb-4" data-ai-hint="powerpoint presentation"/>
                 <p className="text-lg font-semibold text-foreground mb-1">or drag and drop your file here</p>
                 <p className="text-xs text-muted-foreground mb-6">
-                    Supported Formats: Images, PDF, Doc, Docs, PPT, PPTX; Max size: 20MB.
+                    Upcoming Feature: Supports PPT, PPTX, PDF slides. Max size: 20MB.
                 </p>
                 <Button variant="accent" size="lg" onClick={(e) => { e.stopPropagation(); handleFeatureUnderDevelopment("powerpoint");}} className="px-8 mb-3">
                     <FileUp className="mr-2 h-5 w-5" /> Select file
@@ -297,7 +294,7 @@ export default function SummarizerPage() {
                 AI Video Summarizer
             </h1>
             <p className="text-muted-foreground mt-1 mb-8 max-w-xl mx-auto text-sm sm:text-base">
-                 Convert any YouTube video into concise, focused study notes. Extract crucial topics, detailed arguments, and illustrative examples in seconds to accelerate your learning.
+                 Learn faster from videos. Paste any YouTube link, and Sai extracts crucial topics, arguments, and examples, delivering concise study notes in seconds.
             </p>
             <Card className="shadow-lg bg-card/70 backdrop-blur-sm border-border/50">
                 <CardContent className="p-6 sm:p-8">
@@ -314,7 +311,7 @@ export default function SummarizerPage() {
                             className="pl-10 text-sm"
                             disabled={isLoading} 
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
+                                if (e.key === 'Enter' && videoUrl.trim()) {
                                      handleFeatureUnderDevelopment("video");
                                 }
                             }}
@@ -332,7 +329,7 @@ export default function SummarizerPage() {
              <div className="mt-6 text-center">
                 <Button
                 onClick={() => handleFeatureUnderDevelopment("video")}
-                disabled={isLoading || (activeInputType === "video" && !videoUrl.trim())}
+                disabled={isLoading || !videoUrl.trim()}
                 size="lg"
                 className="px-8 py-3 text-base"
                 >
@@ -374,15 +371,51 @@ export default function SummarizerPage() {
         </Alert>
       )}
 
-      {generatedNote && activeInputType === "text" && !isLoading && (
+      {generatedNoteOutput && activeInputType === "text" && !isLoading && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto">
           <CardHeader>
-            <CardTitle>Generated Note</CardTitle>
-            <CardDescription>Here's the AI-generated note from your text.</CardDescription>
+            <CardTitle className="flex items-center"><Brain className="mr-2 h-5 w-5 text-primary"/>AI-Generated Notes</CardTitle>
+            <CardDescription>Comprehensive insights from your provided text.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="p-4 border rounded-md bg-muted/50 whitespace-pre-wrap text-sm leading-relaxed">
-              {generatedNote}
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="font-semibold text-lg text-primary mb-1">Summary:</h3>
+              <div className="p-3 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed">
+                {generatedNoteOutput.summary}
+              </div>
+            </div>
+
+            {generatedNoteOutput.keyEntities && generatedNoteOutput.keyEntities.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg text-primary mb-1">Key Entities:</h3>
+                <div className="flex flex-wrap gap-2">
+                  {generatedNoteOutput.keyEntities.map((entity, index) => (
+                    <span key={index} className="text-xs bg-accent/20 text-accent-foreground py-1 px-2 rounded-full">{entity}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {generatedNoteOutput.sentiment && (
+              <div>
+                <h3 className="font-semibold text-lg text-primary mb-1">Sentiment:</h3>
+                <p className="text-sm p-2 bg-muted/20 rounded-md">{generatedNoteOutput.sentiment}</p>
+              </div>
+            )}
+            
+            {generatedNoteOutput.keywords && generatedNoteOutput.keywords.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg text-primary mb-1 flex items-center"><Key className="mr-2 h-4 w-4"/>Keywords:</h3>
+                <div className="flex flex-wrap gap-2">
+                  {generatedNoteOutput.keywords.map((keyword, index) => (
+                    <span key={index} className="text-xs bg-secondary text-secondary-foreground py-1 px-2 rounded-md shadow-sm">{keyword}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+             <div className="text-xs text-muted-foreground pt-3 border-t">
+                <Info className="inline h-3 w-3 mr-1"/>
+                These notes are AI-generated. Always cross-reference critical information.
             </div>
           </CardContent>
         </Card>
@@ -390,7 +423,3 @@ export default function SummarizerPage() {
     </div>
   );
 }
-
-    
-
-    
