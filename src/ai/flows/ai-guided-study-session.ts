@@ -195,13 +195,19 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     outputSchema: AIGuidedStudySessionOutputSchema,
   },
   async input => {
-    // Ensure educationQualification is at least an empty object if not provided
-    // This helps prevent errors if the profile data is sparse.
+    const studentProfile = input.studentProfile;
+    const educationQualification = studentProfile.educationQualification || {};
+
+    // Ensure sub-fields of educationQualification are at least empty objects for safe Handlebars access
     const robustInput = {
       ...input,
       studentProfile: {
-        ...input.studentProfile,
-        educationQualification: input.studentProfile.educationQualification || {},
+        ...studentProfile,
+        educationQualification: {
+          boardExam: educationQualification.boardExam || {},
+          competitiveExam: educationQualification.competitiveExam || {},
+          universityExam: educationQualification.universityExam || {},
+        },
       },
     };
     const {output} = await prompt(robustInput);

@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -34,7 +35,7 @@ const prompt = ai.definePrompt({
   prompt: `You are an AI tutor summarizing a conversation with a student.
   Please provide a concise summary of the following conversation:
 
-  {{conversationHistory}}
+  {{{conversationHistory}}}
   `,
 });
 
@@ -46,6 +47,11 @@ const summarizeConversationFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (output && output.summary) {
+        return output;
+    }
+    console.warn("SummarizeConversation: AI output was malformed or missing summary. Input:", JSON.stringify(input));
+    return { summary: "Could not generate a summary for this conversation at the moment." };
   }
 );
+
