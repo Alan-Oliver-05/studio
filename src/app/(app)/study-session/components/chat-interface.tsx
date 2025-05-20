@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, Image as ImageIcon, Sparkles } from "lucide-react";
+import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, ImageIcon, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from "@/ai/flows/ai-guided-study-session";
-import { generateImageFromPrompt } from "@/ai/flows/generate-image-from-prompt"; // Import the new flow
+import { generateImageFromPrompt } from "@/ai/flows/generate-image-from-prompt";
 import { addMessageToConversation, getConversationById, saveConversation } from "@/lib/chat-storage";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -23,14 +23,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 
 interface ChatInterfaceProps {
   userProfile: UserProfile | null;
-  topic: string; 
-  conversationId: string; 
-  initialSystemMessage?: string; 
+  topic: string;
+  conversationId: string;
+  initialSystemMessage?: string;
   placeholderText?: string;
-  context?: { 
+  context?: {
     subject: string;
     lesson: string;
   };
+  initialInputQuery?: string; // New prop for suggestion chips
+  onInitialQueryConsumed?: () => void; // Callback after consuming the initial query
 }
 
 const renderVisualElementContent = (visualElement: VisualElement) => {
@@ -57,11 +59,13 @@ const renderVisualElementContent = (visualElement: VisualElement) => {
 
 export function ChatInterface({
   userProfile,
-  topic, 
+  topic,
   conversationId,
   initialSystemMessage,
   placeholderText = "Ask your question...",
-  context, 
+  context,
+  initialInputQuery,
+  onInitialQueryConsumed,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [input, setInput] = useState("");
@@ -86,12 +90,12 @@ export function ChatInterface({
       };
       setMessages([firstAIMessage]);
       addMessageToConversation(
-        conversationId, 
-        topic, 
-        firstAIMessage, 
+        conversationId,
+        topic,
+        firstAIMessage,
         userProfile || undefined,
-        context?.subject, 
-        context?.lesson 
+        context?.subject,
+        context?.lesson
       );
     }
   }, [conversationId, initialSystemMessage, topic, userProfile, context]);
@@ -101,6 +105,13 @@ export function ChatInterface({
       scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (initialInputQuery && initialInputQuery.trim() !== "") {
+      setInput(initialInputQuery);
+      onInitialQueryConsumed?.();
+    }
+  }, [initialInputQuery, onInitialQueryConsumed]);
 
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -126,7 +137,7 @@ export function ChatInterface({
     setUploadedImage(null);
     setUploadedImageName(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Reset file input
+      fileInputRef.current.value = ""; 
     }
   };
 
@@ -139,7 +150,6 @@ export function ChatInterface({
           const updatedMessages = prevMessages.map(msg =>
             msg.id === messageId ? { ...msg, generatedImageUri: result.imageDataUri } : msg
           );
-          // Update localStorage
           const convo = getConversationById(conversationId);
           if (convo) {
             convo.messages = updatedMessages;
@@ -171,28 +181,28 @@ export function ChatInterface({
     if (uploadedImage && uploadedImageName) {
        userMessageText = userMessageText ? `${userMessageText} (See attached image: ${uploadedImageName})` : `(See attached image: ${uploadedImageName})`;
     }
-    
+
     const userMessage: MessageType = {
       id: crypto.randomUUID(),
       sender: "user",
       text: userMessageText,
       timestamp: Date.now(),
-      attachmentPreview: uploadedImage, // For display in chat
+      attachmentPreview: uploadedImage,
     };
 
     setMessages((prev) => [...prev, userMessage]);
     addMessageToConversation(
-        conversationId, 
-        topic, 
-        userMessage, 
+        conversationId,
+        topic,
+        userMessage,
         userProfile,
         context?.subject,
         context?.lesson
     );
-    
-    const imageToSend = uploadedImage; 
+
+    const imageToSend = uploadedImage;
     setInput("");
-    setUploadedImage(null); 
+    setUploadedImage(null);
     setUploadedImageName(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -208,19 +218,19 @@ export function ChatInterface({
           country: userProfile.country,
           state: userProfile.state,
           preferredLanguage: userProfile.preferredLanguage,
-          educationQualification: { 
+          educationQualification: {
             boardExam: userProfile.educationCategory === 'board' ? userProfile.educationQualification.boardExams : undefined,
             competitiveExam: userProfile.educationCategory === 'competitive' ? userProfile.educationQualification.competitiveExams : undefined,
             universityExam: userProfile.educationCategory === 'university' ? userProfile.educationQualification.universityExams : undefined,
           }
         },
-        subject: context?.subject || undefined, 
-        lesson: context?.lesson || undefined,   
-        specificTopic: topic,    
+        subject: context?.subject || undefined,
+        lesson: context?.lesson || undefined,
+        specificTopic: topic,
         question: userMessage.text.replace(`(See attached image: ${uploadedImageName})`, '').trim(),
         photoDataUri: imageToSend ? imageToSend : undefined,
       };
-      
+
       const aiResponse = await aiGuidedStudySession(aiInput);
 
       if (aiResponse && aiResponse.response) {
@@ -234,9 +244,9 @@ export function ChatInterface({
         };
         setMessages((prev) => [...prev, aiMessage]);
         addMessageToConversation(
-            conversationId, 
-            topic, 
-            aiMessage, 
+            conversationId,
+            topic,
+            aiMessage,
             userProfile,
             context?.subject,
             context?.lesson
@@ -262,9 +272,9 @@ export function ChatInterface({
       };
        setMessages((prev) => [...prev, errorMessage]);
        addMessageToConversation(
-           conversationId, 
-           topic, 
-           errorMessage, 
+           conversationId,
+           topic,
+           errorMessage,
            userProfile,
            context?.subject,
            context?.lesson
@@ -273,7 +283,7 @@ export function ChatInterface({
       setIsLoading(false);
     }
   };
-  
+
   if (!userProfile) {
     return <div className="flex items-center justify-center h-full text-muted-foreground">Please complete onboarding to use the chat.</div>;
   }
@@ -305,17 +315,17 @@ export function ChatInterface({
               >
                 {message.attachmentPreview && message.sender === 'user' && (
                   <div className="mb-2">
-                    <Image 
-                      src={message.attachmentPreview} 
-                      alt="Uploaded preview" 
-                      width={200} 
-                      height={200} 
-                      className="rounded-md object-contain max-h-48" 
+                    <Image
+                      src={message.attachmentPreview}
+                      alt="Uploaded preview"
+                      width={200}
+                      height={200}
+                      className="rounded-md object-contain max-h-48"
                     />
                   </div>
                 )}
                 <p className="whitespace-pre-wrap">{message.text}</p>
-                
+
                 {message.sender === "ai" && message.visualElement && (
                   <Card className="mt-3 bg-primary/5 border-primary/20">
                     <CardHeader className="pb-2 pt-3 px-3">
@@ -333,11 +343,11 @@ export function ChatInterface({
                       <p className="text-xs mb-1">Type: <span className="font-medium">{message.visualElement.type.replace(/_/g, ' ')}</span></p>
                       <p className="text-xs mb-1">Content:</p>
                       {renderVisualElementContent(message.visualElement)}
-                      
+
                       {message.visualElement.type === 'image_generation_prompt' && !message.generatedImageUri && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
+                        <Button
+                          size="sm"
+                          variant="outline"
                           className="mt-2 text-xs"
                           onClick={() => handleGenerateImage(message.id, message.visualElement?.content as string)}
                           disabled={generatingImageForMessageId === message.id}
@@ -352,12 +362,12 @@ export function ChatInterface({
                       )}
                       {message.generatedImageUri && (
                         <div className="mt-2 border rounded-md overflow-hidden">
-                          <Image 
-                            src={message.generatedImageUri} 
-                            alt={message.visualElement.caption || "Generated image"} 
-                            width={300} 
-                            height={300} 
-                            className="object-contain" 
+                          <Image
+                            src={message.generatedImageUri}
+                            alt={message.visualElement.caption || "Generated image"}
+                            width={300}
+                            height={300}
+                            className="object-contain"
                             data-ai-hint="illustration diagram"
                           />
                         </div>
@@ -378,9 +388,9 @@ export function ChatInterface({
                       <ul className="space-y-1">
                         {message.suggestions.map((suggestion, idx) => (
                           <li key={idx} className="text-xs">
-                            <a 
-                              href={suggestion.startsWith('http') ? suggestion : `https://www.google.com/search?q=${encodeURIComponent(suggestion)}`} 
-                              target="_blank" 
+                            <a
+                              href={suggestion.startsWith('http') ? suggestion : `https://www.google.com/search?q=${encodeURIComponent(suggestion)}`}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="text-accent hover:underline break-all"
                             >
@@ -429,10 +439,10 @@ export function ChatInterface({
       >
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
               aria-label="Upload Image"
@@ -444,12 +454,12 @@ export function ChatInterface({
             <p>Upload Image</p>
           </TooltipContent>
         </Tooltip>
-        <Input 
-          type="file" 
-          accept="image/*" 
-          ref={fileInputRef} 
-          onChange={handleImageUpload} 
-          className="hidden" 
+        <Input
+          type="file"
+          accept="image/*"
+          ref={fileInputRef}
+          onChange={handleImageUpload}
+          className="hidden"
           disabled={isLoading}
         />
         <Input
@@ -481,4 +491,3 @@ export function ChatInterface({
     </div>
   );
 }
-
