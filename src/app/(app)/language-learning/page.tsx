@@ -8,7 +8,7 @@ import Link from "next/link";
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"; // Added CardFooter
 import { cn } from "@/lib/utils";
 
 const DynamicChatInterface = dynamic(() =>
@@ -50,7 +50,8 @@ export default function LanguageTranslatorPage() {
       // Potentially restore activeMode if it were saved with session
     } else if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
-      const newTimestamp = Date.now();
+      const newTimestamp = Date.now(); // Used for new sessions
+      // Ensure new ID is generated based on the current activeMode
       const defaultId = `language-translator-${activeMode}-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(defaultId);
       setChatKey(defaultId);
