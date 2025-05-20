@@ -2,11 +2,11 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Brain } from "lucide-react";
+import { Loader2, AlertTriangle, Brain, RotateCcw } from "lucide-react"; // Added RotateCcw
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
-import { useSearchParams } from 'next/navigation'; 
+import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
 import { useEffect, useState } from "react"; 
 
 const DynamicChatInterface = dynamic(() =>
@@ -20,6 +20,7 @@ const DynamicChatInterface = dynamic(() =>
 export default function AITutorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const searchParams = useSearchParams();
+  const router = useRouter(); // Added router
   
   const [mainChatConversationId, setMainChatConversationId] = useState<string | null>(null);
   const [mainChatKey, setMainChatKey] = useState<string>(''); 
@@ -32,11 +33,23 @@ export default function AITutorPage() {
       setMainChatKey(sessionIdFromQuery); 
     } else if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
-      const defaultMainChatId = `ai-tutor-chat-${profileIdentifier}`;
+      const newTimestamp = Date.now();
+      const defaultMainChatId = `ai-tutor-chat-${profileIdentifier}-${newTimestamp}`;
       setMainChatConversationId(defaultMainChatId);
       setMainChatKey(defaultMainChatId); 
     }
   }, [searchParams, profile]);
+
+  const handleNewConversation = () => {
+    router.push('/general-tutor', { scroll: false }); // Clear sessionId from URL
+    if (profile) {
+        const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
+        const newTimestamp = Date.now();
+        const newId = `ai-tutor-chat-${profileIdentifier}-${newTimestamp}`;
+        setMainChatConversationId(newId);
+        setMainChatKey(newId);
+    }
+  };
 
 
   if (profileLoading) {
@@ -76,11 +89,16 @@ export default function AITutorPage() {
   
   return (
     <div className="h-full flex flex-col mt-0 pt-0">
-      <div className="mb-6 pt-0 mt-0">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
-            <Brain className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> AI Learning Assistant
-        </h1>
-        <p className="text-muted-foreground mt-1">Your multi-modal personal tutor.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 pt-0 mt-0">
+        <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
+                <Brain className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> AI Learning Assistant
+            </h1>
+            <p className="text-muted-foreground mt-1">Your multi-modal personal tutor.</p>
+        </div>
+        <Button onClick={handleNewConversation} variant="outline" className="mt-2 sm:mt-0">
+          <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
+        </Button>
       </div>
       
       <div className="flex-grow flex flex-col min-h-0 max-w-4xl w-full mx-auto">
