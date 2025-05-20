@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow to retrieve lessons for a given subject based on the student's profile.
@@ -10,7 +11,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 // Assuming UserProfile type is defined elsewhere and matches this structure
-// import type { UserProfile } from '@/types'; 
+// import type { UserProfile } from '@/types';
 
 const UserProfileSchema = z.object({
   name: z.string(),
@@ -21,19 +22,19 @@ const UserProfileSchema = z.object({
   preferredLanguage: z.string(),
   educationCategory: z.string().describe("The primary education focus, e.g., 'board', 'competitive', 'university'."),
   educationQualification: z.object({
-    boardExams: z.object({ 
-        board: z.string().optional().describe('The specific education board (e.g., CBSE, State Board Name).'), 
-        standard: z.string().optional().describe('The student\'s current standard or grade (e.g., 10th, 12th).') 
+    boardExams: z.object({
+        board: z.string().optional().describe('The specific education board (e.g., CBSE, State Board Name).'),
+        standard: z.string().optional().describe('The student\'s current standard or grade (e.g., 10th, 12th).')
     }).optional(),
-    competitiveExams: z.object({ 
-        examType: z.string().optional().describe('The category of competitive exam.'), 
-        specificExam: z.string().optional().describe('The name of the specific competitive exam.') 
+    competitiveExams: z.object({
+        examType: z.string().optional().describe('The category of competitive exam.'),
+        specificExam: z.string().optional().describe('The name of the specific competitive exam.')
     }).optional(),
-    universityExams: z.object({ 
-        universityName: z.string().optional().describe('The name of the university.'), 
-        collegeName: z.string().optional().describe('The name of the college, if applicable.'), 
-        course: z.string().optional().describe('The student\'s course or major.'), 
-        currentYear: z.string().optional().describe('The student\'s current year of university study.') 
+    universityExams: z.object({
+        universityName: z.string().optional().describe('The name of the university.'),
+        collegeName: z.string().optional().describe('The name of the college, if applicable.'),
+        course: z.string().optional().describe('The student\'s course or major.'),
+        currentYear: z.string().optional().describe('The student\'s current year of university study.')
     }).optional(),
   }).describe('Detailed educational qualifications.'),
 });
@@ -64,7 +65,7 @@ const prompt = ai.definePrompt({
   input: {schema: GetLessonsForSubjectInputSchema},
   output: {schema: GetLessonsForSubjectOutputSchema},
   prompt: `You are an AI curriculum specialist. Your task is to generate a list of relevant lessons (or modules/units) for a specific subject, tailored to a student's detailed educational profile.
-  These lessons should reflect what would typically be found in the official syllabus or curriculum for their context.
+  These lessons should reflect what would typically be found in the official syllabus or curriculum for their context. Your careful consideration of their educational context is appreciated.
 
   Subject: {{{subjectName}}}
 
@@ -97,7 +98,7 @@ const prompt = ai.definePrompt({
     {{/if}}
   {{/with}}
 
-  Based on the subject "{{{subjectName}}}" and the student's specific educational context (considering their board, standard, country, state, exam, or university course details), generate a list of 5-10 key lessons or modules.
+  Based on the subject "{{{subjectName}}}" and the student's specific educational context (considering their board, standard, country, state, exam, or university course details), please generate a list of 5-10 key lessons or modules.
   Each lesson must have a 'name' and an optional 'description'.
   For example, if subject is "Mathematics" for a "10th Standard" student under "CBSE" board in "India", lessons might include "Real Numbers", "Polynomials", "Pair of Linear Equations in Two Variables", "Quadratic Equations", "Arithmetic Progressions", "Triangles", "Coordinate Geometry", "Introduction to Trigonometry", "Circles", "Statistics", "Probability".
   If the subject is "General Awareness" for "Banking" competitive exams, lessons could be "Indian Financial System", "Current Affairs (Last 6 months)", "Banking Terminology", "Static GK (India-focused)".
@@ -106,7 +107,7 @@ const prompt = ai.definePrompt({
   Prioritize accuracy based on the provided educational details.
   `,
   config: {
-    temperature: 0.2, 
+    temperature: 0.2,
   }
 });
 
@@ -128,3 +129,5 @@ const getLessonsForSubjectFlow = ai.defineFlow(
   }
 );
 
+
+    

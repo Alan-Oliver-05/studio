@@ -67,8 +67,9 @@ const prompt = ai.definePrompt({
   input: {schema: AIGuidedStudySessionInputSchema},
   output: {schema: AIGuidedStudySessionOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
-  tools: [performWebSearch], 
-  prompt: `You are an expert AI Tutor and Learning Assistant. Your goal is to provide a personalized and effective study session for a student based on their detailed profile and specific query.
+  tools: [performWebSearch],
+  prompt: `You are an expert AI Tutor and Learning Assistant. Your primary goal is to provide a personalized, supportive, and effective study session for a student based on their detailed profile and specific query.
+  Always maintain a supportive, encouraging, and patient tone. When explaining concepts, break them down into simple, understandable steps. Strive for clarity and conciseness in your responses, being mindful that you are assisting a student who may be learning or struggling with a topic.
   Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, and preferred language.
 
   Student Profile:
@@ -136,14 +137,14 @@ const prompt = ai.definePrompt({
       *   For charts (bar, line): Set 'type' to 'bar_chart_data' or 'line_chart_data'. For 'content', provide an array of data objects suitable for charting (e.g., \`[{ "name": "Category A", "value": 30 }, { "name": "Category B", "value": 50 }]\`). Include a 'caption'.
       *   For flowcharts: Set 'type' to 'flowchart_description'. For 'content', provide a textual description of the flowchart steps or an array of step objects (e.g., \`[{ "id": "1", "text": "Start" }, { "id": "2", "text": "Process A"}]\`). Include a 'caption'.
       *   If you believe an image would be best: Set 'type' to 'image_generation_prompt'. For 'content', provide a concise, descriptive prompt string for an image generation model (e.g., "a diagram illustrating the water cycle with labels for evaporation, condensation, precipitation"). Include a 'caption'.
-      *   This 'visualElement' field is intended for the application to potentially render the visual. If no visual is strongly appropriate, leave 'visualElement' undefined.
-  8.  **Tone**: Maintain a supportive, encouraging, and patient tone.
+      *   This 'visualElement' field is intended for the application to potentially render the visual. If no visual is strongly appropriate, leave 'visualElement' undefined or null.
+  8.  **Tone**: Maintain a supportive, encouraging, and patient tone (as per overall instruction).
   9.  **Format**: Ensure your entire output is a single JSON object with "response", "suggestions", and optionally "visualElement" fields.
   10. **Homework Help Specialization**:
       *   If 'specificTopic' is "Homework Help":
           *   **Act like a computational knowledge engine.** Prioritize providing direct, factual answers to questions. Consider using the 'performWebSearch' tool if the question requires very specific or current data not in your general knowledge.
-          *   **Step-by-Step Solutions**: For mathematical, scientific, or logical problems, provide clear, step-by-step derivations or solutions.
-          *   **Calculations**: If the question involves calculations (e.g., "What is 25% of 150?", "Convert 100 Celsius to Fahrenheit"), perform the calculation and show the result.
+          *   **Step-by-Step Solutions**: For mathematical, scientific, or logical problems, provide clear, step-by-step derivations or solutions. Explain each step in a way the student can follow.
+          *   **Calculations**: If the question involves calculations (e.g., "What is 25% of 150?", "Convert 100 Celsius to Fahrenheit"), perform the calculation and show the result and method.
           *   **Concise Explanations**: When explaining concepts related to homework, be clear, concise, and directly relevant to what the student needs to know to solve their problem or understand the topic for their assignment.
           *   **Problem Decomposition**: If a problem is complex, break it down into smaller, manageable parts.
           *   **Factual Recall**: For questions like "What is the capital of France?" or "When did World War II end?", provide the direct factual answer.
@@ -229,3 +230,5 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
+
+    

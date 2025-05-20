@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow to retrieve topics for a given lesson and subject, based on the student's profile.
@@ -20,19 +21,19 @@ const UserProfileSchema = z.object({
   preferredLanguage: z.string(),
   educationCategory: z.string().describe("The primary education focus, e.g., 'board', 'competitive', 'university'."),
   educationQualification: z.object({
-    boardExams: z.object({ 
-        board: z.string().optional().describe('The specific education board.'), 
-        standard: z.string().optional().describe('The student\'s current standard/grade.') 
+    boardExams: z.object({
+        board: z.string().optional().describe('The specific education board.'),
+        standard: z.string().optional().describe('The student\'s current standard/grade.')
     }).optional(),
-    competitiveExams: z.object({ 
-        examType: z.string().optional().describe('The category of competitive exam.'), 
-        specificExam: z.string().optional().describe('The name of the specific exam.') 
+    competitiveExams: z.object({
+        examType: z.string().optional().describe('The category of competitive exam.'),
+        specificExam: z.string().optional().describe('The name of the specific exam.')
     }).optional(),
-    universityExams: z.object({ 
-        universityName: z.string().optional().describe('The name of the university.'), 
-        collegeName: z.string().optional().describe('The name of the college.'), 
-        course: z.string().optional().describe('The student\'s course/major.'), 
-        currentYear: z.string().optional().describe('The student\'s current year of study.') 
+    universityExams: z.object({
+        universityName: z.string().optional().describe('The name of the university.'),
+        collegeName: z.string().optional().describe('The name of the college.'),
+        course: z.string().optional().describe('The student\'s course/major.'),
+        currentYear: z.string().optional().describe('The student\'s current year of study.')
     }).optional(),
   }).describe('Detailed educational qualifications.'),
 });
@@ -84,7 +85,7 @@ const prompt = ai.definePrompt({
     Context: School curriculum for {{{boardExams.standard}}} standard under {{{boardExams.board}}}.
     {{/if}}
     {{#if competitiveExams.examType}}
-    Competitive Exam Category: {{{competitiveExams.examType}}}
+    Specific Exam Category: {{{competitiveExams.specificExamCategory}}}
     Specific Exam: {{{competitiveExams.specificExam}}}
     Context: Syllabus for {{{competitiveExams.specificExam}}} ({{{competitiveExams.examType}}}).
     {{/if}}
@@ -97,8 +98,8 @@ const prompt = ai.definePrompt({
     {{/if}}
   {{/with}}
 
-  Based on the lesson '{{{lessonName}}}' (part of subject '{{{subjectName}}}') and the student's specific educational context, generate a list of 5-10 specific topics.
-  Each topic must have a 'name' and an optional 'description'.
+  Based on the lesson '{{{lessonName}}}' (part of subject '{{{subjectName}}}') and the student's specific educational context, please generate a list of 5-10 specific topics.
+  Each topic must have a 'name' and an optional 'description'. Aim for topics that are granular and directly relevant to the student's syllabus for a focused Q&A session.
   For example, for lesson "Polynomials" in subject "Mathematics" for a "10th Standard CBSE" student, topics might include "Geometrical Meaning of the Zeroes of a Polynomial", "Relationship between Zeroes and Coefficients of a Polynomial", "Division Algorithm for Polynomials".
   For lesson "Thermodynamics" in subject "Physics" for a "Mechanical Engineering, 1st Year" university student, topics might include "Basic Concepts and Zeroth Law", "First Law of Thermodynamics", "Second Law of Thermodynamics", "Entropy", "Thermodynamic Cycles".
 
@@ -126,3 +127,5 @@ const getTopicsForLessonFlow = ai.defineFlow(
   }
 );
 
+
+    

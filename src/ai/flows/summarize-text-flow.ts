@@ -40,6 +40,7 @@ Your response should include:
 4.  **Keywords**: Suggest 3-5 relevant keywords or tags for this text.
 
 Ensure the summary is easy to understand and captures the essence of the original content. Avoid jargon where possible and aim for clarity suitable for quick understanding.
+Present this information in a clear, organized manner that is helpful and easy for a student to quickly understand and use for their studies.
 
 Text to analyze:
 {{{textToSummarize}}}
@@ -66,3 +67,5 @@ const summarizeTextFlow = ai.defineFlow(
   }
 );
 
+
+    

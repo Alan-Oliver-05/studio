@@ -1,3 +1,4 @@
+
 // src/ai/flows/generate-personalized-subjects.ts
 'use server';
 /**
@@ -87,12 +88,12 @@ const prompt = ai.definePrompt({
   Focus: University Curriculum for {{{educationQualification.universityExams.course}}}, year {{{educationQualification.universityExams.currentYear}}} at {{{educationQualification.universityExams.universityName}}} in {{{country}}}.
   {{/if}}
 
-  Based on this precise profile, generate a list of subjects. For each subject:
+  Based on this precise profile, please carefully generate a list of subjects. For each subject:
   1.  Provide a "name" precisely reflecting the educational context (e.g., "Physics for 12th Standard CBSE", "Quantitative Aptitude for Banking Exams - India", "Thermodynamics for Mechanical Engineering Year 2 - Stanford University").
   2.  Provide a "description" tailored to this student and their curriculum.
   3.  List key "studyMaterials" (which are core topics or chapters) directly relevant to their specific syllabus or exam pattern.
 
-  Output must be in the specified JSON format. If no specific education focus is clear (e.g., "Other" education category with no details), provide general knowledge subjects appropriate for the age and location, still maintaining consistency.
+  Output must be in the specified JSON format for the student's benefit. If no specific education focus is clear (e.g., "Other" education category with no details), provide general knowledge subjects appropriate for the age and location, still maintaining consistency.
   Consider the student's country: {{{country}}} and state: {{{state}}} to infer regional curriculum variations if applicable (e.g., for state boards in India).
   The output language for subject names and descriptions should be English, but the content focus must be based on the student's curriculum (derived from their profile, including {{{preferredLanguage}}} if relevant to the curriculum itself).
   Double-check that the generated subjects and topics are standard for the specified education level and region.
@@ -120,3 +121,5 @@ const generatePersonalizedSubjectsFlow = ai.defineFlow(
   }
 );
 
+
+    

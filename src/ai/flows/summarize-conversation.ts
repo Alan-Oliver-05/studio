@@ -32,8 +32,8 @@ const prompt = ai.definePrompt({
   name: 'summarizeConversationPrompt',
   input: {schema: SummarizeConversationInputSchema},
   output: {schema: SummarizeConversationOutputSchema},
-  prompt: `You are an AI tutor summarizing a conversation with a student.
-  Please provide a concise summary of the following conversation:
+  prompt: `You are an AI assistant helping a student review their study session.
+  Could you please provide a concise summary of the following conversation, highlighting the main points discussed?
 
   {{{conversationHistory}}}
   `,
@@ -55,3 +55,5 @@ const summarizeConversationFlow = ai.defineFlow(
   }
 );
 
+
+    
