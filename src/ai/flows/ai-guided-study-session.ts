@@ -54,7 +54,7 @@ const VisualElementSchema = z.object({
 const AIGuidedStudySessionOutputSchema = z.object({
   response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. The response should be comprehensive and directly address the query based on the student's specific curriculum if applicable."),
   suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region."),
-  visualElement: VisualElementSchema.optional().describe('An optional visual element to aid understanding. This could be data for a chart, a description for a flowchart, or a prompt for image generation.'),
+  visualElement: VisualElementSchema.optional().nullable().describe('An optional visual element to aid understanding. This could be data for a chart, a description for a flowchart, or a prompt for image generation.'),
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
 
@@ -67,7 +67,7 @@ const prompt = ai.definePrompt({
   input: {schema: AIGuidedStudySessionInputSchema},
   output: {schema: AIGuidedStudySessionOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
-  tools: [performWebSearch], // Added the web search tool
+  tools: [performWebSearch], 
   prompt: `You are an expert AI Tutor and Learning Assistant. Your goal is to provide a personalized and effective study session for a student based on their detailed profile and specific query.
   Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, and preferred language.
 
@@ -127,9 +127,10 @@ const prompt = ai.definePrompt({
       *   If stuck: Offer hints, break down the problem, or explain prerequisite concepts they might be missing.
       *   If an image is provided (see "Student provided image for context"), use it to understand and answer the question. For example, if it's an image of a math problem, help solve it. If it's a diagram, explain it.
   4.  **Study Materials in Response**: Integrate study material directly into your response. This means clear explanations, definitions, examples, and step-by-step solutions where appropriate.
-  5.  **External Suggestions**: Provide 2-3 "suggestions" for further study. These should be high-quality, specific external resources.
-      *   Preferably, suggest official sources like specific pages on their educational board's website (e.g., {{{studentProfile.educationQualification.boardExam.board}}} website if applicable), national educational portals for {{{studentProfile.country}}}, or specific, reputable textbooks or academic websites known to be used for their curriculum.
-      *   If official sources are hard to pinpoint, suggest well-regarded open educational resources or university course pages relevant to the topic and student's level.
+  5.  **External Suggestions**: Provide 2-3 "suggestions" for further study. These MUST be high-quality, specific resources.
+      *   **PRIORITIZE**: Official sources like specific pages on their educational board's website (e.g., {{{studentProfile.educationQualification.boardExam.board}}} website if applicable), national educational portals for {{{studentProfile.country}}}, or specific, reputable textbooks or academic websites (e.g., university pages, well-known .org or .edu sites) directly relevant to their curriculum.
+      *   **DO NOT suggest**: Commercial online learning platforms, apps, or other AI tutoring services. Focus on foundational, academic, or official resources.
+      *   If official sources are hard to pinpoint, you may suggest specific, well-regarded open educational resources or specific pages from non-commercial academic portals relevant to the topic and student's level. Avoid general suggestions like 'search online'.
   6.  **Visual Explanations (Textual Description)**: If the student asks for visual explanations or if it would significantly aid understanding, describe in your main 'response' text how a graph, chart, or flowchart could represent the information. You can also provide data points that could be used to create such visuals.
   7.  **Visual Element Output (Structured Data)**: If you determine a visual explanation is highly beneficial (as per instruction 6), in addition to describing it in your main 'response' text, ALSO populate the 'visualElement' output field.
       *   For charts (bar, line): Set 'type' to 'bar_chart_data' or 'line_chart_data'. For 'content', provide an array of data objects suitable for charting (e.g., \`[{ "name": "Category A", "value": 30 }, { "name": "Category B", "value": 50 }]\`). Include a 'caption'.
@@ -155,7 +156,7 @@ const prompt = ai.definePrompt({
           *   **Offer Explanations (Optional/If Asked)**: If the student asks, or if it seems helpful, provide brief explanations of grammatical structures or vocabulary choices in the translation. Use the student's 'preferredLanguage' ({{{studentProfile.preferredLanguage}}}) for these explanations.
           *   **Example Sentences (Optional/If Asked)**: Provide example sentences using the translated words or phrases in the target language.
           *   **Handle Ambiguity**: If the source text is ambiguous, you might offer possible translations or ask for clarification.
-          *   Suggestions in this mode could be links to online dictionaries, or tools like Google Translate for further exploration.
+          *   Suggestions in this mode could be links to online dictionaries for further exploration (prioritize official/academic dictionary sites).
   12. **Visual Learning Mode Specialization**:
       *   If 'specificTopic' is "Visual Learning" or "Visual Learning Focus":
           *   **Prioritize Visuals**: Your primary goal is to help the student understand the concept presented in their "{{{question}}}" through visual means.
@@ -216,7 +217,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     const {output} = await prompt(robustInput);
 
     if (output && output.response && Array.isArray(output.suggestions)) {
-        // visualElement is optional, so we don't need to check for its presence for a valid output
+        // visualElement is optional and nullable, so we don't need to check for its presence for a valid output
         return output;
     }
 
