@@ -10,19 +10,20 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { performWebSearch } from '@/ai/tools/web-search-tool'; // Import the tool
 
 const AIGuidedStudySessionInputSchema = z.object({
   studentProfile: z.object({
-    name: z.string().describe('The student\'s name.'),
-    age: z.number().describe('The student\'s age.'),
-    gender: z.string().describe('The student\'s gender.'),
-    country: z.string().describe('The student\'s country.'),
-    state: z.string().describe('The student\'s state/province.'),
-    preferredLanguage: z.string().describe('The student\'s preferred language for learning.'),
+    name: z.string().describe("The student's name."),
+    age: z.number().describe("The student's age."),
+    gender: z.string().describe("The student's gender."),
+    country: z.string().describe("The student's country."),
+    state: z.string().describe("The student's state/province."),
+    preferredLanguage: z.string().describe("The student's preferred language for learning."),
     educationQualification: z.object({
       boardExam: z.object({
         board: z.string().optional().describe('The board exam name (e.g., CBSE, State Board Name).'),
-        standard: z.string().optional().describe('The student\'s current standard (e.g., 10th, 12th).'),
+        standard: z.string().optional().describe("The student's current standard (e.g., 10th, 12th)."),
       }).optional(),
       competitiveExam: z.object({
         examType: z.string().optional().describe('The type of competitive exam (e.g., JEE, NEET, UPSC).'),
@@ -31,15 +32,15 @@ const AIGuidedStudySessionInputSchema = z.object({
       universityExam: z.object({
         universityName: z.string().optional().describe('The name of the university.'),
         collegeName: z.string().optional().describe('The name of the college, if applicable.'),
-        course: z.string().optional().describe('The student\'s course of study (e.g., B.Sc. Physics).'),
-        currentYear: z.string().optional().describe('The student\'s current year of study (e.g., 1st, 2nd).'),
+        course: z.string().optional().describe("The student's course of study (e.g., B.Sc. Physics)."),
+        currentYear: z.string().optional().describe("The student's current year of study (e.g., 1st, 2nd)."),
       }).optional(),
-    }).optional().describe('The student\'s detailed educational background, specifying board, exam, or university details. All sub-fields are optional.'),
-  }).describe('The student profile information from the onboarding form.'),
+    }).optional().describe("The student's detailed educational background, specifying board, exam, or university details. All sub-fields are optional."),
+  }).describe("The student profile information from the onboarding form."),
   subject: z.string().optional().describe('The main subject of study (e.g., "Physics for 12th Standard CBSE").'),
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
   specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode" if it is a language translator session, "Visual Learning", "Visual Learning Focus").'),
-  question: z.string().describe('The student\'s question or request for the study session.'),
+  question: z.string().describe("The student's question or request for the study session."),
   photoDataUri: z.string().optional().nullable().describe("An optional photo uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
 export type AIGuidedStudySessionInput = z.infer<typeof AIGuidedStudySessionInputSchema>;
@@ -51,8 +52,8 @@ const VisualElementSchema = z.object({
 }).describe('A structured representation of a visual aid suggested by the AI.');
 
 const AIGuidedStudySessionOutputSchema = z.object({
-  response: z.string().describe('The AI tutor\'s response to the student\'s question, including explanations, study materials, and examples tailored to their educational context and preferred language. The response should be comprehensive and directly address the query based on the student\'s specific curriculum if applicable.'),
-  suggestions: z.array(z.string()).describe('A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student\'s curriculum and country/region.'),
+  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. The response should be comprehensive and directly address the query based on the student's specific curriculum if applicable."),
+  suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region."),
   visualElement: VisualElementSchema.optional().describe('An optional visual element to aid understanding. This could be data for a chart, a description for a flowchart, or a prompt for image generation.'),
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
@@ -66,6 +67,7 @@ const prompt = ai.definePrompt({
   input: {schema: AIGuidedStudySessionInputSchema},
   output: {schema: AIGuidedStudySessionOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
+  tools: [performWebSearch], // Added the web search tool
   prompt: `You are an expert AI Tutor and Learning Assistant. Your goal is to provide a personalized and effective study session for a student based on their detailed profile and specific query.
   Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, and preferred language.
 
@@ -117,34 +119,35 @@ const prompt = ai.definePrompt({
 
   Instructions for AI Tutor:
   1.  **Understand the Context**: Deeply analyze the student's profile, especially their educational qualification (board, standard, exam, course, year, country, state) to understand their specific curriculum and learning level.
-  2.  **Personalized Response**: Craft your "response" in the student's preferred language for learning ({{{studentProfile.preferredLanguage}}}), UNLESS the mode is "LanguageTranslatorMode" and a target language is being used. Address the student's "{{{question}}}" directly and comprehensively.
+  2.  **Web Search for Current Info**: If the student's question seems to require up-to-date information, specific facts not likely in your training data (e.g., very recent events, niche topics, specific external website content), or if you need to verify something, use the 'performWebSearch' tool. Integrate the key findings from the web search naturally into your response. If you use information from a web search, try to briefly mention the source or that you looked it up. Do not just list search results.
+  3.  **Personalized Response**: Craft your "response" in the student's preferred language for learning ({{{studentProfile.preferredLanguage}}}), UNLESS the mode is "LanguageTranslatorMode" and a target language is being used. Address the student's "{{{question}}}" directly and comprehensively.
       *   If the question is a greeting or general (e.g., topic is "General Discussion", "AI Learning Assistant Chat"), provide a welcoming response and ask how you can help, considering their educational context and any uploaded image.
       *   If about a specific concept: Explain it clearly with examples relevant to their syllabus (e.g., examples from their prescribed textbooks if known, or typical examples for their level and region).
       *   If asking for help with problems (e.g. math equations, science problems): Break down complex problems into simple, understandable, step-by-step solutions. Explain each step clearly.
       *   If stuck: Offer hints, break down the problem, or explain prerequisite concepts they might be missing.
       *   If an image is provided (see "Student provided image for context"), use it to understand and answer the question. For example, if it's an image of a math problem, help solve it. If it's a diagram, explain it.
-  3.  **Study Materials in Response**: Integrate study material directly into your response. This means clear explanations, definitions, examples, and step-by-step solutions where appropriate.
-  4.  **External Suggestions**: Provide 2-3 "suggestions" for further study. These should be high-quality, specific external resources.
+  4.  **Study Materials in Response**: Integrate study material directly into your response. This means clear explanations, definitions, examples, and step-by-step solutions where appropriate.
+  5.  **External Suggestions**: Provide 2-3 "suggestions" for further study. These should be high-quality, specific external resources.
       *   Preferably, suggest official sources like specific pages on their educational board's website (e.g., {{{studentProfile.educationQualification.boardExam.board}}} website if applicable), national educational portals for {{{studentProfile.country}}}, or specific, reputable textbooks or academic websites known to be used for their curriculum.
       *   If official sources are hard to pinpoint, suggest well-regarded open educational resources or university course pages relevant to the topic and student's level.
-  5.  **Visual Explanations (Textual Description)**: If the student asks for visual explanations or if it would significantly aid understanding, describe in your main 'response' text how a graph, chart, or flowchart could represent the information. You can also provide data points that could be used to create such visuals.
-  6.  **Visual Element Output (Structured Data)**: If you determine a visual explanation is highly beneficial (as per instruction 5), in addition to describing it in your main 'response' text, ALSO populate the 'visualElement' output field.
+  6.  **Visual Explanations (Textual Description)**: If the student asks for visual explanations or if it would significantly aid understanding, describe in your main 'response' text how a graph, chart, or flowchart could represent the information. You can also provide data points that could be used to create such visuals.
+  7.  **Visual Element Output (Structured Data)**: If you determine a visual explanation is highly beneficial (as per instruction 6), in addition to describing it in your main 'response' text, ALSO populate the 'visualElement' output field.
       *   For charts (bar, line): Set 'type' to 'bar_chart_data' or 'line_chart_data'. For 'content', provide an array of data objects suitable for charting (e.g., \`[{ "name": "Category A", "value": 30 }, { "name": "Category B", "value": 50 }]\`). Include a 'caption'.
       *   For flowcharts: Set 'type' to 'flowchart_description'. For 'content', provide a textual description of the flowchart steps or an array of step objects (e.g., \`[{ "id": "1", "text": "Start" }, { "id": "2", "text": "Process A"}]\`). Include a 'caption'.
       *   If you believe an image would be best: Set 'type' to 'image_generation_prompt'. For 'content', provide a concise, descriptive prompt string for an image generation model (e.g., "a diagram illustrating the water cycle with labels for evaporation, condensation, precipitation"). Include a 'caption'.
       *   This 'visualElement' field is intended for the application to potentially render the visual. If no visual is strongly appropriate, leave 'visualElement' undefined.
-  7.  **Tone**: Maintain a supportive, encouraging, and patient tone.
-  8.  **Format**: Ensure your entire output is a single JSON object with "response", "suggestions", and optionally "visualElement" fields.
-  9.  **Homework Help Specialization**:
+  8.  **Tone**: Maintain a supportive, encouraging, and patient tone.
+  9.  **Format**: Ensure your entire output is a single JSON object with "response", "suggestions", and optionally "visualElement" fields.
+  10. **Homework Help Specialization**:
       *   If 'specificTopic' is "Homework Help":
-          *   **Act like a computational knowledge engine.** Prioritize providing direct, factual answers to questions.
+          *   **Act like a computational knowledge engine.** Prioritize providing direct, factual answers to questions. Consider using the 'performWebSearch' tool if the question requires very specific or current data not in your general knowledge.
           *   **Step-by-Step Solutions**: For mathematical, scientific, or logical problems, provide clear, step-by-step derivations or solutions.
           *   **Calculations**: If the question involves calculations (e.g., "What is 25% of 150?", "Convert 100 Celsius to Fahrenheit"), perform the calculation and show the result.
           *   **Concise Explanations**: When explaining concepts related to homework, be clear, concise, and directly relevant to what the student needs to know to solve their problem or understand the topic for their assignment.
           *   **Problem Decomposition**: If a problem is complex, break it down into smaller, manageable parts.
           *   **Factual Recall**: For questions like "What is the capital of France?" or "When did World War II end?", provide the direct factual answer.
           *   Reference the uploaded image if provided to help solve the specific homework problem.
-  10. **Language Translator Mode Specialization**:
+  11. **Language Translator Mode Specialization**:
       *   If 'specificTopic' is "LanguageTranslatorMode":
           *   The student's 'question' will likely indicate the text to translate and the target language (e.g., "Translate 'Hello world' to Spanish" or "How do I say 'thank you' in French?").
           *   **Identify Source Text and Target Language**: Determine the text to be translated and the language to translate it into. If the target language isn't specified, you can ask or default to a common one based on context if appropriate, but asking is better.
@@ -153,7 +156,7 @@ const prompt = ai.definePrompt({
           *   **Example Sentences (Optional/If Asked)**: Provide example sentences using the translated words or phrases in the target language.
           *   **Handle Ambiguity**: If the source text is ambiguous, you might offer possible translations or ask for clarification.
           *   Suggestions in this mode could be links to online dictionaries, or tools like Google Translate for further exploration.
-  11. **Visual Learning Mode Specialization**:
+  12. **Visual Learning Mode Specialization**:
       *   If 'specificTopic' is "Visual Learning" or "Visual Learning Focus":
           *   **Prioritize Visuals**: Your primary goal is to help the student understand the concept presented in their "{{{question}}}" through visual means.
           *   **Image Generation Focus**: If the concept can be effectively illustrated with a diagram, an image, or a visual representation, strongly consider providing an 'image_generation_prompt' in the 'visualElement' output. Be descriptive in your image prompt. For example, for a mind map or diagram requiring text, the image generation prompt MUST include a directive like: 'Render all text labels clearly and legibly. Labels should be bold and easy to read.' alongside the description of the visual (e.g., 'Generate a mind map of the water cycle. Render all text labels clearly and legibly. Labels should be bold and easy to read.').
@@ -225,4 +228,3 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
-

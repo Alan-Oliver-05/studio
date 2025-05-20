@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, ImageIcon, Sparkles } from "lucide-react";
+import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, ImageIcon, Sparkles, BarChartBig } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from "@/ai/flows/ai-guided-study-session";
 import { generateImageFromPrompt } from "@/ai/flows/generate-image-from-prompt";
@@ -20,6 +20,13 @@ import {
 } from "@/components/ui/tooltip";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface ChatInterfaceProps {
   userProfile: UserProfile | null;
@@ -31,8 +38,8 @@ interface ChatInterfaceProps {
     subject: string;
     lesson: string;
   };
-  initialInputQuery?: string; // New prop for suggestion chips
-  onInitialQueryConsumed?: () => void; // Callback after consuming the initial query
+  initialInputQuery?: string;
+  onInitialQueryConsumed?: () => void;
 }
 
 const renderVisualElementContent = (visualElement: VisualElement) => {
@@ -53,6 +60,63 @@ const renderVisualElementContent = (visualElement: VisualElement) => {
     <pre className="mt-1 whitespace-pre-wrap text-xs bg-muted/50 p-2 rounded-md max-h-40 overflow-auto">
       {contentRepresentation}
     </pre>
+  );
+};
+
+const RenderBarChartVisual = ({ visualElement }: { visualElement: VisualElement }) => {
+  if (!visualElement || visualElement.type !== 'bar_chart_data' || !Array.isArray(visualElement.content)) {
+    return <p className="text-xs text-muted-foreground">Invalid chart data.</p>;
+  }
+
+  const chartData = visualElement.content as Array<{ name: string | number; value: number | string; [key: string]: any }>;
+  
+  // Try to find a common key for 'value' if it's not explicitly 'value'
+  let valueKey = "value";
+  if (chartData.length > 0) {
+      const firstItemKeys = Object.keys(chartData[0]);
+      const potentialValueKeys = firstItemKeys.filter(k => k !== 'name' && typeof chartData[0][k] === 'number');
+      if (potentialValueKeys.length > 0) {
+          valueKey = potentialValueKeys[0];
+      }
+  }
+  
+  const chartConfig: ChartConfig = {};
+  chartData.forEach((item, index) => {
+    // Assuming there's a 'name' field for XAxis dataKey and 'value' for Bar dataKey
+    chartConfig[item.name as string] = {
+      label: String(item.name),
+      color: `hsl(var(--chart-${(index % 5) + 1}))`, // Cycle through 5 chart colors
+    };
+  });
+  chartConfig[valueKey] = { label: visualElement.caption || "Value", color: "hsl(var(--primary))" };
+
+
+  return (
+    <div className="h-[200px] w-full mt-2">
+      <ChartContainer config={chartConfig} className="w-full h-full">
+        <BarChart accessibilityLayer data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 5 }}>
+          <CartesianGrid vertical={false} strokeDasharray="3 3" />
+          <XAxis 
+            dataKey="name" 
+            tickLine={false} 
+            axisLine={false} 
+            tickMargin={8} 
+            tickFormatter={(value) => String(value).slice(0, 10) + (String(value).length > 10 ? '...' : '')}
+            style={{ fontSize: '10px' }}
+          />
+          <YAxis tickLine={false} axisLine={false} tickMargin={8} style={{ fontSize: '10px' }} />
+          <ChartTooltip
+            cursor={false}
+            content={<ChartTooltipContent hideLabel />}
+          />
+          <Bar dataKey={valueKey} radius={4}>
+             {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={chartConfig[entry.name as string]?.color || `hsl(var(--chart-${(index % 5) + 1}))`} />
+              ))}
+          </Bar>
+        </BarChart>
+      </ChartContainer>
+    </div>
   );
 };
 
@@ -330,7 +394,7 @@ export function ChatInterface({
                   <Card className="mt-3 bg-primary/5 border-primary/20">
                     <CardHeader className="pb-2 pt-3 px-3">
                       <CardTitle className="text-sm font-semibold text-primary flex items-center">
-                        {message.visualElement.type.includes('chart') && <BarChart2 className="h-4 w-4 mr-2"/>}
+                        {message.visualElement.type.includes('chart') && <BarChartBig className="h-4 w-4 mr-2"/>}
                         {message.visualElement.type.includes('flowchart') && <Zap className="h-4 w-4 mr-2"/>}
                         {message.visualElement.type.includes('image') && <ImageIcon className="h-4 w-4 mr-2"/>}
                         AI Suggested Visual
@@ -340,9 +404,16 @@ export function ChatInterface({
                       )}
                     </CardHeader>
                     <CardContent className="px-3 pb-3">
-                      <p className="text-xs mb-1">Type: <span className="font-medium">{message.visualElement.type.replace(/_/g, ' ')}</span></p>
-                      <p className="text-xs mb-1">Content:</p>
-                      {renderVisualElementContent(message.visualElement)}
+                       {message.visualElement.type === 'bar_chart_data' ? (
+                          <RenderBarChartVisual visualElement={message.visualElement} />
+                        ) : (
+                          <>
+                            <p className="text-xs mb-1">Type: <span className="font-medium">{message.visualElement.type.replace(/_/g, ' ')}</span></p>
+                            <p className="text-xs mb-1">Content:</p>
+                            {renderVisualElementContent(message.visualElement)}
+                          </>
+                        )}
+
 
                       {message.visualElement.type === 'image_generation_prompt' && !message.generatedImageUri && (
                         <Button
@@ -372,8 +443,8 @@ export function ChatInterface({
                           />
                         </div>
                       )}
-                       {(message.visualElement.type.includes('chart') || message.visualElement.type.includes('flowchart')) && (
-                        <p className="text-xs italic mt-2 text-muted-foreground">(Visual rendering for charts/flowcharts is under development)</p>
+                       {(message.visualElement.type.includes('flowchart')) && ( // Keep for flowchart, remove for bar_chart
+                        <p className="text-xs italic mt-2 text-muted-foreground">(Visual rendering for flowcharts is under development)</p>
                        )}
                     </CardContent>
                   </Card>
