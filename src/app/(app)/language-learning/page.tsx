@@ -2,7 +2,7 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Languages, RotateCcw, Type, Mic, MessageCircle, Camera as CameraIcon, Sparkles } from "lucide-react";
+import { Loader2, AlertTriangle, Languages, RotateCcw, Type, Mic, MessageCircle, Camera as CameraIcon, Sparkles, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
@@ -30,9 +30,9 @@ interface ModeOption {
 
 const modeOptions: ModeOption[] = [
   { value: "text", label: "Text", icon: Type, description: "Translate typed text between languages." },
-  { value: "voice", label: "Voice", icon: Mic, description: "Speak and get instant voice translations (coming soon)." },
-  { value: "conversation", label: "Conversation", icon: MessageCircle, description: "Have a bilingual conversation with AI assistance (coming soon)." },
-  { value: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images using your camera (coming soon)." },
+  { value: "voice", label: "Voice", icon: Mic, description: "Speak and get instant voice translations." },
+  { value: "conversation", label: "Conversation", icon: MessageCircle, description: "Have a bilingual conversation with AI assistance." },
+  { value: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images using your camera." },
 ];
 
 export default function LanguageTranslatorPage() {
@@ -46,27 +46,39 @@ export default function LanguageTranslatorPage() {
   useEffect(() => {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
-      // If a session ID is in URL, try to load it. Assume it's for text mode for now.
-      // Future: store mode with session to restore correctly.
-      setActiveMode("text"); // Default to text mode when loading existing session
+      const storedConversation = localStorage.getItem(`eduai-conversation-${sessionIdFromQuery}`);
+      let modeFromStorage: TranslationMode = "text";
+      if (storedConversation) {
+        try {
+          const conversationData = JSON.parse(storedConversation);
+          if (conversationData.topic && conversationData.topic.startsWith('lang-')) {
+            const modePart = conversationData.topic.split('-')[1] as TranslationMode;
+            if (['text', 'voice', 'conversation', 'camera'].includes(modePart)) {
+              modeFromStorage = modePart;
+            }
+          }
+        } catch (e) { console.error("Failed to parse conversation for mode", e); }
+      }
+      setActiveMode(modeFromStorage);
       setCurrentConversationId(sessionIdFromQuery);
       setChatKey(sessionIdFromQuery);
     } else if (profile) {
-      // No session ID, initialize new session based on current activeMode
       initializeNewSessionForMode(activeMode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
     }
-  }, [searchParams, profile]); // Removed activeMode from deps to avoid re-init on mode switch if session is loaded
+  }, [searchParams, profile]);
 
   const initializeNewSessionForMode = (mode: TranslationMode, profileIdentifier: string) => {
       const newTimestamp = Date.now();
       const newId = `lang-${mode}-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(newId);
       setChatKey(newId);
+      // Persist current mode with session ID if needed, e.g., in a simple map or part of conversation object in localStorage
+      // For simplicity, we are deriving it from conversationId or topic if stored.
   };
 
   const handleNewSession = () => {
     router.push('/language-learning', { scroll: false });
-    setActiveMode("text"); // Reset to text mode for a completely new session
+    setActiveMode("text"); 
     if (profile) {
       initializeNewSessionForMode("text", profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
     }
@@ -74,8 +86,11 @@ export default function LanguageTranslatorPage() {
 
   const handleModeChange = (mode: TranslationMode) => {
     setActiveMode(mode);
-    // Generate a new conversation ID when mode changes, unless we are loading a specific session
     if (profile && !searchParams.get('sessionId')) {
+      initializeNewSessionForMode(mode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
+    } else if (profile && searchParams.get('sessionId')) {
+      // If a session exists, changing mode should ideally start a new session for that mode
+      router.push('/language-learning', { scroll: false }); // Clear session ID from URL
       initializeNewSessionForMode(mode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
     }
   }
@@ -115,6 +130,43 @@ export default function LanguageTranslatorPage() {
   
   const initialChatMessageTextMode = `Hello ${profile.name}! Welcome to the Text Translator. What text would you like to translate, and to which language? For example: "Translate 'Hello, world!' to Spanish." or "How do I say 'Thank you very much' in French?"`;
 
+  const ComingSoonPlaceholder = ({ mode }: { mode: ModeOption }) => (
+    <Card className="w-full text-center shadow-xl bg-card/80 backdrop-blur-sm flex flex-col items-center justify-center flex-grow p-6 max-w-lg mx-auto">
+      <CardHeader className="p-2">
+        <div className="mx-auto bg-primary/10 rounded-full p-5 w-fit mb-4">
+          <mode.icon className="h-12 w-12 text-primary" />
+        </div>
+        <CardTitle className="text-2xl">{mode.label} Translation</CardTitle>
+        <CardDescription>{mode.description}</CardDescription>
+      </CardHeader>
+      <CardContent className="p-2">
+        {mode.value === "voice" && (
+          <Button variant="outline" size="lg" disabled className="mt-4 w-full max-w-xs">
+            <Mic className="mr-2 h-5 w-5" /> Start Recording (Coming Soon)
+          </Button>
+        )}
+        {mode.value === "conversation" && (
+           <Button variant="outline" size="lg" disabled className="mt-4 w-full max-w-xs">
+            <MessageCircle className="mr-2 h-5 w-5" /> Start Conversation (Coming Soon)
+          </Button>
+        )}
+        {mode.value === "camera" && (
+           <Button variant="outline" size="lg" disabled className="mt-4 w-full max-w-xs">
+            <UploadCloud className="mr-2 h-5 w-5" /> Upload or Scan Image (Coming Soon)
+          </Button>
+        )}
+        <p className="text-muted-foreground text-sm mt-6">
+          The "{mode.label} Translation" feature is currently under development and will be available soon!
+        </p>
+        <Sparkles className="h-8 w-8 text-accent mx-auto mt-6 opacity-70" />
+      </CardContent>
+      <CardFooter className="justify-center pt-4 p-2">
+         <Button variant="default" onClick={() => handleModeChange("text")}>Switch to Text Translation</Button>
+      </CardFooter>
+    </Card>
+  );
+
+
   const renderContent = () => {
     if (activeMode === "text") {
       return (
@@ -123,7 +175,7 @@ export default function LanguageTranslatorPage() {
             <DynamicChatInterface
               key={chatKey}
               userProfile={profile}
-              topic="LanguageTranslatorMode" // Specific topic for AI to recognize this mode
+              topic="LanguageTranslatorMode" 
               conversationId={currentConversationId}
               initialSystemMessage={initialChatMessageTextMode}
               placeholderText="E.g., Translate 'How are you?' to German"
@@ -133,28 +185,10 @@ export default function LanguageTranslatorPage() {
       );
     } else {
       const selectedModeDetails = modeOptions.find(m => m.value === activeMode);
-      return (
-        <div className="flex flex-col items-center justify-center flex-grow p-4 sm:p-8 max-w-2xl w-full mx-auto">
-          <Card className="w-full text-center shadow-xl bg-card/80 backdrop-blur-sm">
-            <CardHeader>
-              <div className="mx-auto bg-accent/10 rounded-full p-4 w-fit mb-4">
-                {selectedModeDetails && <selectedModeDetails.icon className="h-10 w-10 sm:h-12 sm:w-12 text-accent" />}
-              </div>
-              <CardTitle className="text-xl sm:text-2xl">{selectedModeDetails?.label} Translation</CardTitle>
-              <CardDescription>{selectedModeDetails?.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm sm:text-base">
-                The "{selectedModeDetails?.label} Translation" feature is currently under development and will be available soon!
-              </p>
-              <Sparkles className="h-8 w-8 text-primary mx-auto mt-6 opacity-70" />
-            </CardContent>
-            <CardFooter className="justify-center pt-4">
-               <Button variant="outline" onClick={() => handleModeChange("text")}>Switch to Text Translation</Button>
-            </CardFooter>
-          </Card>
-        </div>
-      );
+      if (selectedModeDetails) {
+        return <ComingSoonPlaceholder mode={selectedModeDetails} />;
+      }
+      return <p>Error: Mode not found.</p>; // Fallback
     }
   };
 
@@ -196,3 +230,5 @@ export default function LanguageTranslatorPage() {
     </div>
   );
 }
+
+    
