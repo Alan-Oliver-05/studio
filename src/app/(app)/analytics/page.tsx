@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { BarChartBig, BookOpen, Brain, CheckCircle, FileText, History, Languages, Layers, ListChecks, Loader2, MessageSquare, PenSquare, PieChartIcon, TrendingUp, Users, Info, Sparkles } from "lucide-react";
+import { BarChartBig, BookOpen, Brain, CheckCircle, FileText, History, Languages, Layers, ListChecks, Loader2, MessageSquare, PenSquare, PieChartIcon, TrendingUp, Users, Info, Sparkles, Home as HomeIcon } from "lucide-react";
 import { getConversations } from "@/lib/chat-storage";
 import type { Conversation, Task, Note, TaskPriority } from "@/types";
 import {
@@ -12,7 +12,9 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import type { ChartConfig } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Pie, PieChart, ResponsiveContainer, Cell } from "recharts";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 
 interface SessionStats {
@@ -137,10 +139,9 @@ export default function AnalyticsPage() {
   const sessionsChartConfig: ChartConfig = {
     sessions: { label: "Sessions", color: "hsl(var(--primary))" },
   };
-  sessionsChartData.forEach(item => { // Dynamically add colors for each bar
+  sessionsChartData.forEach(item => { 
       if (!sessionsChartConfig[item.name]) {
-          // Cycle through chart colors, or use primary if more items than chart colors
-          const colorIndex = Object.keys(sessionsChartConfig).length % 5; // 5 chart colors
+          const colorIndex = (Object.keys(sessionsChartConfig).length -1) % 5; 
           sessionsChartConfig[item.name] = { label: item.name, color: `hsl(var(--chart-${colorIndex + 1}))` }; 
       }
   });
@@ -149,24 +150,24 @@ export default function AnalyticsPage() {
   const taskStatusChartData = taskStats ? [
     { name: "Pending", value: taskStats.pending, fill: "hsl(var(--chart-2))" },
     { name: "Completed", value: taskStats.completed, fill: "hsl(var(--chart-1))" },
-  ].filter(d => d.value > 0) : []; // Filter out zero-value entries
+  ].filter(d => d.value > 0) : []; 
   
-  const taskStatusChartConfig: ChartConfig = {
-    Pending: { label: "Pending", color: "hsl(var(--chart-2))" },
-    Completed: { label: "Completed", color: "hsl(var(--chart-1))" },
-  };
+  const taskStatusChartConfig: ChartConfig = {};
+  taskStatusChartData.forEach(item => {
+    taskStatusChartConfig[item.name] = { label: item.name, color: item.fill };
+  });
+
 
   const taskPriorityChartData = taskStats ? [
     { name: "High", value: taskStats.byPriority.High, fill: "hsl(var(--destructive))"},
     { name: "Medium", value: taskStats.byPriority.Medium, fill: "hsl(var(--chart-4))" },
     { name: "Low", value: taskStats.byPriority.Low, fill: "hsl(var(--chart-5))" },
-  ].filter(d => d.value > 0) : []; // Filter out zero-value entries
+  ].filter(d => d.value > 0) : []; 
 
-  const taskPriorityChartConfig: ChartConfig = {
-    High: { label: "High", color: "hsl(var(--destructive))" },
-    Medium: { label: "Medium", color: "hsl(var(--chart-4))" },
-    Low: { label: "Low", color: "hsl(var(--chart-5))" },
-  };
+  const taskPriorityChartConfig: ChartConfig = {};
+    taskPriorityChartData.forEach(item => {
+    taskPriorityChartConfig[item.name] = { label: item.name, color: item.fill };
+  });
 
 
   const StatCard = ({ title, value, icon, description, children }: { title: string, value: string | number, icon?: React.ReactNode, description?: string, children?: React.ReactNode }) => (
@@ -240,9 +241,9 @@ export default function AnalyticsPage() {
                 <CardTitle className="text-lg sm:text-xl flex items-center text-foreground"><Layers className="mr-2 h-5 w-5 text-primary"/>Session Types</CardTitle>
                 <CardDescription>Number of sessions per category.</CardDescription>
               </CardHeader>
-              <CardContent className="h-[300px] md:h-[350px] pr-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sessionsChartData} margin={{ top: 5, right: 0, left: -20, bottom: sessionsChartData.length > 4 ? 50 : 5 }}>
+              <CardContent>
+                <ChartContainer config={sessionsChartConfig} className="h-[300px] md:h-[350px] w-full">
+                  <BarChart data={sessionsChartData} margin={{ top: 5, right: 0, left: -20, bottom: sessionsChartData.length > 4 ? 50 : 5 }} accessibilityLayer>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis 
                         dataKey="name" 
@@ -254,11 +255,9 @@ export default function AnalyticsPage() {
                         height={sessionsChartData.length > 4 ? 60 : 30}
                     />
                     <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} tickLine={{ stroke: 'hsl(var(--muted-foreground))' }} allowDecimals={false}/>
-                    <RechartsTooltip
-                        content={<ChartTooltipContent nameKey="name" />}
+                    <ChartTooltip
                         cursor={{fill: "hsla(var(--muted), 0.5)"}}
-                        labelStyle={{color: "hsl(var(--foreground))", fontWeight:"bold"}}
-                        itemStyle={{color: "hsl(var(--foreground))"}}
+                        content={<ChartTooltipContent />}
                     />
                     <Bar dataKey="sessions" radius={[4, 4, 0, 0]}>
                        {sessionsChartData.map((entry, index) => (
@@ -266,7 +265,7 @@ export default function AnalyticsPage() {
                        ))}
                     </Bar>
                   </BarChart>
-                </ResponsiveContainer>
+                </ChartContainer>
               </CardContent>
             </Card>
           )}
@@ -312,16 +311,16 @@ export default function AnalyticsPage() {
                   <CardTitle className="text-lg sm:text-xl flex items-center text-foreground"><PieChartIcon className="mr-2 h-5 w-5 text-primary"/>Task Status</CardTitle>
                   <CardDescription>Distribution of pending vs. completed tasks.</CardDescription>
                 </CardHeader>
-                <CardContent className="h-[250px] md:h-[300px] flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
+                <CardContent>
+                  <ChartContainer config={taskStatusChartConfig} className="h-[250px] md:h-[300px] w-full aspect-auto">
+                    <PieChart accessibilityLayer>
+                      <ChartTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
                       <Pie data={taskStatusChartData} cx="50%" cy="50%" labelLine={false} outerRadius={80} innerRadius={40} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                         {taskStatusChartData.map((entry, index) => ( <Cell key={`cell-${index}`} fill={entry.fill} /> ))}
                       </Pie>
-                      <RechartsTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
                       <Legend verticalAlign="bottom" height={36} wrapperStyle={{fontSize: "12px", color: "hsl(var(--muted-foreground))"}}/>
                     </PieChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
             )}
@@ -332,16 +331,16 @@ export default function AnalyticsPage() {
                   <CardTitle className="text-lg sm:text-xl flex items-center text-foreground"><TrendingUp className="mr-2 h-5 w-5 text-primary"/>Tasks by Priority</CardTitle>
                   <CardDescription>Distribution of tasks by their priority.</CardDescription>
                 </CardHeader>
-                <CardContent className="h-[250px] md:h-[300px] flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
+                <CardContent>
+                  <ChartContainer config={taskPriorityChartConfig} className="h-[250px] md:h-[300px] w-full aspect-auto">
+                    <PieChart accessibilityLayer>
+                      <ChartTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
                       <Pie data={taskPriorityChartData} cx="50%" cy="50%" labelLine={false} outerRadius={80} innerRadius={40} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                         {taskPriorityChartData.map((entry, index) => ( <Cell key={`cell-prio-${index}`} fill={entry.fill} /> ))}
                       </Pie>
-                       <RechartsTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
                        <Legend verticalAlign="bottom" height={36} wrapperStyle={{fontSize: "12px", color: "hsl(var(--muted-foreground))"}}/>
                     </PieChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
             )}
@@ -366,3 +365,6 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
+
+    
