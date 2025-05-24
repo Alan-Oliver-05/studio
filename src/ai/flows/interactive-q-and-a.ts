@@ -46,7 +46,7 @@ const InteractiveQAndAInputSchema = z.object({
 export type InteractiveQAndAInput = z.infer<typeof InteractiveQAndAInputSchema>;
 
 const InteractiveQAndAOutputSchema = z.object({
-  question: z.string().describe('The next question posed by the AI tutor, strictly relevant to the topic and previous interaction, acting as if retrieved from the topic\'s content.'),
+  question: z.string().describe('The next question posed by the AI tutor, strictly relevant to the topic and previous interaction, ideally as a multiple-choice question. If multiple-choice, it should include options (e.g., A, B, C, D).'),
   feedback: z.string().optional().describe('Concise feedback on the student\'s answer (if provided). This should be encouraging and explain correctness or errors based SOLELY on the topic\'s content.'),
   isCorrect: z.boolean().optional().describe('Indicates if the student\'s last answer was correct, based on the topic. Null if no answer was provided.'),
   suggestions: z.array(z.string()).optional().describe("A list of 1-2 highly specific suggestions for sub-topics, related concepts within the CURRENT topic, or probing questions for further study."),
@@ -62,7 +62,7 @@ const prompt = ai.definePrompt({
   input: {schema: InteractiveQAndAInputSchema},
   output: {schema: InteractiveQAndAOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
-  prompt: `You are a Focused Topic AI Tutor. Your primary goal is to conduct a RAG-style interactive Q&A session.
+  prompt: `You are a Focused Topic AI Tutor. Your primary goal is to conduct a RAG-style interactive Q&A session where the student primarily 'chooses the best answer'.
   Your KNOWLEDGE BASE for this session is STRICTLY LIMITED to the provided:
   Subject: {{{subject}}}
   Lesson: {{{lesson}}}
@@ -92,11 +92,16 @@ const prompt = ai.definePrompt({
   2.  **If a 'studentAnswer' is provided**:
       *   Evaluate if the answer is correct based *only* on the '{{{topic}}}' content. Set 'isCorrect' (true/false).
       *   Provide concise 'feedback' in {{{studentProfile.preferredLanguage}}}. If incorrect, explain why using information *only* from '{{{topic}}}' and provide the correct concept/answer from '{{{topic}}}'. Be encouraging.
-      *   Then, formulate a new, single, clear 'question' directly related to the '{{{topic}}}'. This question should build upon the previous interaction or explore a new facet of '{{{topic}}}'.
+      *   Then, formulate a new 'question' directly related to the '{{{topic}}}'.
   3.  **If NO 'studentAnswer' is provided (or it's the start of Q&A for this topic)**:
       *   Set 'isCorrect' to null or omit it. 'feedback' can be a brief welcoming message or null.
-      *   Formulate an initial, single, clear 'question' about the '{{{topic}}}', appropriate for the student's profile and derived *only* from the '{{{topic}}}' content.
-  4.  **Question Style**: Questions must be clear, targeted, and assess understanding of '{{{topic}}}'. They can be multiple-choice (provide options A, B, C, D), fill-in-the-blank, or short answer. Ensure questions are answerable from the presumed content of '{{{topic}}}'.
+      *   Formulate an initial 'question' about the '{{{topic}}}'.
+  4.  **Question Style (CRITICAL)**:
+      *   **Strongly Prefer Multiple-Choice Questions (MCQs)**: Your primary mode of asking questions should be multiple-choice.
+      *   Each MCQ should have 3-4 distinct options (e.g., labeled A, B, C, or A, B, C, D).
+      *   Ensure only one option is clearly the correct answer based *only* on the '{{{topic}}}' content.
+      *   The question and options must be clear, targeted, and assess understanding of '{{{topic}}}'.
+      *   If, in rare cases, an MCQ is not suitable for a concept, you may ask a very short fill-in-the-blank or direct short answer question, but revert to MCQs as soon as possible.
   5.  **Conciseness & Focus**: Your responses (feedback and questions) must be concise and directly relevant to '{{{topic}}}'. Ask ONE question at a time.
   6.  **Next Steps & Suggestions**: After providing feedback (if applicable) and asking a new question, include 1-2 'suggestions' in the output field. These suggestions should prompt the student for further exploration *within the current '{{{topic}}}'*. They could be:
       *   Probing questions about related aspects of the '{{{topic}}}' (e.g., "What if X was different?").
