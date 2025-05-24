@@ -1,5 +1,5 @@
 
-import { defineTool } from 'genkit';
+import { ai } from '@/ai/genkit'; // Import the ai instance
 import { z } from 'zod';
 
 // Placeholder for actual web search implementation
@@ -17,7 +17,7 @@ async function searchWeb(query: string): Promise<string> {
   return `Simulated web search results for "${query}": Information on this topic can typically be found on reputable educational websites, encyclopedias, or academic journals. For instance, searching for official curriculum details for a specific education board in a country often yields results from the board's official website.`;
 }
 
-export const performWebSearch = defineTool(
+export const performWebSearch = ai.defineTool( // Changed to ai.defineTool
   {
     name: 'performWebSearch',
     description: 'Performs a web search to find up-to-date information, facts, or specific external website content. Use this when information is likely outside the model\'s training data or needs verification. Provides a summary of findings.',
@@ -33,3 +33,4 @@ export const performWebSearch = defineTool(
     return { searchResultsSummary: summary };
   }
 );
+
