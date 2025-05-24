@@ -41,7 +41,7 @@ interface ChatInterfaceProps {
   };
   initialInputQuery?: string;
   onInitialQueryConsumed?: () => void;
-  enableImageUpload?: boolean; // New prop to control image upload
+  enableImageUpload?: boolean;
 }
 
 const renderVisualElementContent = (visualElement: VisualElement) => {
@@ -138,7 +138,7 @@ export function ChatInterface({
   context,
   initialInputQuery,
   onInitialQueryConsumed,
-  enableImageUpload = true, // Default to true
+  enableImageUpload = true,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [input, setInput] = useState("");
@@ -156,7 +156,7 @@ export function ChatInterface({
     const existingConversation = getConversationById(conversationId);
     if (existingConversation && existingConversation.messages.length > 0) {
       setMessages(existingConversation.messages);
-    } else if (initialSystemMessage && !isInteractiveQAMode) { // Only add initial system message if not interactive Q&A (which gets first Q from parent)
+    } else if (initialSystemMessage && !isInteractiveQAMode) { 
       const firstAIMessage: MessageType = {
         id: crypto.randomUUID(),
         sender: "ai",
@@ -296,7 +296,6 @@ export function ChatInterface({
       let aiResponseMessage: MessageType;
 
       if (isInteractiveQAMode) {
-        // Find the previous AI question
         let previousAIQuestionText: string | undefined;
         for (let i = messages.length - 1; i >= 0; i--) {
           if (messages[i].sender === 'ai') {
@@ -307,29 +306,26 @@ export function ChatInterface({
 
         const qAndAInput: InteractiveQAndAInput = {
           studentProfile: { ...userProfile, age: Number(userProfile.age) },
-          subject: context?.subject || topic, // Fallback to topic if subject not available
-          lesson: context?.lesson || topic,   // Fallback to topic if lesson not available
+          subject: context?.subject || topic,
+          lesson: context?.lesson || topic,
           topic: topic,
           studentAnswer: userMessage.text,
           previousQuestion: previousAIQuestionText,
-          conversationHistory: formatConversationForAI(messages), // History up to the last AI message
+          conversationHistory: formatConversationForAI(messages),
         };
         const qAndAResponse = await interactiveQAndA(qAndAInput);
-        let responseText = qAndAResponse.question;
-        if (qAndAResponse.feedback) {
-            responseText = `${qAndAResponse.feedback}\n\n${qAndAResponse.question}`;
-        }
+        
         aiResponseMessage = {
             id: crypto.randomUUID(),
             sender: "ai",
-            text: responseText,
-            feedback: qAndAResponse.feedback,
+            text: qAndAResponse.question, // Store only the question in the main text field
+            feedback: qAndAResponse.feedback, // Store feedback separately
             isCorrect: qAndAResponse.isCorrect,
             suggestions: qAndAResponse.suggestions,
             timestamp: Date.now(),
         };
 
-      } else { // Use aiGuidedStudySession for special modes
+      } else { 
         const aiInput: AIGuidedStudySessionInput = {
           studentProfile: { ...userProfile, age: Number(userProfile.age) },
           subject: context?.subject || undefined,
@@ -378,17 +374,6 @@ export function ChatInterface({
     return <div className="flex items-center justify-center h-full text-muted-foreground p-8 text-center">Please complete the onboarding process to use the chat features.</div>;
   }
   
-  const renderMessageContent = (message: MessageType) => {
-    let textToShow = message.text;
-    if (message.sender === 'ai' && isInteractiveQAMode && message.feedback && !message.text.startsWith("Feedback:")) {
-        // The text already includes feedback and question from interactiveQAndA
-        // If text is just the question, and feedback exists, prepend it.
-        // This logic is now handled in handleSubmit when creating aiResponseMessage.
-    }
-    return <p className="whitespace-pre-wrap leading-relaxed">{textToShow}</p>;
-  };
-
-
   return (
     <div className="flex flex-col h-full bg-card rounded-lg shadow-xl border border-border/50">
       <ScrollArea className="flex-grow p-4 md:p-6" ref={scrollAreaRef}>
@@ -426,20 +411,34 @@ export function ChatInterface({
                   </div>
                 )}
 
-                {message.sender === 'ai' && message.isCorrect === false && isInteractiveQAMode && (
-                    <div className="flex items-center text-xs text-destructive mb-1">
-                        <AlertCircleIcon className="h-3.5 w-3.5 mr-1.5"/>
-                        <span>Let's review that. </span>
-                    </div>
-                )}
-                 {message.sender === 'ai' && message.isCorrect === true && isInteractiveQAMode && (
-                    <div className="flex items-center text-xs text-green-600 dark:text-green-500 mb-1">
-                        <Check className="h-3.5 w-3.5 mr-1.5"/>
-                        <span>Correct! </span>
-                    </div>
+                {/* Specific rendering for Interactive Q&A AI messages */}
+                {message.sender === 'ai' && isInteractiveQAMode && (
+                  <>
+                    {message.isCorrect === false && (
+                      <div className="flex items-center text-xs text-destructive mb-1.5 font-medium">
+                        <AlertCircleIcon className="h-4 w-4 mr-1.5"/>
+                        <span>Needs Review</span>
+                      </div>
+                    )}
+                    {message.isCorrect === true && (
+                      <div className="flex items-center text-xs text-green-600 dark:text-green-500 mb-1.5 font-medium">
+                        <Check className="h-4 w-4 mr-1.5"/>
+                        <span>Correct!</span>
+                      </div>
+                    )}
+                    {message.feedback && (
+                      <div className="mb-2 border-b border-current/10 pb-2">
+                        <p className="whitespace-pre-wrap leading-relaxed text-sm opacity-90">{message.feedback}</p>
+                      </div>
+                    )}
+                    <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p> {/* This is now just the question */}
+                  </>
                 )}
 
-                {renderMessageContent(message)}
+                {/* Fallback/Default rendering for other AI messages or user messages */}
+                {!(message.sender === 'ai' && isInteractiveQAMode) && (
+                  <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                )}
 
                 {message.sender === "ai" && message.visualElement && (
                   <Card className="mt-3 bg-background/50 border-primary/20 shadow-sm">
@@ -624,4 +623,3 @@ export function ChatInterface({
     </div>
   );
 }
-
