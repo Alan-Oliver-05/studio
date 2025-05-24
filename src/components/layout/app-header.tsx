@@ -1,3 +1,4 @@
+"use client";
 
 import { GraduationCap } from "lucide-react";
 import Link from "next/link";
