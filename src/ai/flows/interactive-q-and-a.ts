@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview This file defines a Genkit flow for interactive question and answer sessions with a student,
- * acting as a focused RAG-like tutor for a specific topic.
+ * acting as a focused RAG-like tutor for a specific topic, with a multi-stage approach.
  *
  * - interactiveQAndA - A function that initiates and manages the interactive Q&A flow.
  * - InteractiveQAndAInput - The input type for the interactiveQAndA function.
@@ -11,8 +11,8 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z}
-from 'genkit';
+import {z} from 'genkit';
+import type { QAS_Stage } from '@/types'; // Ensure QAS_Stage is imported if defined in types.ts
 
 const InteractiveQAndAInputSchema = z.object({
   studentProfile: z.object({
@@ -42,14 +42,22 @@ const InteractiveQAndAInputSchema = z.object({
   studentAnswer: z.string().optional().nullable().describe('The student\'s answer to the previous question from the AI tutor.'),
   previousQuestion: z.string().optional().nullable().describe('The previous question asked by the AI tutor to provide context.'),
   conversationHistory: z.string().optional().nullable().describe('A brief history of the current Q&A session to maintain context. Focus on the last few turns.'),
+  currentStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed']).default('initial_material').optional()
+    .describe("The current stage of the Q&A session for this topic. Default to 'initial_material' if not provided by the client."),
+  questionsAskedInStage: z.number().default(0).optional()
+    .describe("Number of questions already asked by AI in the current stage for this topic. Default to 0 if not provided."),
 });
 export type InteractiveQAndAInput = z.infer<typeof InteractiveQAndAInputSchema>;
 
 const InteractiveQAndAOutputSchema = z.object({
-  question: z.string().describe('The next question posed by the AI tutor, strictly relevant to the topic and previous interaction, ideally as a multiple-choice question. If multiple-choice, it should include options (e.g., A, B, C, D).'),
-  feedback: z.string().optional().describe('Concise feedback on the student\'s answer (if provided). This should be encouraging and explain correctness or errors based SOLELY on the topic\'s content.'),
-  isCorrect: z.boolean().optional().describe('Indicates if the student\'s last answer was correct, based on the topic. Null if no answer was provided.'),
-  suggestions: z.array(z.string()).optional().describe("A list of 1-2 highly specific suggestions for sub-topics, related concepts within the CURRENT topic, or probing questions for further study."),
+  question: z.string().describe('The next question posed by the AI tutor, or a concluding remark if stage is "completed".'),
+  feedback: z.string().optional().describe('Concise feedback on the student\'s answer (if provided).'),
+  isCorrect: z.boolean().optional().describe('Indicates if the student\'s last answer was correct. Null if no answer was provided or not applicable.'),
+  suggestions: z.array(z.string()).optional().describe("A list of 1-2 specific suggestions for further study within the current topic/stage."),
+  nextStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed']).optional()
+    .describe("The stage the AI suggests moving to next. If omitted, assume current stage continues. 'completed' means this topic session is finished."),
+  isStageComplete: z.boolean().optional()
+    .describe("True if the AI believes the current stage's objectives have been met and it's time to transition (or has transitioned).")
 });
 export type InteractiveQAndAOutput = z.infer<typeof InteractiveQAndAOutputSchema>;
 
@@ -62,60 +70,68 @@ const prompt = ai.definePrompt({
   input: {schema: InteractiveQAndAInputSchema},
   output: {schema: InteractiveQAndAOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
-  prompt: `You are a Focused Topic AI Tutor. Your primary goal is to conduct a RAG-style interactive Q&A session where the student primarily 'chooses the best answer'.
-  Your KNOWLEDGE BASE for this session is STRICTLY LIMITED to the provided:
+  prompt: `You are a Focused Topic AI Tutor implementing a multi-stage Q&A strategy.
+  Your KNOWLEDGE BASE for stages 'initial_material' and 'deeper_material' is STRICTLY LIMITED to:
   Subject: {{{subject}}}
   Lesson: {{{lesson}}}
   Topic: {{{topic}}}
-
-  You MUST act as if you are retrieving all information, questions, and feedback SOLELY from the content defined by this Subject-Lesson-Topic hierarchy. DO NOT use external knowledge.
 
   Student Profile:
   Name: {{{studentProfile.name}}}
   Age: {{{studentProfile.age}}}
   Country: {{{studentProfile.country}}}
   Preferred Language: {{{studentProfile.preferredLanguage}}}
-  Educational Context: (Use this to tailor question difficulty and examples, still within the topic's scope)
-  {{#with studentProfile.educationQualification}}
-    {{#if boardExam.board}}Board: {{{boardExam.board}}}{{#if boardExam.standard}}, Standard: {{{boardExam.standard}}}{{/if}}{{/if}}
-    {{#if competitiveExam.examType}}Exam: {{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}} ({{{competitiveExam.specificExam}}}){{/if}}{{/if}}
-    {{#if universityExam.universityName}}University: {{{universityExam.universityName}}}, Course: {{{universityExam.course}}}{{#if universityExam.currentYear}}, Year: {{{universityExam.currentYear}}}{{/if}}{{/if}}
-  {{else}}General knowledge for age {{{studentProfile.age}}}, within the scope of '{{{topic}}}'.{{/with}}
+  Educational Context: {{#with studentProfile.educationQualification}}{{#if boardExam.board}}Board: {{{boardExam.board}}}{{#if boardExam.standard}}, Standard: {{{boardExam.standard}}}{{/if}}{{/if}}{{#if competitiveExam.examType}}Exam: {{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}} ({{{competitiveExam.specificExam}}}){{/if}}{{/if}}{{#if universityExam.universityName}}University: {{{universityExam.universityName}}}, Course: {{{universityExam.course}}}{{#if universityExam.currentYear}}, Year: {{{universityExam.currentYear}}}{{/if}}{{/if}}{{else}}General knowledge for age {{{studentProfile.age}}}, within '{{{topic}}}'.{{/with}}
 
   Conversation Context:
   {{#if conversationHistory}}Recent History (last few turns): {{{conversationHistory}}}{{/if}}
   {{#if previousQuestion}}Previous AI Question: "{{{previousQuestion}}}"{{/if}}
   {{#if studentAnswer}}Student's Answer to Previous Question: "{{{studentAnswer}}}"{{/if}}
 
-  Your Task (Strictly follow these rules):
-  1.  **Information Retrieval (Simulated)**: Before responding, internally "retrieve" relevant facts or concepts ONLY from the defined '{{{topic}}}' within '{{{lesson}}}' and '{{{subject}}}'.
-  2.  **If a 'studentAnswer' is provided**:
-      *   Evaluate if the answer is correct based *only* on the '{{{topic}}}' content. Set 'isCorrect' (true/false).
-      *   Provide concise 'feedback' in {{{studentProfile.preferredLanguage}}}. If incorrect, explain why using information *only* from '{{{topic}}}' and provide the correct concept/answer from '{{{topic}}}'. Be encouraging.
-      *   Then, formulate a new 'question' directly related to the '{{{topic}}}'.
-  3.  **If NO 'studentAnswer' is provided (or it's the start of Q&A for this topic)**:
-      *   Set 'isCorrect' to null or omit it. 'feedback' can be a brief welcoming message or null.
-      *   Formulate an initial 'question' about the '{{{topic}}}'.
-  4.  **Question Style (CRITICAL)**:
-      *   **Strongly Prefer Multiple-Choice Questions (MCQs)**: Your primary mode of asking questions should be multiple-choice.
-      *   Each MCQ should have 3-4 distinct options (e.g., labeled A, B, C, or A, B, C, D).
-      *   Ensure only one option is clearly the correct answer based *only* on the '{{{topic}}}' content.
-      *   The question and options must be clear, targeted, and assess understanding of '{{{topic}}}'.
-      *   If, in rare cases, an MCQ is not suitable for a concept, you may ask a very short fill-in-the-blank or direct short answer question, but revert to MCQs as soon as possible.
-  5.  **Conciseness & Focus**: Your responses (feedback and questions) must be concise and directly relevant to '{{{topic}}}'. Ask ONE question at a time.
-  6.  **Next Steps & Suggestions**: After providing feedback (if applicable) and asking a new question, include 1-2 'suggestions' in the output field. These suggestions should prompt the student for further exploration *within the current '{{{topic}}}'*. They could be:
-      *   Probing questions about related aspects of the '{{{topic}}}' (e.g., "What if X was different?").
-      *   Key sub-concepts within '{{{topic}}}' that haven't been covered yet or could be revisited for deeper understanding.
-      *   Connections between the current discussion point and other parts of '{{{topic}}}'.
-      *   Example: If discussing 'causes of photosynthesis', a suggestion could be "You might want to think about: What are the limiting factors of photosynthesis?" or "Consider exploring: The different pigments involved in photosynthesis and their roles."
-      These suggestions MUST remain strictly within the scope of '{{{topic}}}'.
-  7.  **Language**: All 'question', 'feedback', and 'suggestions' must be in {{{studentProfile.preferredLanguage}}}.
-  8.  **JSON Output**: Ensure the entire output is a single, valid JSON object matching the output schema.
-  9.  **Awareness**: Maintain awareness of the conversation flow. If the student seems confused, simplify. If they are doing well, you can subtly increase complexity *within the topic*.
-  10. **No External Knowledge**: Reiterate: Do NOT use any information outside of what can be reasonably assumed to be part of '{{{topic}}}' as defined by '{{{subject}}}' and '{{{lesson}}}'.
+  Current Q&A Stage: {{{currentStage}}}
+  Questions Asked by AI in This Stage (before this turn): {{questionsAskedInStage}}
+
+  Your Task:
+  1.  **If a 'studentAnswer' is provided**: Evaluate it based *only* on the '{{{topic}}}' content (for 'initial_material' and 'deeper_material' stages). Set 'isCorrect'. Provide concise 'feedback' in {{{studentProfile.preferredLanguage}}}.
+  2.  **If NO 'studentAnswer' is provided (e.g., start of a new stage after AI transition, or very first question of session)**: Set 'isCorrect' to null. 'feedback' can be null or a brief stage intro like "Let's start with some foundational questions." or "Now, let's explore this topic more deeply.".
+
+  Stage-Specific Questioning Strategy:
+
+  {{#if (eq currentStage "initial_material")}}
+  **Current Stage: Initial Material Review (Target: 3-4 questions total in this stage)**
+  *   Objective: Test foundational understanding of core concepts from '{{{topic}}}'.
+  *   Action:
+      *   If {{questionsAskedInStage}} < 3: Ask a new multiple-choice question (MCQ) about a core concept. Set 'nextStage' to 'initial_material' and 'isStageComplete' to false.
+      *   If {{questionsAskedInStage}} >= 3: You've asked enough for this stage. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to true. Your 'question' field should then contain the *first* question for the 'deeper_material' stage.
+  {{else if (eq currentStage "deeper_material")}}
+  **Current Stage: Deeper Material Analysis (Target: 2-3 questions total in this stage)**
+  *   Objective: Ask analytical or connecting MCQs about '{{{topic}}}', requiring more than simple recall, but still within the material.
+  *   Action:
+      *   If {{questionsAskedInStage}} < 2: Ask a new analytical MCQ. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to false.
+      *   If {{questionsAskedInStage}} >= 2: You've asked enough. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to true. Your 'question' field should be the *first* question for 'out_of_syllabus'.
+  {{else if (eq currentStage "out_of_syllabus")}}
+  **Current Stage: Beyond the Syllabus (Target: 1-2 questions total in this stage)**
+  *   Objective: Ask 1-2 MCQs or short-answer questions connecting '{{{topic}}}' to broader concepts or related fields.
+  *   Action:
+      *   If {{questionsAskedInStage}} < 1: Ask a new "beyond syllabus" question. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to false.
+      *   If {{questionsAskedInStage}} >= 1: You've asked enough. Set 'nextStage' to 'completed' and 'isStageComplete' to true. Your 'question' field should be a concluding remark about the topic '{{{topic}}}'.
+  {{else if (eq currentStage "completed")}}
+  **Topic Completed**
+  *   Your 'question' should be a polite concluding remark for the topic '{{{topic}}}' (e.g., "We've covered the key aspects of {{{topic}}}. Well done!"). Do not ask a new question.
+  *   Set 'nextStage' to 'completed' and 'isStageComplete' to true. Feedback and suggestions are optional.
+  {{/if}}
+
+  Additional Rules:
+  *   **Question Style (CRITICAL for 'initial_material' & 'deeper_material')**: Primarily use MCQs with 3-4 distinct options. For 'out_of_syllabus', MCQs or direct short answer questions are fine.
+  *   **Conciseness & Focus**: ONE question at a time.
+  *   **Suggestions**: After feedback (if any) and asking a new question (unless stage is 'completed'), provide 1-2 'suggestions' for related aspects *within the current topic '{{{topic}}}'* relevant to the current stage's objective.
+  *   **Language**: All 'question', 'feedback', 'suggestions' in {{{studentProfile.preferredLanguage}}}.
+  *   **Output**: Ensure a single, valid JSON object matching output schema. Always populate 'nextStage'. If the current stage's question target is met or you deem it covered, set 'isStageComplete' to true; otherwise, false.
+  *   **RAG Simulation**: For 'initial_material' & 'deeper_material', act as if retrieving info ONLY from '{{{topic}}}'. For 'out_of_syllabus', you may draw on related general knowledge.
+  *   **Transition Question**: When 'isStageComplete' is true and 'nextStage' is different from 'currentStage' (and not 'completed'), the 'question' field in your output MUST be the *first* question for that 'nextStage'. Feedback (if any) should still be for the student's last answer in the *previous* stage.
   `,
   config: {
-    temperature: 0.3, // Lower temperature for more focused, factual Q&A based on "retrieved" context.
+    temperature: 0.25, // Slightly lower for more focused, RAG-like behavior in early stages.
      safetySettings: [
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -131,38 +147,44 @@ const interactiveQAndAFlow = ai.defineFlow(
     inputSchema: InteractiveQAndAInputSchema,
     outputSchema: InteractiveQAndAOutputSchema,
   },
-  async input => {
-    const robustInput = { // Ensure nested objects exist for Handlebars
-      ...input,
+  async (inputUnsafe) => {
+    // Ensure studentProfile.educationQualification and its sub-objects exist for Handlebars
+    // Also ensure currentStage and questionsAskedInStage have defaults if not provided by client.
+    const input = {
+      ...inputUnsafe,
       studentProfile: {
-        ...input.studentProfile,
+        ...inputUnsafe.studentProfile,
         educationQualification: {
-          boardExam: input.studentProfile.educationQualification?.boardExam || {},
-          competitiveExam: input.studentProfile.educationQualification?.competitiveExam || {},
-          universityExam: input.studentProfile.educationQualification?.universityExam || {},
+          boardExam: inputUnsafe.studentProfile.educationQualification?.boardExam || {},
+          competitiveExam: inputUnsafe.studentProfile.educationQualification?.competitiveExam || {},
+          universityExam: inputUnsafe.studentProfile.educationQualification?.universityExam || {},
         },
       },
+      currentStage: inputUnsafe.currentStage || 'initial_material',
+      questionsAskedInStage: inputUnsafe.questionsAskedInStage || 0,
     };
 
-    const {output} = await prompt(robustInput);
+    const {output} = await prompt(input);
 
-    if (output && output.question) { // Ensure at least a question is present
+    if (output && output.question) {
         return {
             question: output.question,
             feedback: output.feedback || undefined,
             isCorrect: output.isCorrect === undefined ? undefined : output.isCorrect,
-            suggestions: output.suggestions || [], // Default to empty array if not provided
+            suggestions: output.suggestions || [],
+            nextStage: output.nextStage || input.currentStage, // Default to current stage if AI doesn't specify next
+            isStageComplete: output.isStageComplete || false,
         };
     }
     
-    // Fallback response if AI output is malformed
-    console.warn("Interactive Q&A: AI output was malformed or missing question. Input:", JSON.stringify(robustInput));
+    console.warn("Interactive Q&A: AI output was malformed or missing question. Input:", JSON.stringify(input));
     return {
-        question: `I'm having a bit of trouble formulating a question right now about ${input.topic}. Could you perhaps ask me something about it instead, or suggest where we should start? (Ensure your question is related to the topic: ${input.topic})`,
+        question: `I'm having a bit of trouble formulating a question for the stage '${input.currentStage}' about ${input.topic}. Could you perhaps ask me something about it instead, or suggest where we should start?`,
         feedback: "Apologies, I couldn't process the last interaction fully.",
         isCorrect: undefined,
-        suggestions: []
+        suggestions: [],
+        nextStage: input.currentStage, // Fallback to current stage
+        isStageComplete: false, // Assume stage is not complete on error
     };
   }
 );
-

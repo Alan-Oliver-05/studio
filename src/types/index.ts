@@ -59,6 +59,8 @@ export interface VisualElement {
   caption?: string;
 }
 
+export type QAS_Stage = 'initial_material' | 'deeper_material' | 'out_of_syllabus' | 'completed';
+
 export interface Message {
   id: string;
   sender: 'user' | 'ai';
@@ -70,6 +72,9 @@ export interface Message {
   generatedImageUri?: string | null; // To store the data URI of an AI-generated image if applicable
   feedback?: string | null; // Feedback from interactiveQAndA
   isCorrect?: boolean | null; // Whether the user's previous answer was correct, from interactiveQAndA
+  // For interactive Q&A state progression
+  aiNextStage?: QAS_Stage; // Store the stage the AI wants to move to next
+  aiIsStageComplete?: boolean; // Store if AI indicated stage completion
 }
 
 export interface Conversation {
@@ -90,7 +95,7 @@ export interface Task {
   id: string;
   title: string;
   category: string;
-  dueDate?: string; // Stored as "MMM d, yyyy" e.g. "May 9, 2024"
+  dueDate?: string; // Stored as "yyyy-MM-dd" e.g. "2024-05-09"
   priority: TaskPriority;
   status: 'pending' | 'completed';
 }
@@ -103,3 +108,34 @@ export interface Note {
   updatedAt: number;
 }
 
+// Input/Output types for interactiveQAndA flow, matching Zod schemas in the flow file
+export interface InteractiveQAndAInput {
+  studentProfile: {
+    name: string;
+    age: number; // Ensure it's number here for AI
+    country: string;
+    preferredLanguage: string;
+    educationQualification?: {
+      boardExam?: { board?: string; standard?: string };
+      competitiveExam?: { examType?: string; specificExam?: string };
+      universityExam?: { universityName?: string; course?: string; currentYear?: string };
+    };
+  };
+  subject: string;
+  lesson: string;
+  topic: string;
+  studentAnswer?: string | null;
+  previousQuestion?: string | null;
+  conversationHistory?: string | null;
+  currentStage?: QAS_Stage;
+  questionsAskedInStage?: number;
+}
+
+export interface InteractiveQAndAOutput {
+  question: string;
+  feedback?: string | null;
+  isCorrect?: boolean | null;
+  suggestions?: string[];
+  nextStage?: QAS_Stage;
+  isStageComplete?: boolean;
+}
