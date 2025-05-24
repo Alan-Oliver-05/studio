@@ -13,26 +13,31 @@ export const COUNTRIES = [
   { value: "India", label: "India" },
   { value: "Canada", label: "Canada" },
   { value: "UK", label: "United Kingdom" },
+  { value: "Australia", label: "Australia" },
+  { value: "Germany", label: "Germany" },
+  { value: "France", label: "France" },
   // Add more countries as needed
 ];
 
-// For simplicity, states will be text inputs.
-// Preferred languages will also be text inputs or a small static list.
 export const LANGUAGES = [
     { value: "en", label: "English" },
     { value: "es", label: "Spanish" },
     { value: "fr", label: "French" },
     { value: "de", label: "German" },
     { value: "hi", label: "Hindi" },
+    { value: "ta", label: "Tamil" },
+    { value: "te", label: "Telugu" },
+    { value: "mr", label: "Marathi" },
+    { value: "bn", label: "Bengali" },
     // Add more languages
 ];
 
 
 export const EDUCATION_CATEGORIES = [
-  { value: "board", label: "Board Exams (School)" },
-  { value: "competitive", label: "Competitive Exams" },
-  { value: "university", label: "University Exams" },
-  { value: "other", label: "Other/Not Applicable" },
+  { value: "board", label: "School Board Exams (e.g., 10th, 12th)" },
+  { value: "competitive", label: "Competitive Exams (Govt Jobs, Entrance)" },
+  { value: "university", label: "University / College Exams" },
+  { value: "other", label: "Other / Not Applicable" },
 ];
 
 export const BOARD_STANDARDS = Array.from({ length: 12 }, (_, i) => ({
@@ -46,42 +51,55 @@ export const UNIVERSITY_YEARS = [
   { value: "3rd", label: "3rd Year" },
   { value: "4th", label: "4th Year" },
   { value: "5th", label: "5th Year (if applicable)" },
+  { value: "Postgraduate", label: "Postgraduate Study" },
+  { value: "Doctoral", label: "Doctoral Study" },
   { value: "other", label: "Other" },
 ];
 
 export const CENTRAL_BOARDS = [
   { value: "CBSE", label: "CBSE (Central Board of Secondary Education)" },
-  { value: "CISCE", label: "CISCE (Council for the Indian School Certificate Examinations)" },
+  { value: "CISCE", label: "CISCE (ISC/ICSE)" },
   { value: "NIOS", label: "NIOS (National Institute of Open Schooling)" },
   { value: "Other", label: "Other Central Board"},
 ];
 
-// Add more constants as needed, e.g., competitive exam types
+
 export const COMPETITIVE_EXAM_TYPES_CENTRAL = [
-    { value: "JEE", label: "JEE (Engineering)"},
-    { value: "NEET", label: "NEET (Medical)"},
-    { value: "UPSC", label: "UPSC (Civil Services)"},
-    { value: "Banking", label: "Banking (IBPS, SBI)"},
-    { value: "SSC", label: "SSC (Staff Selection Commission)"},
-    { value: "Defence", label: "Defence (NDA, CDS)"},
-    { value: "Other", label: "Other Central Govt Exam"},
+    { value: "JEE", label: "JEE (Engineering Entrance)"},
+    { value: "NEET", label: "NEET (Medical Entrance)"},
+    { value: "UPSC_CSE", label: "UPSC Civil Services Exam"},
+    { value: "UPSC_Other", label: "UPSC Other Exams (CDS, NDA, etc.)"},
+    { value: "Banking_PO_Clerk", label: "Banking Exams (IBPS PO/Clerk, SBI PO/Clerk)"},
+    { value: "SSC_CGL", label: "SSC CGL"},
+    { value: "SSC_CHSL", label: "SSC CHSL"},
+    { value: "Railways_RRB", label: "Railways (RRB NTPC, Group D)"},
+    { value: "GATE", label: "GATE (Engineering PG Entrance)"},
+    { value: "CAT", label: "CAT (MBA Entrance)"},
+    { value: "Other_Central", label: "Other Central Govt Exam / Entrance"},
 ];
 
 export const COMPETITIVE_EXAM_TYPES_STATE = [
-    { value: "StatePSC", label: "State Public Service Commission (e.g., TNPSC, MPSC)"},
-    { value: "StatePolice", label: "State Police Recruitment"},
-    { value: "StateTeaching", label: "State Teacher Eligibility Test (TET)"},
-    { value: "Other", label: "Other State Govt Exam"},
+    { value: "State_PSC_Group1", label: "State PSC - Group 1 / Class 1"},
+    { value: "State_PSC_Group2", label: "State PSC - Group 2 / Class 2"},
+    { value: "State_PSC_Other", label: "State PSC - Other Gazetted/Non-Gazetted"},
+    { value: "State_Police_SI", label: "State Police - Sub Inspector"},
+    { value: "State_Police_Constable", label: "State Police - Constable"},
+    { value: "State_TET", label: "State Teacher Eligibility Test (TET)"},
+    { value: "State_Engineering_Entrance", label: "State Engineering Entrance"},
+    { value: "State_Medical_Entrance", label: "State Medical Entrance"},
+    { value: "Other_State", label: "Other State Govt Exam / Entrance"},
 ];
 
 export const TASK_CATEGORIES = [
     { value: "Assignment", label: "Assignment" },
     { value: "Concept Review", label: "Concept Review" },
-    { value: "Practice Question", label: "Practice Question" },
-    { value: "Project", label: "Project" },
-    { value: "Study Session", label: "Study Session" },
+    { value: "Practice Questions", label: "Practice Questions" },
+    { value: "Project Work", label: "Project Work" },
+    { value: "Study Session Prep", label: "Study Session Prep" },
     { value: "Exam Preparation", label: "Exam Preparation" },
-    { value: "Reading", label: "Reading" },
+    { value: "Reading Material", label: "Reading Material" },
+    { value: "Revision", label: "Revision" },
+    { value: "Personal Task", label: "Personal Task" },
     { value: "Other", label: "Other" },
 ];
 
@@ -90,3 +108,4 @@ export const TASK_PRIORITIES: { value: TaskPriority, label: string }[] = [
     { value: "Medium", label: "Medium" },
     { value: "High", label: "High" },
 ];
+

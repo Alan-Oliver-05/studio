@@ -42,14 +42,14 @@ const onboardingSteps = [
 type StepId = typeof onboardingSteps[number]["id"];
 
 const PersonalDetailsSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }).max(100, { message: "Name cannot exceed 100 characters."}),
   age: z.coerce.number().min(5, { message: "Age must be at least 5." }).max(100, { message: "Age must be at most 100." }),
   gender: z.string().min(1, { message: "Please select a gender." }),
 });
 
 const LocationLanguageSchema = z.object({
   country: z.string().min(1, { message: "Please select a country." }),
-  state: z.string().min(2, { message: "State must be at least 2 characters." }),
+  state: z.string().min(2, { message: "State must be at least 2 characters." }).max(50, { message: "State cannot exceed 50 characters."}),
   preferredLanguage: z.string().min(1, { message: "Please select a preferred language." }),
 });
 
@@ -66,8 +66,8 @@ const EducationDetailsSchema = z.object({
       standard: z.string().optional(),
     }).optional(),
     competitiveExams: z.object({
-      examType: z.string().optional(), // e.g. Central Govt, State Govt
-      specificExam: z.string().optional(), // e.g. JEE, NEET, TNPSC
+      examType: z.string().optional(), 
+      specificExam: z.string().optional(), 
     }).optional(),
     universityExams: z.object({
       universityName: z.string().optional(),
@@ -84,26 +84,42 @@ const FormSchema = PersonalDetailsSchema.merge(LocationLanguageSchema).merge(Edu
 const defaultValues: UserProfile = {
   name: "",
   age: "",
-  gender: "",
-  country: "",
+  gender: GENDERS[0]?.value || "",
+  country: COUNTRIES[0]?.value || "",
   state: "",
-  preferredLanguage: "",
-  educationCategory: "",
-  educationQualification: {},
+  preferredLanguage: LANGUAGES[0]?.value || "",
+  educationCategory: EDUCATION_CATEGORIES[0]?.value as EducationCategory,
+  educationQualification: {
+    boardExams: { board: "", standard: "" },
+    competitiveExams: { examType: "", specificExam: "" },
+    universityExams: { universityName: "", collegeName: "", course: "", currentYear: "" },
+  },
 };
 
 export function OnboardingForm() {
-  const { setProfile } = useUserProfile();
+  const { setProfile, profile: existingProfile } = useUserProfile();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<StepId>("personal");
 
   const form = useForm<UserProfile>({
     resolver: zodResolver(FormSchema),
-    defaultValues,
-    mode: "onChange", // Validate on change for better UX
+    defaultValues: existingProfile && existingProfile.name ? {
+      ...existingProfile,
+      age: existingProfile.age || "", // ensure age is not null
+      educationCategory: existingProfile.educationCategory || EDUCATION_CATEGORIES[0]?.value as EducationCategory,
+      educationQualification: { // Ensure all nested objects exist
+        boardExams: existingProfile.educationQualification?.boardExams || { board: "", standard: "" },
+        competitiveExams: existingProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "" },
+        universityExams: existingProfile.educationQualification?.universityExams || { universityName: "", collegeName: "", course: "", currentYear: "" },
+      }
+    } : defaultValues,
+    mode: "onChange", 
   });
 
   const watchedEducationCategory = form.watch("educationCategory");
+  const watchedCompetitiveExamType = form.watch("educationQualification.competitiveExams.examType");
+  const watchedSpecificExam = form.watch("educationQualification.competitiveExams.specificExam");
+
 
   const progressValue = useMemo(() => {
     const currentIndex = onboardingSteps.findIndex(step => step.id === currentStep);
@@ -119,17 +135,20 @@ export function OnboardingForm() {
     } else if (currentStep === "educationCategory") {
       isValid = await form.trigger(["educationCategory"]);
     } else if (currentStep === "educationDetails") {
-      // Dynamic validation based on category could be complex, basic trigger for now
-      isValid = await form.trigger(["educationQualification"]);
-       if (watchedEducationCategory === "board") {
-        isValid = isValid && !!form.getValues("educationQualification.boardExams.board") && !!form.getValues("educationQualification.boardExams.standard");
+      isValid = true; // Assume valid initially for this step
+      if (watchedEducationCategory === "board") {
+        isValid = await form.trigger(["educationQualification.boardExams.board", "educationQualification.boardExams.standard"]) &&
+                  !!form.getValues("educationQualification.boardExams.board") && 
+                  !!form.getValues("educationQualification.boardExams.standard");
       } else if (watchedEducationCategory === "competitive") {
-        isValid = isValid && !!form.getValues("educationQualification.competitiveExams.examType") && !!form.getValues("educationQualification.competitiveExams.specificExam");
+        isValid = await form.trigger(["educationQualification.competitiveExams.examType", "educationQualification.competitiveExams.specificExam"]) &&
+                  !!form.getValues("educationQualification.competitiveExams.examType") &&
+                  !!form.getValues("educationQualification.competitiveExams.specificExam");
       } else if (watchedEducationCategory === "university") {
-        isValid = isValid && !!form.getValues("educationQualification.universityExams.universityName") && !!form.getValues("educationQualification.universityExams.course") && !!form.getValues("educationQualification.universityExams.currentYear");
-      } else {
-        // "Other" category, no specific fields required
-        isValid = true;
+        isValid = await form.trigger(["educationQualification.universityExams.universityName", "educationQualification.universityExams.course", "educationQualification.universityExams.currentYear"]) &&
+                  !!form.getValues("educationQualification.universityExams.universityName") &&
+                  !!form.getValues("educationQualification.universityExams.course") &&
+                  !!form.getValues("educationQualification.universityExams.currentYear");
       }
     }
 
@@ -137,14 +156,20 @@ export function OnboardingForm() {
     if (isValid) {
       const currentIndex = onboardingSteps.findIndex(step => step.id === currentStep);
       if (currentIndex < onboardingSteps.length - 1) {
-        setCurrentStep(onboardingSteps[currentIndex + 1].id);
+        if (currentStep === "educationCategory" && form.getValues("educationCategory") === "other") {
+           setCurrentStep("review"); // Skip educationDetails if "other"
+        } else {
+          setCurrentStep(onboardingSteps[currentIndex + 1].id);
+        }
       }
     }
   };
 
   const handlePrevious = () => {
     const currentIndex = onboardingSteps.findIndex(step => step.id === currentStep);
-    if (currentIndex > 0) {
+     if (currentStep === "review" && form.getValues("educationCategory") === "other") {
+        setCurrentStep("educationCategory"); // Go back to educationCategory if "other" was selected
+    } else if (currentIndex > 0) {
       setCurrentStep(onboardingSteps[currentIndex - 1].id);
     }
   };
@@ -152,7 +177,8 @@ export function OnboardingForm() {
   function onSubmit(data: UserProfile) {
     const finalProfile: UserProfile = {
       ...data,
-      age: Number(data.age), // Ensure age is number
+      age: Number(data.age), 
+      id: existingProfile?.id || `user-${Date.now()}`, // Preserve ID or generate new one
       educationQualification: {
         boardExams: data.educationCategory === "board" ? data.educationQualification?.boardExams : undefined,
         competitiveExams: data.educationCategory === "competitive" ? data.educationQualification?.competitiveExams : undefined,
@@ -166,11 +192,12 @@ export function OnboardingForm() {
   const currentStepDetails = onboardingSteps.find(s => s.id === currentStep);
 
   return (
-    <Card className="w-full max-w-2xl shadow-2xl">
+    <Card className="w-full max-w-2xl shadow-2xl my-8">
       <CardHeader>
-        <CardTitle className="text-3xl font-bold text-center text-primary">Welcome to EduAI!</CardTitle>
+        <CardTitle className="text-3xl font-bold text-center text-gradient-primary">Welcome to EduAI Tutor!</CardTitle>
         <CardDescription className="text-center text-muted-foreground">
-          Let's personalize your learning experience. ({onboardingSteps.findIndex(s => s.id === currentStep) + 1} of {onboardingSteps.length})
+          {existingProfile?.name ? `Updating profile for ${existingProfile.name}. ` : "Let's personalize your learning experience. "} 
+          ({onboardingSteps.findIndex(s => s.id === currentStep) + 1} of {onboardingSteps.length})
         </CardDescription>
         <Progress value={progressValue} className="w-full mt-2" />
         {currentStepDetails && <p className="text-center font-semibold mt-4 text-xl">{currentStepDetails.title}</p>}
@@ -200,7 +227,7 @@ export function OnboardingForm() {
                     <FormItem>
                       <FormLabel>Age</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="E.g., 18" {...field} />
+                        <Input type="number" placeholder="E.g., 18" {...field} value={field.value === 0 ? '' : field.value} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -212,7 +239,7 @@ export function OnboardingForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Gender</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select your gender" />
@@ -237,7 +264,7 @@ export function OnboardingForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Country</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                       <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select your country" />
@@ -269,8 +296,8 @@ export function OnboardingForm() {
                   name="preferredLanguage"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preferred Language</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormLabel>Preferred Language for Learning</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select your preferred language" />
@@ -294,7 +321,7 @@ export function OnboardingForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>What is your primary education focus?</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value as EducationCategory}>
+                      <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value as EducationCategory}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select education category" />
@@ -320,7 +347,7 @@ export function OnboardingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Board Name</FormLabel>
-                           <Select onValueChange={field.onChange} defaultValue={field.value}>
+                           <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Board (e.g., CBSE)" />
@@ -328,7 +355,7 @@ export function OnboardingForm() {
                             </FormControl>
                             <SelectContent>
                                 {CENTRAL_BOARDS.map(b => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}
-                                <SelectItem value="State Board">State Board (Please specify if needed)</SelectItem>
+                                <SelectItem value="State Board">State Board (Specify your state's board)</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -340,8 +367,8 @@ export function OnboardingForm() {
                       name="educationQualification.boardExams.standard"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Standard</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormLabel>Standard/Grade</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Standard" />
@@ -365,15 +392,15 @@ export function OnboardingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Exam Category</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select Exam Category (e.g., Central, State)" />
+                                <SelectValue placeholder="Select Exam Category" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                                <SelectItem value="Central">Central Government Exams</SelectItem>
-                                <SelectItem value="State">State Government Exams</SelectItem>
+                                <SelectItem value="Central">Central Government Exams / Entrance</SelectItem>
+                                <SelectItem value="State">State Government Exams / Entrance</SelectItem>
                                 <SelectItem value="Other">Other Competitive Exams</SelectItem>
                             </SelectContent>
                           </Select>
@@ -381,14 +408,14 @@ export function OnboardingForm() {
                         </FormItem>
                       )}
                     />
-                    {form.watch("educationQualification.competitiveExams.examType") === "Central" && (
+                    {watchedCompetitiveExamType === "Central" && (
                        <FormField
                         control={form.control}
                         name="educationQualification.competitiveExams.specificExam"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Specific Central Exam</FormLabel>
-                             <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormLabel>Specific Central Exam / Entrance</FormLabel>
+                             <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select Specific Exam" />
@@ -398,20 +425,21 @@ export function OnboardingForm() {
                                 {COMPETITIVE_EXAM_TYPES_CENTRAL.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            <FormDescription>If 'Other', please specify below.</FormDescription>
+                            {watchedSpecificExam === "Other_Central" && 
+                              <FormDescription className="mt-1">Please specify the exam name in the next field if not listed.</FormDescription>}
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     )}
-                     {form.watch("educationQualification.competitiveExams.examType") === "State" && (
+                     {watchedCompetitiveExamType === "State" && (
                        <FormField
                         control={form.control}
                         name="educationQualification.competitiveExams.specificExam"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Specific State Exam</FormLabel>
-                             <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormLabel>Specific State Exam / Entrance</FormLabel>
+                             <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select Specific Exam" />
@@ -421,13 +449,14 @@ export function OnboardingForm() {
                                 {COMPETITIVE_EXAM_TYPES_STATE.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            <FormDescription>If 'Other', please specify below.</FormDescription>
+                            {watchedSpecificExam === "Other_State" && 
+                              <FormDescription className="mt-1">Please specify the exam name in the next field if not listed.</FormDescription>}
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     )}
-                    {(form.watch("educationQualification.competitiveExams.specificExam") === "Other" || form.watch("educationQualification.competitiveExams.examType") === "Other") && (
+                    {(watchedSpecificExam === "Other_Central" || watchedSpecificExam === "Other_State" || watchedCompetitiveExamType === "Other") && (
                         <FormField
                           control={form.control}
                           name="educationQualification.competitiveExams.specificExam"
@@ -435,7 +464,7 @@ export function OnboardingForm() {
                             <FormItem>
                               <FormLabel>Exam Name / Job Position</FormLabel>
                               <FormControl>
-                                <Input placeholder="E.g., Custom Exam Name" {...field} />
+                                <Input placeholder="E.g., Custom Exam Name or Railway Group D" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -453,7 +482,7 @@ export function OnboardingForm() {
                         <FormItem>
                           <FormLabel>University Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="E.g., Stanford University" {...field} />
+                            <Input placeholder="E.g., Stanford University or Anna University" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -466,7 +495,7 @@ export function OnboardingForm() {
                         <FormItem>
                           <FormLabel>College Name (if applicable)</FormLabel>
                           <FormControl>
-                            <Input placeholder="E.g., College of Engineering" {...field} />
+                            <Input placeholder="E.g., College of Engineering, Guindy" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -479,7 +508,7 @@ export function OnboardingForm() {
                         <FormItem>
                           <FormLabel>Course / Major</FormLabel>
                           <FormControl>
-                            <Input placeholder="E.g., Computer Science" {...field} />
+                            <Input placeholder="E.g., B.Tech Computer Science or M.A. History" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -491,7 +520,7 @@ export function OnboardingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Current Year of Study</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Year" />
@@ -508,47 +537,49 @@ export function OnboardingForm() {
                   </>
                 )}
                 {watchedEducationCategory === "other" && (
-                    <p className="text-sm text-muted-foreground">No specific details required for this category. You can proceed.</p>
+                    <p className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-md">No specific educational details required for this category. You can proceed to the next step.</p>
                 )}
               </div>
             )}
 
             {currentStep === "review" && (
-              <div className="space-y-4 p-4 border rounded-md shadow-sm bg-card">
-                <h3 className="text-xl font-semibold text-primary">Review Your Information</h3>
-                <div className="space-y-2 text-sm">
+              <div className="space-y-4 p-4 border rounded-md shadow-inner bg-card">
+                <h3 className="text-xl font-semibold text-primary border-b pb-2">Review Your Information</h3>
+                <div className="space-y-1 text-sm">
                   <p><strong>Name:</strong> {form.getValues("name")}</p>
                   <p><strong>Age:</strong> {form.getValues("age")}</p>
-                  <p><strong>Gender:</strong> {GENDERS.find(g => g.value === form.getValues("gender"))?.label}</p>
-                  <p><strong>Country:</strong> {COUNTRIES.find(c => c.value === form.getValues("country"))?.label}</p>
+                  <p><strong>Gender:</strong> {GENDERS.find(g => g.value === form.getValues("gender"))?.label || 'N/A'}</p>
+                  <p><strong>Country:</strong> {COUNTRIES.find(c => c.value === form.getValues("country"))?.label || 'N/A'}</p>
                   <p><strong>State:</strong> {form.getValues("state")}</p>
-                  <p><strong>Preferred Language:</strong> {LANGUAGES.find(l => l.value === form.getValues("preferredLanguage"))?.label}</p>
-                  <p><strong>Education Focus:</strong> {EDUCATION_CATEGORIES.find(ec => ec.value === watchedEducationCategory)?.label}</p>
+                  <p><strong>Preferred Language:</strong> {LANGUAGES.find(l => l.value === form.getValues("preferredLanguage"))?.label || 'N/A'}</p>
+                  <p><strong>Education Focus:</strong> {EDUCATION_CATEGORIES.find(ec => ec.value === watchedEducationCategory)?.label || 'N/A'}</p>
+                  
                   {watchedEducationCategory === "board" && form.getValues("educationQualification.boardExams") && (
-                    <>
-                      <p><strong>Board:</strong> {form.getValues("educationQualification.boardExams.board")}</p>
-                      <p><strong>Standard:</strong> {form.getValues("educationQualification.boardExams.standard")}</p>
-                    </>
+                    <div className="pl-4 mt-1 border-l-2 border-primary/50">
+                      <p><strong>Board:</strong> {form.getValues("educationQualification.boardExams.board") || 'N/A'}</p>
+                      <p><strong>Standard:</strong> {BOARD_STANDARDS.find(s => s.value === form.getValues("educationQualification.boardExams.standard"))?.label || 'N/A'}</p>
+                    </div>
                   )}
                   {watchedEducationCategory === "competitive" && form.getValues("educationQualification.competitiveExams") && (
-                    <>
-                      <p><strong>Exam Type:</strong> {form.getValues("educationQualification.competitiveExams.examType")}</p>
-                      <p><strong>Specific Exam:</strong> {form.getValues("educationQualification.competitiveExams.specificExam")}</p>
-                    </>
+                     <div className="pl-4 mt-1 border-l-2 border-primary/50">
+                      <p><strong>Exam Category:</strong> {form.getValues("educationQualification.competitiveExams.examType") || 'N/A'}</p>
+                      <p><strong>Specific Exam:</strong> {
+                        [...COMPETITIVE_EXAM_TYPES_CENTRAL, ...COMPETITIVE_EXAM_TYPES_STATE].find(e => e.value === form.getValues("educationQualification.competitiveExams.specificExam"))?.label || form.getValues("educationQualification.competitiveExams.specificExam") || 'N/A'
+                      }</p>
+                    </div>
                   )}
                   {watchedEducationCategory === "university" && form.getValues("educationQualification.universityExams") && (
-                    <>
-                      <p><strong>University:</strong> {form.getValues("educationQualification.universityExams.universityName")}</p>
-                      <p><strong>College:</strong> {form.getValues("educationQualification.universityExams.collegeName")}</p>
-                      <p><strong>Course:</strong> {form.getValues("educationQualification.universityExams.course")}</p>
-                      <p><strong>Year:</strong> {form.getValues("educationQualification.universityExams.currentYear")}</p>
-                    </>
+                    <div className="pl-4 mt-1 border-l-2 border-primary/50">
+                      <p><strong>University:</strong> {form.getValues("educationQualification.universityExams.universityName") || 'N/A'}</p>
+                      <p><strong>College:</strong> {form.getValues("educationQualification.universityExams.collegeName") || 'N/A'}</p>
+                      <p><strong>Course:</strong> {form.getValues("educationQualification.universityExams.course") || 'N/A'}</p>
+                      <p><strong>Year:</strong> {UNIVERSITY_YEARS.find(y => y.value === form.getValues("educationQualification.universityExams.currentYear"))?.label || 'N/A'}</p>
+                    </div>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">Please review your details carefully. You can go back to make changes.</p>
+                <p className="text-xs text-muted-foreground pt-3 border-t">Please review your details carefully. You can go back to make changes.</p>
               </div>
             )}
-
           </form>
         </Form>
       </CardContent>
@@ -558,7 +589,7 @@ export function OnboardingForm() {
             variant="outline"
             onClick={handlePrevious}
             disabled={currentStep === "personal"}
-            className="gap-1"
+            className="gap-1 transition-colors duration-150 ease-in-out hover:bg-muted/80"
           >
             <ChevronLeft className="h-4 w-4" />
             Previous
@@ -569,8 +600,8 @@ export function OnboardingForm() {
               <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button type="submit" onClick={form.handleSubmit(onSubmit)} className="gap-1 bg-accent hover:bg-accent/90 text-accent-foreground">
-              Complete Setup
+            <Button type="submit" onClick={form.handleSubmit(onSubmit)} className="gap-1">
+              {existingProfile?.name ? "Update Profile" : "Complete Setup"}
               <CheckCircle className="h-4 w-4" />
             </Button>
           )}

@@ -1,19 +1,21 @@
 
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bold, Italic, ListOrdered, Save, Trash2, Edit2, FilePlus2, CalendarDays } from 'lucide-react';
+import { Bold, Italic, ListOrdered, Save, Trash2, Edit2, FilePlus2, CalendarDays, Palette } from 'lucide-react';
 import type { Note } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from '@/lib/utils';
 
 
 const LOCAL_STORAGE_NOTES_KEY = 'eduai-notes';
@@ -32,11 +34,11 @@ const NotePadPage: React.FC = () => {
     try {
       const storedNotes = localStorage.getItem(LOCAL_STORAGE_NOTES_KEY);
       if (storedNotes) {
-        setNotes(JSON.parse(storedNotes));
+        setNotes(JSON.parse(storedNotes).sort((a: Note, b: Note) => b.updatedAt - a.updatedAt));
       }
     } catch (error) {
       console.error("Failed to load notes from localStorage:", error);
-      toast({ title: "Error", description: "Could not load saved notes.", variant: "destructive" });
+      toast({ title: "Error Loading Notes", description: "Could not load your saved notes. Local data might be corrupted.", variant: "destructive" });
     }
   }, [toast]);
 
@@ -53,7 +55,7 @@ const NotePadPage: React.FC = () => {
     setCurrentContent(htmlContent);
   }, []);
 
-  const handleInput = (event: React.FormEvent<HTMLDivElement>) => {
+  const handleInput = (event: FormEvent<HTMLDivElement>) => {
     setCurrentContent(event.currentTarget.innerHTML);
   };
 
@@ -62,7 +64,7 @@ const NotePadPage: React.FC = () => {
       document.execCommand(command, false, value);
       if (editorRef.current) {
         editorRef.current.focus();
-        setCurrentContent(editorRef.current.innerHTML);
+        setCurrentContent(editorRef.current.innerHTML); // Update state after execCommand
       }
     }
   };
@@ -72,35 +74,38 @@ const NotePadPage: React.FC = () => {
     updateEditorContent('');
     setEditingNoteId(null);
     if (editorRef.current) editorRef.current.focus();
-     toast({ title: "New Note", description: "Editor cleared for a new note."});
+     toast({ title: "New Note Ready", description: "Editor cleared. Start typing your new note!"});
   };
 
   const handleSaveNote = () => {
     if (!currentTitle.trim() && !currentContent.trim()) {
-      toast({ title: "Cannot Save", description: "Note title and content cannot both be empty.", variant: "destructive" });
+      toast({ title: "Cannot Save Empty Note", description: "Please add a title or some content to your note.", variant: "destructive" });
       return;
     }
 
     const now = Date.now();
+    const noteTitle = currentTitle.trim() || `Note ${formatDistanceToNow(new Date(now), { addSuffix: false })}`;
+
     if (editingNoteId) {
       setNotes(prevNotes =>
         prevNotes.map(note =>
           note.id === editingNoteId
-            ? { ...note, title: currentTitle.trim() || "Untitled", content: currentContent, updatedAt: now }
+            ? { ...note, title: noteTitle, content: currentContent, updatedAt: now }
             : note
-        )
+        ).sort((a,b) => b.updatedAt - a.updatedAt)
       );
-      toast({ title: "Note Updated", description: `"${currentTitle.trim() || "Untitled"}" has been updated.`});
+      toast({ title: "Note Updated", description: `"${noteTitle}" has been successfully updated.`});
     } else {
       const newNote: Note = {
         id: crypto.randomUUID(),
-        title: currentTitle.trim() || "Untitled Note",
+        title: noteTitle,
         content: currentContent,
         createdAt: now,
         updatedAt: now,
       };
-      setNotes(prevNotes => [newNote, ...prevNotes]);
-      toast({ title: "Note Saved", description: `"${newNote.title}" has been saved.`});
+      setNotes(prevNotes => [newNote, ...prevNotes].sort((a,b) => b.updatedAt - a.updatedAt));
+      setEditingNoteId(newNote.id); // Set editing ID for the newly saved note
+      toast({ title: "Note Saved", description: `"${newNote.title}" has been successfully saved.`});
     }
   };
 
@@ -122,7 +127,7 @@ const NotePadPage: React.FC = () => {
       handleNewNote();
     }
     if (noteToDelete) {
-        toast({ title: "Note Deleted", description: `"${noteToDelete.title}" has been deleted.`, variant: "destructive"});
+        toast({ title: "Note Deleted", description: `"${noteToDelete.title}" has been removed.`, variant: "destructive"});
     }
   };
   
@@ -131,121 +136,115 @@ const NotePadPage: React.FC = () => {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = htmlContent;
     const text = tempDiv.textContent || tempDiv.innerText || "";
-    return text.length > 100 ? text.substring(0, 100) + "..." : text;
+    return text.length > 120 ? text.substring(0, 120) + "..." : (text || "No content preview.");
   };
 
 
   return (
     <div className="pb-8 pt-0">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 mt-0">
-        <h1 className="text-2xl sm:text-3xl font-bold text-primary mt-0">Note Pad</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center">
+            <Palette className="mr-3 h-7 w-7 sm:h-8 sm:w-8 text-accent" /> Note Pad
+        </h1>
         <div className="flex gap-2 mt-4 sm:mt-0">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button onClick={handleNewNote} variant="outline">
+              <Button onClick={handleNewNote} variant="outline" className="shadow-sm">
                 <FilePlus2 className="mr-2 h-4 w-4" /> New Note
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>Create a new blank note</p>
-            </TooltipContent>
+            <TooltipContent><p>Create a new blank note</p></TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button onClick={handleSaveNote}>
+              <Button onClick={handleSaveNote} className="shadow-md">
                 <Save className="mr-2 h-4 w-4" /> {editingNoteId ? "Update Note" : "Save Note"}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>{editingNoteId ? "Save changes to current note" : "Save the new note"}</p>
-            </TooltipContent>
+            <TooltipContent><p>{editingNoteId ? "Save changes to current note" : "Save the new note"}</p></TooltipContent>
           </Tooltip>
         </div>
       </div>
 
-      <div className="max-w-4xl w-full mx-auto">
-        {isClient && (
-          <Card className="mb-8 shadow-lg">
-            <CardHeader className="pb-2">
-              <Input
-                placeholder="Note Title (e.g., My Great Idea)"
-                value={currentTitle}
-                onChange={(e) => setCurrentTitle(e.target.value)}
-                className="text-lg font-semibold border-0 shadow-none focus-visible:ring-0 px-1"
-              />
-            </CardHeader>
-            <CardContent>
-              <div className="border border-input rounded-md shadow-sm">
-                <div className="flex items-center p-2 border-b border-input bg-muted/50 rounded-t-md space-x-1">
-                  <EditorToolbarButton label="Bold" onClick={() => execCommand('bold')}>
-                    <Bold className="h-4 w-4" />
-                  </EditorToolbarButton>
-                  <EditorToolbarButton label="Italic" onClick={() => execCommand('italic')}>
-                    <Italic className="h-4 w-4" />
-                  </EditorToolbarButton>
-                  <EditorToolbarButton label="Numbered List" onClick={() => execCommand('insertOrderedList')}>
-                    <ListOrdered className="h-4 w-4" />
-                  </EditorToolbarButton>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+        <Card className="lg:col-span-2 shadow-xl">
+          <CardHeader className="pb-3 border-b">
+            <Input
+              placeholder="Note Title (e.g., My Brilliant Idea)"
+              value={currentTitle}
+              onChange={(e) => setCurrentTitle(e.target.value)}
+              className="text-xl font-semibold border-0 shadow-none focus-visible:ring-0 px-1 h-auto py-1.5"
+              aria-label="Note Title"
+            />
+          </CardHeader>
+          <CardContent className="pt-0">
+            {isClient ? (
+              <div className="border border-input rounded-b-md shadow-sm overflow-hidden mt-2">
+                <div className="flex items-center p-1.5 border-b border-input bg-muted/50 space-x-0.5">
+                  <EditorToolbarButton label="Bold" onClick={() => execCommand('bold')}><Bold className="h-4 w-4" /></EditorToolbarButton>
+                  <EditorToolbarButton label="Italic" onClick={() => execCommand('italic')}><Italic className="h-4 w-4" /></EditorToolbarButton>
+                  <EditorToolbarButton label="Numbered List" onClick={() => execCommand('insertOrderedList')}><ListOrdered className="h-4 w-4" /></EditorToolbarButton>
                 </div>
                 <div
                   ref={editorRef}
                   contentEditable={true}
                   onInput={handleInput}
-                  className="w-full min-h-[16rem] p-4 focus:outline-none prose dark:prose-invert max-w-none bg-background"
-                  dangerouslySetInnerHTML={{ __html: currentContent }}
+                  className="w-full min-h-[20rem] lg:min-h-[25rem] p-4 focus:outline-none prose dark:prose-invert max-w-none bg-background text-sm leading-relaxed editor-content"
+                  dangerouslySetInnerHTML={{ __html: currentContent }} // Use currentContent which is synced with editor
                   role="textbox"
                   aria-multiline="true"
+                  aria-label="Note Content"
                 />
               </div>
-            </CardContent>
-          </Card>
-        )}
-        {!isClient && (
-          <div className="w-full min-h-[20rem] p-4 border border-input rounded-md bg-muted/50 animate-pulse mb-8">
-              Loading editor...
-          </div>
-        )}
+            ) : (
+              <div className="w-full min-h-[20rem] p-4 border border-input rounded-md bg-muted/50 animate-pulse">
+                  Loading editor...
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        <div>
+        <div className="lg:col-span-1">
           <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-primary">Saved Notes ({notes.length})</h2>
           {notes.length === 0 && isClient ? (
-            <p className="text-muted-foreground">You have no saved notes yet. Create one above!</p>
+            <Card className="text-center py-8 border-dashed">
+                <CardContent>
+                    <FilePlus2 className="h-10 w-10 text-muted-foreground mx-auto mb-3"/>
+                    <p className="text-muted-foreground">You have no saved notes yet. Create one!</p>
+                </CardContent>
+            </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-3 max-h-[calc(100vh-12rem)] overflow-y-auto pr-1 scrollbar-thin">
               {notes.map(note => (
-                <Card key={note.id} className="flex flex-col shadow-md hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg truncate">{note.title || "Untitled Note"}</CardTitle>
-                    <CardDescription className="text-xs flex items-center">
+                <Card key={note.id} className={cn("flex flex-col shadow-md hover:shadow-lg transition-shadow cursor-pointer", editingNoteId === note.id && "ring-2 ring-primary border-primary")}>
+                  <CardHeader className="pb-2 pt-3 px-3 cursor-pointer" onClick={() => handleLoadNote(note.id)}>
+                    <CardTitle className="text-md truncate font-semibold">{note.title || "Untitled Note"}</CardTitle>
+                    <CardDescription className="text-xs flex items-center text-muted-foreground">
                       <CalendarDays className="h-3 w-3 mr-1.5" />
-                      Last updated: {isClient ? formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true }) : 'Calculating...'}
+                      {isClient ? formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true }) : 'Calculating...'}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="flex-grow min-h-[4rem]">
-                    <p className="text-sm text-muted-foreground line-clamp-3">
+                  <CardContent className="flex-grow min-h-[2.5rem] px-3 pb-2 cursor-pointer" onClick={() => handleLoadNote(note.id)}>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
                       {getPreviewContent(note.content)}
                     </p>
                   </CardContent>
-                  <CardFooter className="flex justify-end gap-1 pt-2">
+                  <CardFooter className="flex justify-end gap-1 pt-1 pb-2 px-2 border-t mt-auto">
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => handleLoadNote(note.id)}>
-                          <Edit2 className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleLoadNote(note.id); }} className="h-7 w-7">
+                          <Edit2 className="h-3.5 w-3.5" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Edit Note</p>
-                      </TooltipContent>
+                      <TooltipContent><p>Edit Note</p></TooltipContent>
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteNote(note.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteNote(note.id); }} className="h-7 w-7">
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Delete Note</p>
-                      </TooltipContent>
+                      <TooltipContent><p>Delete Note</p></TooltipContent>
                     </Tooltip>
                   </CardFooter>
                 </Card>
@@ -254,6 +253,29 @@ const NotePadPage: React.FC = () => {
           )}
         </div>
       </div>
+       <style jsx global>{`
+        .editor-content:empty:before {
+          content: attr(placeholder);
+          color: hsl(var(--muted-foreground));
+          pointer-events: none;
+          display: block; /* or inline-block depending on your layout */
+        }
+        .scrollbar-thin {
+          scrollbar-width: thin;
+          scrollbar-color: hsl(var(--border)) hsl(var(--background));
+        }
+        .scrollbar-thin::-webkit-scrollbar {
+          width: 6px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+          background: hsl(var(--background));
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+          background-color: hsl(var(--border));
+          border-radius: 6px;
+          border: 1px solid hsl(var(--background));
+        }
+      `}</style>
     </div>
   );
 };
@@ -266,13 +288,11 @@ const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = ({ label, childr
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={label} {...props}>
+        <Button variant="ghost" size="icon" aria-label={label} className="h-7 w-7" {...props}>
           {children}
         </Button>
       </TooltipTrigger>
-      <TooltipContent>
-        <p>{label}</p>
-      </TooltipContent>
+      <TooltipContent><p>{label}</p></TooltipContent>
     </Tooltip>
   );
 };

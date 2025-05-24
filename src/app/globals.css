@@ -8,114 +8,114 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 100%; /* Clean white */
-    --foreground: 220 15% 25%; /* Dark slate gray */
+    --background: 207 27% 95%; /* Light Gray #F0F4F7 */
+    --foreground: 220 15% 25%; /* Dark Slate Gray */
 
-    --card: 0 0% 97%; /* Very light off-white/gray */
+    --card: 0 0% 100%; /* White */
     --card-foreground: 220 15% 25%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 220 15% 25%;
 
-    /* Primary Colors & Gradients */
-    --primary: 225 70% 55%; /* Modern indigo/blue */
-    --primary-foreground: 0 0% 100%;
-    --primary-gradient-start: 225 70% 55%;
-    --primary-gradient-end: 225 70% 48%; /* Slightly darker/richer */
-    --primary-hover-gradient-start: 225 70% 50%;
-    --primary-hover-gradient-end: 225 70% 42%;
+    /* Primary Colors & Gradients (Calming Blue #64B5F6) */
+    --primary: 207 86% 68%;
+    --primary-foreground: 0 0% 100%; /* White */
+    --primary-gradient-start: 207 86% 68%;
+    --primary-gradient-end: 207 86% 60%; /* Slightly darker blue */
+    --primary-hover-gradient-start: 207 86% 62%;
+    --primary-hover-gradient-end: 207 86% 55%;
 
-    --secondary: 220 10% 90%; /* Light gray */
-    --secondary-foreground: 220 10% 30%; /* Darker gray for text on secondary */
+    --secondary: 220 10% 90%; /* Light gray for secondary elements */
+    --secondary-foreground: 220 10% 30%;
 
-    --muted: 220 10% 94%;
+    --muted: 220 10% 94%; /* Slightly darker than card for subtle contrast */
     --muted-foreground: 220 10% 45%;
 
-    /* Accent Colors & Gradients */
-    --accent: 190 70% 40%; /* Deep Teal */
-    --accent-foreground: 0 0% 100%; /* White */
-    --accent-gradient-start: 190 70% 40%;
-    --accent-gradient-end: 190 70% 32%; /* Slightly darker/richer teal */
-    --accent-hover-gradient-start: 190 70% 35%;
-    --accent-hover-gradient-end: 190 70% 28%;
-
+    /* Accent Colors & Gradients (Soft Green #A5D6A7) */
+    --accent: 122 36% 70%;
+    --accent-foreground: 220 15% 15%; /* Dark text for readability on soft green */
+    --accent-gradient-start: 122 36% 70%;
+    --accent-gradient-end: 122 36% 62%; /* Slightly darker green */
+    --accent-hover-gradient-start: 122 36% 65%;
+    --accent-hover-gradient-end: 122 36% 58%;
+    
     --destructive: 0 80% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 10% 88%;
     --input: 220 10% 92%;
-    --ring: 225 70% 65%;
+    --ring: 207 86% 72%; /* Lighter shade of primary for ring */
 
     --chart-1: hsl(var(--primary));
     --chart-2: hsl(var(--accent));
     --chart-3: 270 60% 65%; /* A pleasant lavender */
     --chart-4: 30 90% 50%; /* Vibrant orange/tangerine */
     --chart-5: 0 0% 65%;   /* Medium Gray */
-    --radius: 0.75rem; /* Slightly larger radius */
+    --radius: 0.75rem;
 
-    /* Sidebar specific colors - harmonized with new light theme */
-    --sidebar-background: 0 0% 98%;
+    /* Sidebar specific colors - Light Theme */
+    --sidebar-background: 0 0% 98%; /* Slightly off-white, almost card-like */
     --sidebar-foreground: 220 15% 25%;
     --sidebar-primary: hsl(var(--primary));
     --sidebar-primary-foreground: hsl(var(--primary-foreground));
     --sidebar-accent: hsl(var(--accent));
-    --sidebar-accent-foreground: hsl(var(--accent-foreground));
+    --sidebar-accent-foreground: hsl(var(--accent-foreground)); /* Use main accent foreground for consistency */
     --sidebar-border: 220 10% 88%;
     --sidebar-ring: hsl(var(--primary));
   }
 
   .dark {
-    --background: 220 18% 10%; /* Very dark, slightly cool blue-gray */
-    --foreground: 210 30% 95%; /* Light, cool off-white */
+    --background: 220 18% 10%; 
+    --foreground: 210 30% 95%; 
 
-    --card: 220 15% 14%; /* Slightly lighter than background, still dark */
+    --card: 220 15% 14%; 
     --card-foreground: 210 30% 95%;
 
-    --popover: 220 18% 8%; /* Darker popover */
+    --popover: 220 18% 8%; 
     --popover-foreground: 210 30% 95%;
 
     /* Primary Colors & Gradients - Dark Theme */
-    --primary: 210 100% 60%; /* Vibrant, modern blue */
-    --primary-foreground: 220 20% 10%; /* Dark text on primary */
-    --primary-gradient-start: 210 100% 60%;
-    --primary-gradient-end: 210 100% 52%;
-    --primary-hover-gradient-start: 210 100% 55%;
-    --primary-hover-gradient-end: 210 100% 48%;
+    --primary: 207 80% 60%; /* Calming blue adjusted for dark */
+    --primary-foreground: 0 0% 100%; 
+    --primary-gradient-start: 207 80% 60%;
+    --primary-gradient-end: 207 80% 52%;
+    --primary-hover-gradient-start: 207 80% 55%;
+    --primary-hover-gradient-end: 207 80% 48%;
 
-    --secondary: 220 15% 25%; /* Medium-dark gray */
+    --secondary: 220 15% 25%; 
     --secondary-foreground: 210 25% 85%;
 
     --muted: 220 15% 20%;
     --muted-foreground: 210 20% 65%;
 
     /* Accent Colors & Gradients - Dark Theme */
-    --accent: 190 65% 55%; /* Deep Teal (adjusted for dark mode) */
-    --accent-foreground: 190 20% 5%; /* Very dark teal/black for text */
-    --accent-gradient-start: 190 65% 55%;
-    --accent-gradient-end: 190 65% 47%;
-    --accent-hover-gradient-start: 190 65% 50%;
-    --accent-hover-gradient-end: 190 65% 43%;
+    --accent: 122 30% 60%; /* Soft green adjusted for dark */
+    --accent-foreground: 122 90% 10%; /* Very dark green text */
+    --accent-gradient-start: 122 30% 60%;
+    --accent-gradient-end: 122 30% 52%;
+    --accent-hover-gradient-start: 122 30% 55%;
+    --accent-hover-gradient-end: 122 30% 48%;
 
-    --destructive: 0 70% 55%; /* Strong, clear red */
+    --destructive: 0 70% 55%; 
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 15% 25%;
     --input: 220 15% 22%;
-    --ring: 210 100% 70%;
-
+    --ring: 207 80% 65%; /* Lighter shade of primary for dark ring */
+    
     --chart-1: hsl(var(--primary));
     --chart-2: hsl(var(--accent));
-    --chart-3: 260 70% 70%; /* A brighter violet for dark */
-    --chart-4: 45 90% 55%; /* Rich, vibrant gold/amber */
-    --chart-5: 0 0% 80%;    /* Light Gray for dark */
+    --chart-3: 260 70% 70%; 
+    --chart-4: 45 90% 55%; 
+    --chart-5: 0 0% 80%;    
 
-    /* Sidebar specific colors for dark theme - harmonized */
-    --sidebar-background: 220 18% 10%;
+    /* Sidebar specific colors for dark theme */
+    --sidebar-background: 220 18% 9%; /* Slightly darker than main dark bg */
     --sidebar-foreground: 210 30% 95%;
     --sidebar-primary: hsl(var(--primary));
     --sidebar-primary-foreground: hsl(var(--primary-foreground));
     --sidebar-accent: hsl(var(--accent));
-    --sidebar-accent-foreground: hsl(var(--accent-foreground));
+    --sidebar-accent-foreground: hsl(var(--accent-foreground)); /* Use main accent foreground */
     --sidebar-border: 220 15% 25%;
     --sidebar-ring: hsl(var(--primary));
   }

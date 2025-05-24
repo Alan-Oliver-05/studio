@@ -1,18 +1,19 @@
-# **App Name**: EduAI
+# **App Name**: EduAI Tutor
 
 ## Core Features:
 
-- Onboarding Form: Collect user preferences and educational background using a sequential, pop-up Q&A form.
-- Personalized Dashboard: Utilize AI to provide personalized study materials and subjects based on the user's profile.  The AI will tool usage, KPI analysis, and MCP web scraping to show all required subjects
-- AI Tutoring Chat: Implement a conversation-based study page where AI asks questions and provides study materials based on user responses, also shows real-time external source suggestions during the converstaion.
-- Additional Features: Provide a library to store conversation history with date, and implement pages for homework help and user settings.
+- Lesson Introduction: AI introduces and explains a 'Subject Lesson Top Pick'.
+- Interactive Q&A: AI tool presents questions related to the 'Top Pick' to the student, evaluates the answers and offers appropriate feedback.
+- In-Depth Tutorials: Provides detailed explanations, examples, and visual aids within the chat interface.
+- Chat Interface: A clean, intuitive chat interface for seamless interaction between the student and the AI tutor.
+- Conversational Q&A: Covers syllabus, subject, lesson, and topic context Q&A (360°). AI asks questions; the user answers. If the user's answer is incorrect, the AI provides the correct answer with an explanation. Users can ask for detailed explanations and examples. Supports natural conversation on various subjects (Math, Science, History, etc.). Context-aware responses, remembering previous interactions in the session. Includes dynamic quizzes, exercises, and interactive lessons. Provides in-depth tutorials for complex topics (explanations, examples, visual aids). Supports text, image, and voice input/output within the chat.
+- New Conversation: Allows users to start a new conversation within the personalized subject chat page.
 
 ## Style Guidelines:
 
-- Primary color: Calming blue (#3498db) to represent knowledge and focus.
-- Secondary color: Light gray (#ecf0f1) for clean backgrounds and readable text areas.
-- Accent: Teal (#2ecc71) for highlights, buttons, and progress indicators.
-- Ensure that typography is easy to read on a variety of screen sizes.
-- Use consistent and clear icons to represent different subjects, features and study areas.
-- Maintain a clean and intuitive interface layout, ensure content is easily navigable and organized.
-- Use subtle transitions to keep users engaged.
+- Calming blue (#64B5F6) to promote focus and learning.
+- Light gray (#F0F4F7) for a clean, distraction-free environment.
+- Soft green (#A5D6A7) for positive feedback and highlights.
+- Clean and readable font optimized for educational content.
+- Simple, informative icons to represent different subjects and lesson types.
+- Clear and structured layout to help make content organized.

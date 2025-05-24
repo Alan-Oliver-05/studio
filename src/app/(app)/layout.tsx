@@ -10,12 +10,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <SidebarProvider defaultOpen={true}>
       <div className={cn(
         "flex min-h-screen w-full",
-        "bg-gradient-to-br from-background to-muted/30 dark:from-background dark:to-muted/10" // Subtle background gradient
+        "bg-background" 
         )}>
         <SidebarNav />
         <div className="flex flex-col flex-1 min-w-0"> {/* Added min-w-0 here for flexbox safety */}
           <AppHeader />
-          <main className="flex-1 overflow-auto px-4 md:pr-6 md:pl-0 pb-4 md:pb-6 pt-0">
+          <main className="flex-1 overflow-x-hidden overflow-y-auto px-4 md:px-6 pb-6 pt-4"> {/* Changed padding & scroll behavior */}
             {children}
           </main>
         </div>

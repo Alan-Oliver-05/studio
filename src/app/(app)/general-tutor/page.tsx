@@ -2,52 +2,52 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Brain, RotateCcw } from "lucide-react"; // Added RotateCcw
+import { Loader2, AlertTriangle, Brain, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
-import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from "react"; 
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
   { 
-    loading: () => <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
+    loading: () => <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
     ssr: false 
   }
 );
 
-export default function AITutorPage() {
+export default function GeneralTutorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const searchParams = useSearchParams();
-  const router = useRouter(); // Added router
+  const router = useRouter();
   
-  const [mainChatConversationId, setMainChatConversationId] = useState<string | null>(null);
-  const [mainChatKey, setMainChatKey] = useState<string>(''); 
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [chatKey, setChatKey] = useState<string>(''); 
 
 
   useEffect(() => {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
-      setMainChatConversationId(sessionIdFromQuery);
-      setMainChatKey(sessionIdFromQuery); 
+      setCurrentConversationId(sessionIdFromQuery);
+      setChatKey(sessionIdFromQuery); 
     } else if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
       const newTimestamp = Date.now();
-      const defaultMainChatId = `ai-tutor-chat-${profileIdentifier}-${newTimestamp}`;
-      setMainChatConversationId(defaultMainChatId);
-      setMainChatKey(defaultMainChatId); 
+      const defaultId = `general-tutor-${profileIdentifier}-${newTimestamp}`;
+      setCurrentConversationId(defaultId);
+      setChatKey(defaultId); 
     }
   }, [searchParams, profile]);
 
   const handleNewConversation = () => {
-    router.push('/general-tutor', { scroll: false }); // Clear sessionId from URL
+    router.push('/general-tutor', { scroll: false }); 
     if (profile) {
         const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
         const newTimestamp = Date.now();
-        const newId = `ai-tutor-chat-${profileIdentifier}-${newTimestamp}`;
-        setMainChatConversationId(newId);
-        setMainChatKey(newId);
+        const newId = `general-tutor-${profileIdentifier}-${newTimestamp}`;
+        setCurrentConversationId(newId);
+        setChatKey(newId);
     }
   };
 
@@ -76,7 +76,7 @@ export default function AITutorPage() {
     );
   }
   
-  if (!mainChatConversationId || !mainChatKey) {
+  if (!currentConversationId || !chatKey) {
      return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -85,16 +85,16 @@ export default function AITutorPage() {
     );
   }
 
-  const initialMainChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context.`;
+  const initialMainChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context. How can I help you today?`;
   
   return (
-    <div className="h-full flex flex-col mt-0 pt-0">
+    <div className="h-full flex flex-col pt-0">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 pt-0 mt-0">
         <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
                 <Brain className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> AI Learning Assistant
             </h1>
-            <p className="text-muted-foreground mt-1">Your multi-modal personal tutor.</p>
+            <p className="text-muted-foreground mt-1">Your multi-modal personal tutor for general queries.</p>
         </div>
         <Button onClick={handleNewConversation} variant="outline" className="mt-2 sm:mt-0">
           <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
@@ -102,12 +102,12 @@ export default function AITutorPage() {
       </div>
       
       <div className="flex-grow flex flex-col min-h-0 max-w-4xl w-full mx-auto">
-        {mainChatKey && mainChatConversationId && (
+        {chatKey && currentConversationId && ( // Ensure key and ID are set
           <DynamicChatInterface
-            key={mainChatKey} 
+            key={chatKey} 
             userProfile={profile}
-            topic="AI Learning Assistant Chat" 
-            conversationId={mainChatConversationId}
+            topic="AI Learning Assistant Chat" // Specific topic for AI to recognize this mode
+            conversationId={currentConversationId}
             initialSystemMessage={initialMainChatMessage}
             placeholderText="Ask anything or upload an image..."
           />
@@ -116,4 +116,3 @@ export default function AITutorPage() {
     </div>
   );
 }
-

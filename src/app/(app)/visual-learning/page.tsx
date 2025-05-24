@@ -2,18 +2,18 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, PieChartIcon, BarChart3, BarChartHorizontalBig, LayoutGrid, BrainCircuit, RotateCcw } from "lucide-react";
+import { Loader2, AlertTriangle, PieChartIcon, BarChart3, BarChartHorizontalBig, LayoutGrid, BrainCircuit, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
   {
-    loading: () => <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
+    loading: () => <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
     ssr: false
   }
 );
@@ -27,18 +27,20 @@ interface FeatureCardData {
 }
 
 const featureCards: FeatureCardData[] = [
-  { id: "graphs", title: "Graphs & Charts", icon: BarChartHorizontalBig, description: "Visualize data and trends.", initialQueryTemplate: "Show me a graph or chart for [concept]..." },
-  { id: "diagrams", title: "Diagram Solutions", icon: LayoutGrid, description: "Understand complex systems.", initialQueryTemplate: "Can you create a diagram to explain [concept]?" },
-  { id: "mindmaps", title: "Mind Maps", icon: BrainCircuit, description: "Organize and connect ideas.", initialQueryTemplate: "Generate a mind map for [topic]." },
+  { id: "graphs", title: "Graphs & Charts", icon: BarChartHorizontalBig, description: "Visualize data, comparisons, and trends.", initialQueryTemplate: "Show me a bar chart for [concept] comparing [item A] and [item B]." },
+  { id: "diagrams", title: "Conceptual Diagrams", icon: LayoutGrid, description: "Understand complex systems and processes.", initialQueryTemplate: "Can you create a diagram to explain [process or system]?" },
+  { id: "mindmaps", title: "Mind Maps", icon: BrainCircuit, description: "Organize and connect ideas visually.", initialQueryTemplate: "Generate a mind map for the topic of [topic]." },
 ];
 
 const suggestionChips = [
-  "Explain the water cycle visually",
-  "Create a bar chart of population growth",
-  "Diagram the process of photosynthesis",
-  "Generate a mind map about the solar system",
-  "Show me an image of a DNA helix",
-  "Illustrate the concept of supply and demand",
+  "Explain the water cycle with a diagram",
+  "Create a bar chart of country populations",
+  "Diagram the process of photosynthesis clearly",
+  "Generate a mind map about the solar system with legible labels",
+  "Show me an image of a DNA double helix",
+  "Illustrate the concept of supply and demand using a graph",
+  "Create a flowchart for a basic algorithm",
+  "Generate an image of the human heart with labels",
 ];
 
 export default function VisualLearningPage() {
@@ -58,7 +60,7 @@ export default function VisualLearningPage() {
     } else if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
       const newTimestamp = Date.now();
-      const defaultId = `visual-learning-main-${profileIdentifier}-${newTimestamp}`;
+      const defaultId = `visual-main-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(defaultId);
       setChatKey(defaultId);
     }
@@ -66,21 +68,26 @@ export default function VisualLearningPage() {
 
   const handleFeatureCardClick = (queryTemplate: string) => {
     setInitialChipQuery(queryTemplate);
+    // Scroll to chat input could be added here if needed
+    const chatInput = document.querySelector('input[aria-label="Chat input"]') as HTMLInputElement | null;
+    chatInput?.focus();
   };
 
   const handleSuggestionChipClick = (suggestion: string) => {
     setInitialChipQuery(suggestion);
+    const chatInput = document.querySelector('input[aria-label="Chat input"]') as HTMLInputElement | null;
+    chatInput?.focus();
   };
 
   const handleNewSession = () => {
-    router.push('/visual-learning', { scroll: false }); // Clear sessionId from URL
+    router.push('/visual-learning', { scroll: false }); 
     if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
       const newTimestamp = Date.now();
-      const newId = `visual-learning-main-${profileIdentifier}-${newTimestamp}`;
+      const newId = `visual-main-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(newId);
       setChatKey(newId);
-      setInitialChipQuery(""); // Clear any pending initial query
+      setInitialChipQuery(""); 
     }
   };
 
@@ -117,17 +124,17 @@ export default function VisualLearningPage() {
     );
   }
   
-  const initialChatMessage = `Hi ${profile.name}! Welcome to Visual Learning. How can I help you visualize a concept today? Ask me to generate an image, diagram, chart, or mind map. For diagrams or mind maps with text, please request clear and legible labels.`;
+  const initialChatMessage = `Hi ${profile.name}! Welcome to Visual Learning. How can I help you visualize a concept today? Ask me to generate an image, diagram, chart, or mind map. For diagrams or mind maps requiring text, please specify that labels should be clear and legible. Example: "Generate a mind map of the water cycle. Render all text labels clearly and legibly. Labels should be bold and easy to read."`;
 
   return (
     <div className="h-full flex flex-col pt-0">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 px-4 md:px-0 pt-0 mt-0">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-4 md:px-0 pt-0 mt-0">
         <div className="text-center sm:text-left">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-            <PieChartIcon className="mr-3 h-7 w-7 sm:h-8 sm:w-8" /> Visual Learning Tools
+            <PieChartIcon className="mr-3 h-7 w-7 sm:h-8 sm:w-8" /> Visual Learning Studio
           </h1>
           <p className="text-muted-foreground mt-1 max-w-xl">
-            Explore concepts with AI-generated interactive graphs, charts, and diagrams.
+            Explore concepts with AI-generated interactive graphs, charts, diagrams, and images.
           </p>
         </div>
         <Button onClick={handleNewSession} variant="outline" className="mt-3 sm:mt-0">
@@ -135,51 +142,53 @@ export default function VisualLearningPage() {
         </Button>
       </div>
 
+      <div className="px-4 max-w-4xl mx-auto w-full mb-6">
+        <Card className="p-4 bg-muted/30 border-dashed border-primary/30">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            {featureCards.map((card) => (
+              <Card
+                key={card.id}
+                className="flex flex-col items-center justify-center p-3 text-center border rounded-lg shadow-sm hover:shadow-md hover:border-primary/70 transition-all cursor-pointer bg-card text-card-foreground h-full"
+                onClick={() => handleFeatureCardClick(card.initialQueryTemplate)}
+                tabIndex={0}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleFeatureCardClick(card.initialQueryTemplate)}
+                role="button"
+                aria-label={`Start with ${card.title}`}
+              >
+                <card.icon className="h-7 w-7 text-primary mb-1.5" />
+                <h3 className="text-xs sm:text-sm font-semibold">{card.title}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">{card.description}</p>
+              </Card>
+            ))}
+          </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 px-4 max-w-4xl mx-auto w-full">
-        {featureCards.map((card) => (
-          <Card
-            key={card.id}
-            className="flex flex-col items-center justify-center p-4 sm:p-6 border rounded-lg shadow-sm hover:shadow-lg hover:border-primary transition-all cursor-pointer bg-card text-card-foreground"
-            onClick={() => handleFeatureCardClick(card.initialQueryTemplate)}
-            tabIndex={0}
-            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleFeatureCardClick(card.initialQueryTemplate)}
-            role="button"
-            aria-label={`Start with ${card.title}`}
-          >
-            <card.icon className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-2 sm:mb-3" />
-            <h3 className="text-sm sm:text-base font-semibold text-center">{card.title}</h3>
-            <p className="text-xs text-muted-foreground text-center mt-1">{card.description}</p>
-          </Card>
-        ))}
+          <p className="text-xs text-muted-foreground mb-1.5 text-center sm:text-left">Quick start suggestions:</p>
+          <div className="flex flex-wrap justify-center sm:justify-start gap-1.5">
+            {suggestionChips.slice(0,4).map((suggestion, index) => ( // Show fewer chips initially
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                className="rounded-full text-xs h-auto py-1 px-2.5 bg-background hover:bg-accent/10"
+                onClick={() => handleSuggestionChipClick(suggestion)}
+              >
+                <Sparkles className="h-3 w-3 mr-1.5 text-accent opacity-70"/> {suggestion}
+              </Button>
+            ))}
+          </div>
+        </Card>
       </div>
 
-      <div className="mb-6 px-4 max-w-4xl mx-auto w-full">
-        <p className="text-sm text-muted-foreground mb-2 text-center">Or, try one of these suggestions:</p>
-        <div className="flex flex-wrap justify-center gap-2">
-          {suggestionChips.map((suggestion, index) => (
-            <Button
-              key={index}
-              variant="outline"
-              size="sm"
-              className="rounded-full text-xs h-auto py-1.5 px-3"
-              onClick={() => handleSuggestionChipClick(suggestion)}
-            >
-              {suggestion}
-            </Button>
-          ))}
-        </div>
-      </div>
 
       <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto pb-4 px-0 sm:px-4">
         {chatKey && currentConversationId && (
           <DynamicChatInterface
             key={chatKey}
             userProfile={profile}
-            topic="Visual Learning" 
+            topic="Visual Learning Focus" // Use "Visual Learning Focus" to enable visualElement output.
             conversationId={currentConversationId}
             initialSystemMessage={initialChatMessage}
-            placeholderText="Describe what you want to visualize..."
+            placeholderText="Describe what you want to visualize, e.g., 'Generate an image of a plant cell with labels'"
             initialInputQuery={initialChipQuery}
             onInitialQueryConsumed={() => setInitialChipQuery("")}
           />

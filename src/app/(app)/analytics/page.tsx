@@ -2,8 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChartBig, BookOpen, Brain, CheckCircle, FileText, History, Languages, Layers, ListChecks, Loader2, MessageSquare, PenSquare, PieChartIcon, TrendingUp, Users } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { BarChartBig, BookOpen, Brain, CheckCircle, FileText, History, Languages, Layers, ListChecks, Loader2, MessageSquare, PenSquare, PieChartIcon, TrendingUp, Users, Info, Sparkles } from "lucide-react";
 import { getConversations } from "@/lib/chat-storage";
 import type { Conversation, Task, Note, TaskPriority } from "@/types";
 import {
@@ -62,8 +62,9 @@ export default function AnalyticsPage() {
       conversations.forEach(convo => {
         let typeKey = convo.subjectContext || convo.topic || "Uncategorized";
         if (convo.topic === "AI Learning Assistant Chat") typeKey = "General AI Tutor";
-        else if (convo.topic === "LanguageLearningMode") typeKey = "Language Learning";
+        else if (convo.topic === "LanguageTranslatorMode") typeKey = "Language Translator";
         else if (convo.topic === "Homework Help") typeKey = "Homework Helper";
+        else if (convo.topic === "Visual Learning" || convo.topic === "Visual Learning Focus") typeKey = "Visual Learning";
         else if (convo.subjectContext) typeKey = convo.subjectContext; 
 
         if (!newSessionStats.sessionsByType[typeKey]) {
@@ -75,7 +76,7 @@ export default function AnalyticsPage() {
           newSessionStats.sessionsByType[typeKey].summarizedCount++;
         }
 
-        if (convo.subjectContext && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "LanguageLearningMode" && convo.topic !== "Homework Help") {
+        if (convo.subjectContext && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "LanguageTranslatorMode" && convo.topic !== "Homework Help" && convo.topic !== "Visual Learning" && convo.topic !== "Visual Learning Focus") {
            if (!newSessionStats.studySubjects[convo.subjectContext]) {
              newSessionStats.studySubjects[convo.subjectContext] = { count: 0, totalMessages: 0, summarizedCount: 0 };
            }
@@ -129,29 +130,26 @@ export default function AnalyticsPage() {
   }
 
   const sessionsChartData = sessionStats ? Object.entries(sessionStats.sessionsByType).map(([name, data]) => ({
-    name,
+    name: name.length > 20 ? name.substring(0,17) + '...' : name, // Truncate long names
     sessions: data.count,
   })).sort((a,b) => b.sessions - a.sessions) : [];
 
   const sessionsChartConfig: ChartConfig = {
-    sessions: {
-      label: "Sessions",
-      color: "hsl(var(--primary))",
-    },
+    sessions: { label: "Sessions", color: "hsl(var(--primary))" },
   };
-  if (sessionsChartData.length > 0) {
-     sessionsChartData.forEach(item => {
-        if (!sessionsChartConfig[item.name]) {
-            sessionsChartConfig[item.name] = { label: item.name, color: "hsl(var(--chart-3))" }; 
-        }
-     });
-  }
+  sessionsChartData.forEach(item => { // Dynamically add colors for each bar
+      if (!sessionsChartConfig[item.name]) {
+          // Cycle through chart colors, or use primary if more items than chart colors
+          const colorIndex = Object.keys(sessionsChartConfig).length % 5; // 5 chart colors
+          sessionsChartConfig[item.name] = { label: item.name, color: `hsl(var(--chart-${colorIndex + 1}))` }; 
+      }
+  });
 
 
   const taskStatusChartData = taskStats ? [
     { name: "Pending", value: taskStats.pending, fill: "hsl(var(--chart-2))" },
     { name: "Completed", value: taskStats.completed, fill: "hsl(var(--chart-1))" },
-  ] : [];
+  ].filter(d => d.value > 0) : []; // Filter out zero-value entries
   
   const taskStatusChartConfig: ChartConfig = {
     Pending: { label: "Pending", color: "hsl(var(--chart-2))" },
@@ -162,7 +160,7 @@ export default function AnalyticsPage() {
     { name: "High", value: taskStats.byPriority.High, fill: "hsl(var(--destructive))"},
     { name: "Medium", value: taskStats.byPriority.Medium, fill: "hsl(var(--chart-4))" },
     { name: "Low", value: taskStats.byPriority.Low, fill: "hsl(var(--chart-5))" },
-  ].filter(d => d.value > 0) : [];
+  ].filter(d => d.value > 0) : []; // Filter out zero-value entries
 
   const taskPriorityChartConfig: ChartConfig = {
     High: { label: "High", color: "hsl(var(--destructive))" },
@@ -172,11 +170,11 @@ export default function AnalyticsPage() {
 
 
   const StatCard = ({ title, value, icon, description, children }: { title: string, value: string | number, icon?: React.ReactNode, description?: string, children?: React.ReactNode }) => (
-    <Card className="shadow-lg hover:shadow-xl transition-shadow">
+    <Card className="shadow-lg hover:shadow-xl transition-shadow bg-card/80 backdrop-blur-sm border-border/50">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-            <CardDescription className="flex items-center text-sm">
-                {icon && <span className="mr-2 text-muted-foreground">{icon}</span>}
+            <CardDescription className="flex items-center text-sm text-muted-foreground">
+                {icon && <span className="mr-2 text-primary">{icon}</span>}
                 {title}
             </CardDescription>
         </div>
@@ -188,9 +186,14 @@ export default function AnalyticsPage() {
       </CardContent>
     </Card>
   );
+  
+  const noDataAvailable = (!sessionStats || sessionStats.totalSessions === 0) && 
+                           (!taskStats || taskStats.totalTasks === 0) && 
+                           (!noteStats || noteStats.totalNotes === 0);
+
 
   return (
-    <div className="pr-0 md:pr-2 pb-4 md:pb-6 pt-0">
+    <div className="pb-4 pt-0">
       <div className="mb-6 pt-0">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
           <BarChartBig className="mr-3 h-7 w-7 sm:h-8 sm:w-8" /> Analytics Dashboard
@@ -200,30 +203,62 @@ export default function AnalyticsPage() {
         </p>
       </div>
 
-      {sessionStats && (
+      {noDataAvailable && (
+        <Card className="text-center py-12 shadow-lg max-w-2xl mx-auto bg-card/80 backdrop-blur-sm">
+            <CardHeader className="p-4">
+            <div className="mx-auto bg-primary/10 rounded-full p-4 w-fit">
+                <Sparkles className="h-12 w-12 text-primary" />
+            </div>
+            <CardTitle className="mt-6 text-2xl text-foreground">No Analytics Data Yet</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+            <p className="text-muted-foreground">
+                Start using the app to see your learning analytics here!
+                Engage in chat sessions, create tasks, and take notes to populate this dashboard.
+            </p>
+            </CardContent>
+             <CardFooter className="justify-center p-4">
+                <Button asChild>
+                    <Link href="/dashboard">Go to Dashboard</Link>
+                </Button>
+            </CardFooter>
+        </Card>
+      )}
+
+      {!noDataAvailable && sessionStats && sessionStats.totalSessions > 0 && (
         <section className="mb-8">
           <h2 className="text-xl sm:text-2xl font-semibold text-primary mb-4 flex items-center"><MessageSquare className="mr-2 h-5 w-5 sm:h-6 sm:w-6"/>Chat Activity</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard title="Total Chat Sessions" value={sessionStats.totalSessions} icon={<History />} description="All recorded chat interactions." />
-            <StatCard title="Total Messages Exchanged" value={sessionStats.totalMessages} icon={<FileText />} description="Sum of all messages sent by you and AI." />
+            <StatCard title="Total Messages" value={sessionStats.totalMessages} icon={<FileText />} description="Sum of messages by you and AI." />
             <StatCard title="Avg Messages / Session" value={(sessionStats.totalMessages / (sessionStats.totalSessions || 1)).toFixed(1)} icon={<TrendingUp />} description="Average conversation length."/>
           </div>
           
           {sessionsChartData.length > 0 && (
-            <Card className="mt-6 shadow-lg">
+            <Card className="mt-6 shadow-lg bg-card/80 backdrop-blur-sm border-border/50">
               <CardHeader>
-                <CardTitle className="text-lg sm:text-xl flex items-center"><Layers className="mr-2 h-5 w-5"/>Learning Sessions Breakdown</CardTitle>
+                <CardTitle className="text-lg sm:text-xl flex items-center text-foreground"><Layers className="mr-2 h-5 w-5 text-primary"/>Session Types</CardTitle>
                 <CardDescription>Number of sessions per category.</CardDescription>
               </CardHeader>
-              <CardContent className="h-[300px] md:h-[350px]">
-                <ChartContainer config={sessionsChartConfig} className="w-full h-full">
-                  <BarChart data={sessionsChartData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+              <CardContent className="h-[300px] md:h-[350px] pr-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={sessionsChartData} margin={{ top: 5, right: 0, left: -20, bottom: sessionsChartData.length > 4 ? 50 : 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickLine={{ stroke: 'hsl(var(--muted-foreground))' }} />
-                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickLine={{ stroke: 'hsl(var(--muted-foreground))' }} allowDecimals={false}/>
+                    <XAxis 
+                        dataKey="name" 
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} 
+                        tickLine={{ stroke: 'hsl(var(--muted-foreground))' }} 
+                        interval={0}
+                        angle={sessionsChartData.length > 4 ? -30 : 0}
+                        textAnchor={sessionsChartData.length > 4 ? "end" : "middle"}
+                        height={sessionsChartData.length > 4 ? 60 : 30}
+                    />
+                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} tickLine={{ stroke: 'hsl(var(--muted-foreground))' }} allowDecimals={false}/>
                     <RechartsTooltip
-                        content={<ChartTooltipContent nameKey="name" labelKey="sessions" />}
-                        cursor={{fill: "hsl(var(--muted))"}}
+                        content={<ChartTooltipContent nameKey="name" />}
+                        cursor={{fill: "hsla(var(--muted), 0.5)"}}
+                        labelStyle={{color: "hsl(var(--foreground))", fontWeight:"bold"}}
+                        itemStyle={{color: "hsl(var(--foreground))"}}
                     />
                     <Bar dataKey="sessions" radius={[4, 4, 0, 0]}>
                        {sessionsChartData.map((entry, index) => (
@@ -231,25 +266,26 @@ export default function AnalyticsPage() {
                        ))}
                     </Bar>
                   </BarChart>
-                </ChartContainer>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           )}
 
           <div className="mt-6 space-y-4">
-            {Object.entries(sessionStats.sessionsByType).map(([type, data]) => (
-              <Card key={type} className="shadow-md">
-                <CardHeader>
-                  <CardTitle className="text-md sm:text-lg font-semibold text-accent">
-                    {type === "General AI Tutor" ? <Brain className="inline mr-2 h-4 w-4 sm:h-5 sm:w-5"/> : 
-                     type === "Language Learning" ? <Languages className="inline mr-2 h-4 w-4 sm:h-5 sm:w-5"/> : 
-                     type === "Homework Helper" ? <PenSquare className="inline mr-2 h-4 w-4 sm:h-5 sm:w-5"/> :
-                     <BookOpen className="inline mr-2 h-4 w-4 sm:h-5 sm:w-5"/> 
+            {Object.entries(sessionStats.sessionsByType).sort(([,a],[,b]) => b.count - a.count).map(([type, data]) => (
+              <Card key={type} className="shadow-md bg-card/80 backdrop-blur-sm border-border/50">
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-sm sm:text-base font-semibold text-accent flex items-center">
+                    {type === "General AI Tutor" ? <Brain className="inline mr-2 h-4 w-4"/> : 
+                     type === "Language Learning" || type === "Language Translator" ? <Languages className="inline mr-2 h-4 w-4"/> : 
+                     type === "Homework Helper" ? <PenSquare className="inline mr-2 h-4 w-4"/> :
+                     type === "Visual Learning" ? <PieChartIcon className="inline mr-2 h-4 w-4"/> :
+                     <BookOpen className="inline mr-2 h-4 w-4"/> 
                     }
                     {type}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs px-4 pb-3">
                     <p><strong className="text-primary">{data.count}</strong> session{data.count === 1 ? '' : 's'}</p>
                     <p><strong className="text-primary">{data.totalMessages}</strong> message{data.totalMessages === 1 ? '' : 's'}</p>
                     <p><strong className="text-primary">{data.summarizedCount}</strong> summarized</p>
@@ -260,7 +296,7 @@ export default function AnalyticsPage() {
         </section>
       )}
 
-      {taskStats && (
+      {!noDataAvailable && taskStats && taskStats.totalTasks > 0 && (
         <section className="mb-8">
           <h2 className="text-xl sm:text-2xl font-semibold text-primary mb-4 flex items-center"><ListChecks className="mr-2 h-5 w-5 sm:h-6 sm:w-6"/>Task Insights</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -270,95 +306,62 @@ export default function AnalyticsPage() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            {taskStatusChartData.length > 0 && taskStatusChartData.some(d => d.value > 0) && (
-              <Card className="shadow-lg">
+            {taskStatusChartData.length > 0 && (
+              <Card className="shadow-lg bg-card/80 backdrop-blur-sm border-border/50">
                 <CardHeader>
-                  <CardTitle className="text-lg sm:text-xl flex items-center"><PieChartIcon className="mr-2 h-5 w-5"/>Task Status Overview</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl flex items-center text-foreground"><PieChartIcon className="mr-2 h-5 w-5 text-primary"/>Task Status</CardTitle>
                   <CardDescription>Distribution of pending vs. completed tasks.</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[250px] md:h-[300px] flex items-center justify-center">
-                  <ChartContainer config={taskStatusChartConfig} className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie
-                        data={taskStatusChartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        innerRadius={40} 
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {taskStatusChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
+                      <Pie data={taskStatusChartData} cx="50%" cy="50%" labelLine={false} outerRadius={80} innerRadius={40} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                        {taskStatusChartData.map((entry, index) => ( <Cell key={`cell-${index}`} fill={entry.fill} /> ))}
                       </Pie>
                       <RechartsTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
-                      <Legend verticalAlign="bottom" height={36}/>
+                      <Legend verticalAlign="bottom" height={36} wrapperStyle={{fontSize: "12px", color: "hsl(var(--muted-foreground))"}}/>
                     </PieChart>
-                  </ChartContainer>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
             )}
             
             {taskPriorityChartData.length > 0 && (
-              <Card className="shadow-lg">
+              <Card className="shadow-lg bg-card/80 backdrop-blur-sm border-border/50">
                 <CardHeader>
-                  <CardTitle className="text-lg sm:text-xl flex items-center"><TrendingUp className="mr-2 h-5 w-5"/>Tasks by Priority</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl flex items-center text-foreground"><TrendingUp className="mr-2 h-5 w-5 text-primary"/>Tasks by Priority</CardTitle>
                   <CardDescription>Distribution of tasks by their priority.</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[250px] md:h-[300px] flex items-center justify-center">
-                  <ChartContainer config={taskPriorityChartConfig} className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie
-                        data={taskPriorityChartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        innerRadius={40} 
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {taskPriorityChartData.map((entry, index) => (
-                          <Cell key={`cell-prio-${index}`} fill={entry.fill} />
-                        ))}
+                      <Pie data={taskPriorityChartData} cx="50%" cy="50%" labelLine={false} outerRadius={80} innerRadius={40} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                        {taskPriorityChartData.map((entry, index) => ( <Cell key={`cell-prio-${index}`} fill={entry.fill} /> ))}
                       </Pie>
                        <RechartsTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
-                       <Legend verticalAlign="bottom" height={36}/>
+                       <Legend verticalAlign="bottom" height={36} wrapperStyle={{fontSize: "12px", color: "hsl(var(--muted-foreground))"}}/>
                     </PieChart>
-                  </ChartContainer>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
             )}
           </div>
+           {taskStats.totalTasks > 0 && taskStatusChartData.length === 0 && taskPriorityChartData.length === 0 && (
+            <Card className="mt-6 p-6 text-center text-muted-foreground bg-card/80 backdrop-blur-sm border-border/50">
+              <Info className="mx-auto h-8 w-8 mb-2"/>
+              Task charts are not shown because all tasks are either in one status (e.g., all pending) or one priority. Add more varied tasks to see charts.
+            </Card>
+          )}
         </section>
       )}
 
-      {noteStats && (
+      {!noDataAvailable && noteStats && noteStats.totalNotes > 0 && (
          <section>
             <h2 className="text-xl sm:text-2xl font-semibold text-primary mb-4 flex items-center"><FileText className="mr-2 h-5 w-5 sm:h-6 sm:w-6"/>Notepad Insights</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard title="Total Notes Created" value={noteStats.totalNotes} icon={<FileText />} />
+                <StatCard title="Total Notes Created" value={noteStats.totalNotes} icon={<FileText />} description="All notes saved in your notepad."/>
             </div>
          </section>
-      )}
-      
-      {!sessionStats && !taskStats && !noteStats && (
-        <Card className="text-center py-12 shadow-lg max-w-2xl mx-auto">
-            <CardHeader className="p-4">
-            <div className="mx-auto bg-accent/10 rounded-full p-4 w-fit">
-                <BarChartBig className="h-12 w-12 text-accent" />
-            </div>
-            <CardTitle className="mt-6 text-2xl">No Analytics Data Yet</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-            <p className="text-muted-foreground">
-                Start using the app to see your learning analytics here.
-                Engage in chat sessions, create tasks, and take notes!
-            </p>
-            </CardContent>
-        </Card>
       )}
     </div>
   );

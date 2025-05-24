@@ -38,13 +38,13 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, parse } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { TASK_CATEGORIES, TASK_PRIORITIES } from "@/lib/constants";
 import type { Task, TaskPriority } from "@/types";
 import { useEffect } from "react";
 
 const TaskFormSchema = z.object({
-  title: z.string().min(3, { message: "Task title must be at least 3 characters." }),
+  title: z.string().min(3, { message: "Task title must be at least 3 characters." }).max(150, { message: "Title cannot exceed 150 characters."}),
   category: z.string().min(1, { message: "Please select a category." }),
   priority: z.enum(["Low", "Medium", "High"], { required_error: "Please select a priority."}),
   dueDate: z.date().optional().nullable(),
@@ -56,7 +56,7 @@ interface TaskFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmitForm: (data: TaskFormValues) => void;
-  taskData?: Task | null;
+  taskData?: Task | null; // For editing existing task
 }
 
 export function TaskFormDialog({ open, onOpenChange, onSubmitForm, taskData }: TaskFormDialogProps) {
@@ -66,46 +66,53 @@ export function TaskFormDialog({ open, onOpenChange, onSubmitForm, taskData }: T
       title: "",
       category: TASK_CATEGORIES[0]?.value || "",
       priority: "Medium",
-      dueDate: undefined,
+      dueDate: undefined, // Initialize as undefined
     },
   });
 
   const isEditMode = !!taskData;
 
   useEffect(() => {
-    if (taskData && open) {
-      form.reset({
-        title: taskData.title,
-        category: taskData.category,
-        priority: taskData.priority,
-        dueDate: taskData.dueDate ? parse(taskData.dueDate, "PPP", new Date()) : undefined,
-      });
-    } else if (!open) {
-      form.reset({ // Reset to default when dialog closes or for add mode
-        title: "",
-        category: TASK_CATEGORIES[0]?.value || "",
-        priority: "Medium",
-        dueDate: undefined,
-      });
+    if (open) { // Only reset form when dialog becomes visible or taskData changes while open
+      if (taskData) {
+        form.reset({
+          title: taskData.title,
+          category: taskData.category,
+          priority: taskData.priority,
+          dueDate: taskData.dueDate && isValid(parseISO(taskData.dueDate)) ? parseISO(taskData.dueDate) : undefined,
+        });
+      } else { // Reset to default for add mode
+        form.reset({ 
+          title: "",
+          category: TASK_CATEGORIES[0]?.value || "",
+          priority: "Medium",
+          dueDate: undefined,
+        });
+      }
     }
   }, [taskData, open, form]);
 
   const handleSubmit = (data: TaskFormValues) => {
     onSubmitForm(data);
-    onOpenChange(false); // Close dialog on submit
+    onOpenChange(false); 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={(isOpen) => {
+        onOpenChange(isOpen);
+        if (!isOpen) { // Reset form when dialog is explicitly closed
+             form.reset({ title: "", category: TASK_CATEGORIES[0]?.value || "", priority: "Medium", dueDate: undefined });
+        }
+    }}>
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? "Edit Task" : "Add New Task"}</DialogTitle>
+          <DialogTitle className="text-xl">{isEditMode ? "Edit Task" : "Add New Task"}</DialogTitle>
           <DialogDescription>
-            {isEditMode ? "Update the details for your task." : "Fill in the details for your new task."}
+            {isEditMode ? "Update the details for your task." : "Fill in the details for your new task. Stay organized!"}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-2">
             <FormField
               control={form.control}
               name="title"
@@ -113,20 +120,20 @@ export function TaskFormDialog({ open, onOpenChange, onSubmitForm, taskData }: T
                 <FormItem>
                   <FormLabel>Task Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Read Chapter 5" {...field} />
+                    <Input placeholder="e.g., Read Chapter 5 of Physics" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="category"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
@@ -150,7 +157,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmitForm, taskData }: T
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select priority" />
@@ -181,12 +188,12 @@ export function TaskFormDialog({ open, onOpenChange, onSubmitForm, taskData }: T
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-full pl-3 text-left font-normal",
+                            "w-full pl-3 text-left font-normal justify-start", // Ensure text alignment
                             !field.value && "text-muted-foreground"
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "PPP")
+                            format(field.value, "PPP") // Format date for display
                           ) : (
                             <span>Pick a date</span>
                           )}
@@ -197,9 +204,9 @@ export function TaskFormDialog({ open, onOpenChange, onSubmitForm, taskData }: T
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={field.value || undefined}
+                        selected={field.value || undefined} // Ensure value is Date or undefined
                         onSelect={field.onChange}
-                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
+                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) } // Disable past dates
                         initialFocus
                       />
                     </PopoverContent>
@@ -210,7 +217,10 @@ export function TaskFormDialog({ open, onOpenChange, onSubmitForm, taskData }: T
             />
             <DialogFooter className="pt-4">
               <DialogClose asChild>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                <Button type="button" variant="outline" onClick={() => {
+                    onOpenChange(false);
+                    form.reset({ title: "", category: TASK_CATEGORIES[0]?.value || "", priority: "Medium", dueDate: undefined });
+                }}>
                   Cancel
                 </Button>
               </DialogClose>

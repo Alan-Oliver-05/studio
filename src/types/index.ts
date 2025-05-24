@@ -6,8 +6,8 @@ export interface BoardExamInfo {
 }
 
 export interface CompetitiveExamInfo {
-  examType?: string;
-  specificExam?: string;
+  examType?: string; // e.g. Central Govt, State Govt, Other
+  specificExam?: string; // e.g. JEE, NEET, UPSC CSE, TNPSC Group 1, Custom Exam Name
 }
 
 export interface UniversityExamInfo {
@@ -28,7 +28,7 @@ export type EducationCategory = 'board' | 'competitive' | 'university' | 'other'
 export interface UserProfile {
   id?: string; // For potential future DB use
   name: string;
-  age: number | '';
+  age: number | ''; // Allow string for form input, convert to number on save
   gender: string;
   country: string;
   state: string;
@@ -65,17 +65,17 @@ export interface Message {
   text: string;
   suggestions?: string[];
   timestamp: number;
-  attachmentPreview?: string | null; // For client-side display of image thumbnail
+  attachmentPreview?: string | null; // For client-side display of image thumbnail before sending
   visualElement?: VisualElement | null; // To hold structured visual data from AI
-  generatedImageUri?: string | null; // To store the data URI of an AI-generated image
+  generatedImageUri?: string | null; // To store the data URI of an AI-generated image if applicable
 }
 
 export interface Conversation {
   id: string; 
   customTitle?: string; // User-defined title for the conversation in the library
-  topic: string; // This will store the most specific topic of conversation
-  subjectContext?: string; // General subject for context
-  lessonContext?: string; // Lesson for context
+  topic: string; // This will store the most specific topic of conversation (e.g. "Refraction of Light", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Visual Learning")
+  subjectContext?: string; // General subject for context (e.g. "Physics for 12th Standard CBSE")
+  lessonContext?: string; // Lesson for context (e.g. "Optics")
   studentProfile?: UserProfile; 
   messages: Message[];
   summary?: string;
@@ -88,7 +88,7 @@ export interface Task {
   id: string;
   title: string;
   category: string;
-  dueDate?: string;
+  dueDate?: string; // Stored as "MMM d, yyyy" e.g. "May 9, 2024"
   priority: TaskPriority;
   status: 'pending' | 'completed';
 }
@@ -100,4 +100,3 @@ export interface Note {
   createdAt: number;
   updatedAt: number;
 }
-
