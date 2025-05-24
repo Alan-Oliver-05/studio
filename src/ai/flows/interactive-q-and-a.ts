@@ -49,7 +49,7 @@ const InteractiveQAndAOutputSchema = z.object({
   question: z.string().describe('The next question posed by the AI tutor, strictly relevant to the topic and previous interaction, acting as if retrieved from the topic\'s content.'),
   feedback: z.string().optional().describe('Concise feedback on the student\'s answer (if provided). This should be encouraging and explain correctness or errors based SOLELY on the topic\'s content.'),
   isCorrect: z.boolean().optional().describe('Indicates if the student\'s last answer was correct, based on the topic. Null if no answer was provided.'),
-  suggestions: z.array(z.string()).optional().describe("A list of 1-2 highly specific suggestions for sub-topics or related concepts within the CURRENT topic for further study."),
+  suggestions: z.array(z.string()).optional().describe("A list of 1-2 highly specific suggestions for sub-topics, related concepts within the CURRENT topic, or probing questions for further study."),
 });
 export type InteractiveQAndAOutput = z.infer<typeof InteractiveQAndAOutputSchema>;
 
@@ -98,8 +98,13 @@ const prompt = ai.definePrompt({
       *   Formulate an initial, single, clear 'question' about the '{{{topic}}}', appropriate for the student's profile and derived *only* from the '{{{topic}}}' content.
   4.  **Question Style**: Questions must be clear, targeted, and assess understanding of '{{{topic}}}'. They can be multiple-choice (provide options A, B, C, D), fill-in-the-blank, or short answer. Ensure questions are answerable from the presumed content of '{{{topic}}}'.
   5.  **Conciseness & Focus**: Your responses (feedback and questions) must be concise and directly relevant to '{{{topic}}}'. Ask ONE question at a time.
-  6.  **Suggestions**: Optionally provide 1-2 'suggestions' for further study, but these MUST be sub-topics or related concepts *within the current '{{{topic}}}' itself*. Do not suggest going outside '{{{topic}}}'.
-  7.  **Language**: All 'question' and 'feedback' must be in {{{studentProfile.preferredLanguage}}}.
+  6.  **Next Steps & Suggestions**: After providing feedback (if applicable) and asking a new question, include 1-2 'suggestions' in the output field. These suggestions should prompt the student for further exploration *within the current '{{{topic}}}'*. They could be:
+      *   Probing questions about related aspects of the '{{{topic}}}' (e.g., "What if X was different?").
+      *   Key sub-concepts within '{{{topic}}}' that haven't been covered yet or could be revisited for deeper understanding.
+      *   Connections between the current discussion point and other parts of '{{{topic}}}'.
+      *   Example: If discussing 'causes of photosynthesis', a suggestion could be "You might want to think about: What are the limiting factors of photosynthesis?" or "Consider exploring: The different pigments involved in photosynthesis and their roles."
+      These suggestions MUST remain strictly within the scope of '{{{topic}}}'.
+  7.  **Language**: All 'question', 'feedback', and 'suggestions' must be in {{{studentProfile.preferredLanguage}}}.
   8.  **JSON Output**: Ensure the entire output is a single, valid JSON object matching the output schema.
   9.  **Awareness**: Maintain awareness of the conversation flow. If the student seems confused, simplify. If they are doing well, you can subtly increase complexity *within the topic*.
   10. **No External Knowledge**: Reiterate: Do NOT use any information outside of what can be reasonably assumed to be part of '{{{topic}}}' as defined by '{{{subject}}}' and '{{{lesson}}}'.
@@ -141,7 +146,7 @@ const interactiveQAndAFlow = ai.defineFlow(
             question: output.question,
             feedback: output.feedback || undefined,
             isCorrect: output.isCorrect === undefined ? undefined : output.isCorrect,
-            suggestions: output.suggestions || [],
+            suggestions: output.suggestions || [], // Default to empty array if not provided
         };
     }
     
