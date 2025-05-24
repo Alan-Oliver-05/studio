@@ -68,15 +68,17 @@ export interface Message {
   attachmentPreview?: string | null; // For client-side display of image thumbnail before sending
   visualElement?: VisualElement | null; // To hold structured visual data from AI
   generatedImageUri?: string | null; // To store the data URI of an AI-generated image if applicable
+  feedback?: string | null; // Feedback from interactiveQAndA
+  isCorrect?: boolean | null; // Whether the user's previous answer was correct, from interactiveQAndA
 }
 
 export interface Conversation {
-  id: string; 
+  id: string;
   customTitle?: string; // User-defined title for the conversation in the library
   topic: string; // This will store the most specific topic of conversation (e.g. "Refraction of Light", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Visual Learning")
   subjectContext?: string; // General subject for context (e.g. "Physics for 12th Standard CBSE")
   lessonContext?: string; // Lesson for context (e.g. "Optics")
-  studentProfile?: UserProfile; 
+  studentProfile?: UserProfile;
   messages: Message[];
   summary?: string;
   lastUpdatedAt: number;
@@ -100,3 +102,4 @@ export interface Note {
   createdAt: number;
   updatedAt: number;
 }
+

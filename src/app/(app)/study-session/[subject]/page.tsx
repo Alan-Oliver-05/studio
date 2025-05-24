@@ -4,11 +4,11 @@
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import type { Lesson, Topic, UserProfile as UserProfileType, Conversation } from "@/types";
+import type { Lesson, Topic, UserProfile as UserProfileType, Conversation, Message as MessageType } from "@/types";
 import { getLessonsForSubject, GetLessonsForSubjectInput } from "@/ai/flows/get-lessons-for-subject";
 import { getTopicsForLesson, GetTopicsForLessonInput } from "@/ai/flows/get-topics-for-lesson";
 import { getConversationById, addMessageToConversation } from "@/lib/chat-storage";
-import { aiGuidedStudySession, AIGuidedStudySessionInput } from "@/ai/flows/ai-guided-study-session";
+import { interactiveQAndA, InteractiveQAndAInput, InteractiveQAndAOutput } from "@/ai/flows/interactive-q-and-a";
 import { Loader2, AlertTriangle, ChevronRight, BookOpen, Lightbulb, CheckCircle, ChevronLeft, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -20,13 +20,13 @@ import { useToast } from "@/hooks/use-toast";
 
 const DynamicChatInterface = dynamic(async () =>
   import('../components/chat-interface').then((mod) => mod.ChatInterface),
-  { 
+  {
     loading: () => <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
-    ssr: false 
+    ssr: false
   }
 );
 
-type StudyStep = "selectLesson" | "selectTopic" | "chat" | "loading" | "error" | "explainingTopic";
+type StudyStep = "selectLesson" | "selectTopic" | "chat" | "loading" | "error" | "fetchingFirstQuestion";
 
 export default function StudySessionPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
@@ -34,7 +34,7 @@ export default function StudySessionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  
+
   const subjectName = typeof params.subject === 'string' ? decodeURIComponent(params.subject) : "Selected Subject";
 
   const [currentStep, setCurrentStep] = useState<StudyStep>("loading");
@@ -54,8 +54,8 @@ export default function StudySessionPage() {
         subjectName: currentSubjectName,
         studentProfile: {
           ...currentProfile,
-          age: Number(currentProfile.age) 
-        }, 
+          age: Number(currentProfile.age)
+        },
       };
       const result = await getLessonsForSubject(input);
       if (result && result.lessons && result.lessons.length > 0) {
@@ -93,7 +93,7 @@ export default function StudySessionPage() {
           return result.topics;
         } else {
           setErrorMessage(`No topics found for lesson "${lesson.name}". Please select another lesson or go back.`);
-          setCurrentStep("error"); 
+          setCurrentStep("error");
           return [];
         }
     } catch (e) {
@@ -105,63 +105,65 @@ export default function StudySessionPage() {
   }, []);
 
 
-  const generateAndSetInitialExplanation = useCallback(async (profileData: UserProfileType, subjName: string, less: Lesson, top: Topic, convoId: string) => {
+  const startInteractiveQASession = useCallback(async (profileData: UserProfileType, subjName: string, less: Lesson, top: Topic, convoId: string) => {
     setErrorMessage(null);
+    setCurrentStep("fetchingFirstQuestion");
     try {
-      const initialQuestion = `Please explain the topic "${top.name}" from the lesson "${less.name}" in the subject "${subjName}". Keep in mind my educational background and preferred language. Let's start our interactive Q&A session.`;
-      const aiInput: AIGuidedStudySessionInput = {
+      const qAndAInput: InteractiveQAndAInput = {
         studentProfile: {
           ...profileData,
           age: Number(profileData.age),
         },
         subject: subjName,
         lesson: less.name,
-        specificTopic: top.name,
-        question: initialQuestion,
+        topic: top.name,
+        // studentAnswer and previousQuestion are omitted for the first turn
       };
 
-      const result = await aiGuidedStudySession(aiInput);
-      if (result && result.response) {
-        const aiMessage = {
+      const result = await interactiveQAndA(qAndAInput);
+      if (result && result.question) {
+        const aiMessage: MessageType = {
           id: crypto.randomUUID(),
           sender: "ai" as const,
-          text: result.response,
+          text: result.question, // This is the first question from AI
+          feedback: result.feedback, // Usually null or welcome for first turn
+          isCorrect: result.isCorrect, // Usually null for first turn
           suggestions: result.suggestions,
-          visualElement: result.visualElement,
           timestamp: Date.now(),
         };
         addMessageToConversation(convoId, top.name, aiMessage, profileData, subjName, less.name);
         setCurrentStep("chat");
       } else {
-        throw new Error("AI did not provide an initial explanation.");
+        throw new Error("AI did not provide an initial question for the Q&A session.");
       }
     } catch (e) {
-      console.error("Failed to fetch initial explanation:", e);
-      toast({ title: "Error", description: "Failed to get initial topic explanation. You can start by asking a question.", variant: "destructive" });
-      // Proceed to chat, user can ask first question
-      setCurrentStep("chat");
+      console.error("Failed to fetch initial Q&A question:", e);
+      toast({ title: "Error Starting Q&A", description: "Failed to get the first question from AI. You can try asking first in the chat.", variant: "destructive" });
+      setCurrentStep("chat"); // Proceed to chat, user can initiate
     }
   }, [toast]);
 
   useEffect(() => {
     if (!profileLoading && profile && subjectName) {
       const sessionIdFromQuery = searchParams.get('sessionId');
-      
+
       if (sessionIdFromQuery) {
         const conversation = getConversationById(sessionIdFromQuery);
-        if (conversation && conversation.subjectContext === subjectName && conversation.lessonContext && conversation.topic) {
+        // Check if the conversation is not one of the special modes
+        const specialModes = ["AI Learning Assistant Chat", "Homework Help", "Visual Learning Focus", "LanguageTranslatorMode"];
+        if (conversation && conversation.subjectContext === subjectName && conversation.lessonContext && conversation.topic && !specialModes.includes(conversation.topic)) {
           setSelectedLesson({ name: conversation.lessonContext, description: "Revisiting session" });
           setSelectedTopic({ name: conversation.topic, description: "Revisiting session" });
           setCurrentConversationId(sessionIdFromQuery);
           setChatKey(sessionIdFromQuery);
           setCurrentStep("chat");
-          return; 
+          return;
         } else {
-          console.warn(`Session ID ${sessionIdFromQuery} invalid or context mismatch for subject ${subjectName}. Proceeding to lesson selection.`);
+          console.warn(`Session ID ${sessionIdFromQuery} invalid, context mismatch, or special mode. Proceeding to lesson selection for subject ${subjectName}.`);
           router.replace(`/study-session/${encodeURIComponent(subjectName)}`, { scroll: false }); // Clean URL
         }
       }
-      
+
       setCurrentStep("loading");
       fetchLessonsForSubject(profile, subjectName).then(fetchedLessons => {
         if (fetchedLessons.length > 0) {
@@ -170,7 +172,7 @@ export default function StudySessionPage() {
       });
 
     } else if (!profileLoading && !profile) {
-        setCurrentStep("error"); 
+        setCurrentStep("error");
         setErrorMessage("User profile not found. Please complete onboarding to start a study session.");
     }
   }, [profile, profileLoading, subjectName, searchParams, fetchLessonsForSubject, router]);
@@ -191,16 +193,15 @@ export default function StudySessionPage() {
   const handleSelectTopic = (topic: Topic) => {
     if (!profile || !selectedLesson) return;
     setSelectedTopic(topic);
-    
+
     const profileIdentifier = profile.id || profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous';
-    const newConvoId = `studies-${profileIdentifier}-${subjectName.replace(/\s+/g, '_')}-${selectedLesson.name.replace(/\s+/g, '_')}-${topic.name.replace(/\s+/g, '_')}-${Date.now()}`.toLowerCase();
-    
+    const newConvoId = `studies-interactiveqa-${profileIdentifier}-${subjectName.replace(/\s+/g, '_')}-${selectedLesson.name.replace(/\s+/g, '_')}-${topic.name.replace(/\s+/g, '_')}-${Date.now()}`.toLowerCase();
+
     setCurrentConversationId(newConvoId);
     setChatKey(newConvoId);
-    setCurrentStep("explainingTopic");
-    generateAndSetInitialExplanation(profile, subjectName, selectedLesson, topic, newConvoId);
-  }; 
-  
+    startInteractiveQASession(profile, subjectName, selectedLesson, topic, newConvoId);
+  };
+
   const handleRetry = () => {
     if (profile && subjectName) {
         if (selectedLesson && currentStep === "error" && errorMessage?.includes("topics")) {
@@ -220,20 +221,19 @@ export default function StudySessionPage() {
   const handleNewChatForCurrentTopic = () => {
     if (!profile || !selectedLesson || !selectedTopic) return;
     const profileIdentifier = profile.id || profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous';
-    const newConvoId = `studies-${profileIdentifier}-${subjectName.replace(/\s+/g, '_')}-${selectedLesson.name.replace(/\s+/g, '_')}-${selectedTopic.name.replace(/\s+/g, '_')}-${Date.now()}`.toLowerCase();
+    const newConvoId = `studies-interactiveqa-${profileIdentifier}-${subjectName.replace(/\s+/g, '_')}-${selectedLesson.name.replace(/\s+/g, '_')}-${selectedTopic.name.replace(/\s+/g, '_')}-${Date.now()}`.toLowerCase();
     setCurrentConversationId(newConvoId);
-    setChatKey(newConvoId); // This will re-mount ChatInterface with a new empty state
-    setCurrentStep("explainingTopic");
-    generateAndSetInitialExplanation(profile, subjectName, selectedLesson, selectedTopic, newConvoId);
+    setChatKey(newConvoId); 
+    startInteractiveQASession(profile, subjectName, selectedLesson, selectedTopic, newConvoId);
   };
 
   const handleBackToTopics = () => {
     setSelectedTopic(null);
-    setCurrentConversationId(null); 
+    setCurrentConversationId(null);
     setChatKey(`topics-${selectedLesson?.name.replace(/\s+/g, '_') || Date.now()}`);
     setCurrentStep("selectTopic");
   };
-  
+
   const handleBackToLessons = () => {
     setSelectedLesson(null);
     setSelectedTopic(null);
@@ -253,7 +253,7 @@ export default function StudySessionPage() {
     );
   }
 
-  if (!profile && !profileLoading) { 
+  if (!profile && !profileLoading) {
      return (
       <div className="flex flex-col items-center justify-center h-full text-center p-8 pt-0">
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
@@ -288,7 +288,7 @@ export default function StudySessionPage() {
       </div>
     );
   }
-  
+
   const renderStepContent = () => {
     switch (currentStep) {
       case "selectLesson":
@@ -328,7 +328,7 @@ export default function StudySessionPage() {
               <CardDescription>Select a topic to begin your interactive Q&amp;A session.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[calc(100vh-24rem)] pr-3"> 
+              <ScrollArea className="h-[calc(100vh-24rem)] pr-3">
                 <div className="space-y-3">
                   {topics.map((topic, idx) => (
                     <Button key={idx} variant="outline" className="w-full justify-between text-left h-auto py-3.5 px-4 group hover:bg-primary/5 hover:border-primary transition-all duration-150 ease-in-out" onClick={() => handleSelectTopic(topic)}>
@@ -349,17 +349,16 @@ export default function StudySessionPage() {
             </CardFooter>
           </Card>
         );
-      case "explainingTopic":
+      case "fetchingFirstQuestion":
         return (
           <div className="flex flex-col items-center justify-center h-full pt-0">
             <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Preparing introduction for "{selectedTopic?.name || 'the selected topic'}"...</p>
+            <p className="text-muted-foreground">Starting interactive Q&A for "{selectedTopic?.name || 'the selected topic'}"...</p>
             {errorMessage && <p className="text-destructive mt-4">{errorMessage}</p>}
           </div>
         );
       case "chat":
         if (selectedTopic && selectedLesson && profile && currentConversationId && chatKey) {
-           const initialMessageForNewChat = `Hello ${profile.name}! We are now focusing on "${selectedTopic.name}" from the lesson "${selectedLesson.name}" in the subject "${subjectName}". I'll start with an introduction, and then we can dive into Q&A.`;
           return (
             <div className="h-full flex flex-col">
                 <div className="mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center">
@@ -368,31 +367,31 @@ export default function StudySessionPage() {
                             <ChevronLeft className="mr-1 h-3 w-3 sm:h-4 sm:w-4"/> Back to Topics in "{selectedLesson.name}"
                         </Button>
                         <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-primary flex items-center">
-                            <Lightbulb className="mr-2 h-6 w-6 sm:h-7 sm:w-7 text-accent"/> Study: {selectedTopic.name}
+                            <Lightbulb className="mr-2 h-6 w-6 sm:h-7 sm:w-7 text-accent"/> Interactive Q&A: {selectedTopic.name}
                         </h1>
                         <p className="text-xs sm:text-sm text-muted-foreground">Subject: {subjectName} &gt; Lesson: {selectedLesson.name}</p>
                     </div>
                     <Button variant="outline" size="sm" onClick={handleNewChatForCurrentTopic} className="self-start sm:self-center">
-                        <RefreshCw className="mr-2 h-4 w-4"/> New Chat on This Topic
+                        <RefreshCw className="mr-2 h-4 w-4"/> New Q&A on This Topic
                     </Button>
                 </div>
                  <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
-                    { chatKey && currentConversationId && ( 
+                    { chatKey && currentConversationId && (
                         <DynamicChatInterface
-                        key={chatKey} 
+                        key={chatKey}
                         userProfile={profile}
-                        topic={selectedTopic.name} 
-                        conversationId={currentConversationId} 
-                        initialSystemMessage={initialMessageForNewChat} // This will be shown if no existing messages are loaded
-                        placeholderText={`Ask about ${selectedTopic.name}...`}
+                        topic={selectedTopic.name}
+                        conversationId={currentConversationId}
+                        placeholderText={`Your answer or question about ${selectedTopic.name}...`}
                         context={{ subject: subjectName, lesson: selectedLesson.name }}
+                        enableImageUpload={false} // Disable image upload for interactive Q&A
                         />
                     )}
                 </div>
             </div>
           );
         }
-        return <p className="text-center text-destructive mt-10">Error: Chat session details are incomplete. Please try navigating again.</p>; 
+        return <p className="text-center text-destructive mt-10">Error: Chat session details are incomplete. Please try navigating again.</p>;
       default:
         return <p className="text-center text-muted-foreground mt-10">Loading or invalid state...</p>;
     }
@@ -407,10 +406,10 @@ export default function StudySessionPage() {
                 </h1>
              </div>
         )}
-        <div className="flex-grow min-h-0"> 
+        <div className="flex-grow min-h-0">
             {renderStepContent()}
         </div>
     </div>
   );
 }
-    
+

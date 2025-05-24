@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, ImageIcon, Sparkles, BarChartBig, Link as LinkIcon } from "lucide-react";
+import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, ImageIcon, Sparkles, BarChartBig, Link as LinkIcon, Check, AlertCircleIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from "@/ai/flows/ai-guided-study-session";
+import { interactiveQAndA, InteractiveQAndAInput, InteractiveQAndAOutput } from "@/ai/flows/interactive-q-and-a";
 import { generateImageFromPrompt } from "@/ai/flows/generate-image-from-prompt";
-import { addMessageToConversation, getConversationById, saveConversation } from "@/lib/chat-storage";
+import { addMessageToConversation, getConversationById, saveConversation, formatConversationForAI } from "@/lib/chat-storage";
 import { useToast } from "@/hooks/use-toast";
 import {
   Tooltip,
@@ -30,16 +31,17 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 
 interface ChatInterfaceProps {
   userProfile: UserProfile | null;
-  topic: string; // Specific topic for aiGuidedStudySession (e.g., "Refraction of Light", "AI Learning Assistant Chat", "Homework Help")
+  topic: string; // Specific topic (e.g., "Refraction of Light", or special modes like "AI Learning Assistant Chat")
   conversationId: string;
-  initialSystemMessage?: string; // An initial message from AI if conversation is new
+  initialSystemMessage?: string;
   placeholderText?: string;
-  context?: { // Broader context if available (e.g., for study sessions)
+  context?: {
     subject: string;
     lesson: string;
   };
-  initialInputQuery?: string; // For pre-filling the input field (e.g. from a suggestion chip)
-  onInitialQueryConsumed?: () => void; // Callback after initialInputQuery is used
+  initialInputQuery?: string;
+  onInitialQueryConsumed?: () => void;
+  enableImageUpload?: boolean; // New prop to control image upload
 }
 
 const renderVisualElementContent = (visualElement: VisualElement) => {
@@ -69,23 +71,22 @@ const RenderBarChartVisual = ({ visualElement }: { visualElement: VisualElement 
   }
 
   const chartData = visualElement.content as Array<{ name: string | number; [key: string]: any }>;
-  
+
   let valueKey = "value";
   const firstItemKeys = Object.keys(chartData[0]);
   const potentialValueKeys = firstItemKeys.filter(k => k !== 'name' && typeof chartData[0][k] === 'number');
   if (potentialValueKeys.length > 0) {
       valueKey = potentialValueKeys[0];
   } else {
-    // Fallback if no numeric key other than 'name' is found
     const stringValueKey = firstItemKeys.find(k => k !== 'name');
     if (stringValueKey) valueKey = stringValueKey;
   }
-  
+
   const chartConfig: ChartConfig = {};
   chartData.forEach((item, index) => {
     chartConfig[String(item.name)] = {
       label: String(item.name),
-      color: `hsl(var(--chart-${(index % 5) + 1}))`, 
+      color: `hsl(var(--chart-${(index % 5) + 1}))`,
     };
   });
   chartConfig[valueKey] = { label: visualElement.caption || valueKey.charAt(0).toUpperCase() + valueKey.slice(1), color: "hsl(var(--primary))" };
@@ -96,11 +97,11 @@ const RenderBarChartVisual = ({ visualElement }: { visualElement: VisualElement 
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} margin={{ top: 5, right: 0, left: -20, bottom: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis 
-            dataKey="name" 
-            tickLine={false} 
-            axisLine={false} 
-            tickMargin={10} 
+          <XAxis
+            dataKey="name"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={10}
             interval={0}
             angle={chartData.length > 5 ? -30 : 0}
             textAnchor={chartData.length > 5 ? "end" : "middle"}
@@ -126,6 +127,7 @@ const RenderBarChartVisual = ({ visualElement }: { visualElement: VisualElement 
   );
 };
 
+const SPECIAL_MODES = ["AI Learning Assistant Chat", "Homework Help", "Visual Learning Focus", "LanguageTranslatorMode"];
 
 export function ChatInterface({
   userProfile,
@@ -136,6 +138,7 @@ export function ChatInterface({
   context,
   initialInputQuery,
   onInitialQueryConsumed,
+  enableImageUpload = true, // Default to true
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [input, setInput] = useState("");
@@ -147,11 +150,13 @@ export function ChatInterface({
   const { toast } = useToast();
   const [generatingImageForMessageId, setGeneratingImageForMessageId] = useState<string | null>(null);
 
+  const isInteractiveQAMode = !SPECIAL_MODES.includes(topic);
+
   useEffect(() => {
     const existingConversation = getConversationById(conversationId);
     if (existingConversation && existingConversation.messages.length > 0) {
       setMessages(existingConversation.messages);
-    } else if (initialSystemMessage) {
+    } else if (initialSystemMessage && !isInteractiveQAMode) { // Only add initial system message if not interactive Q&A (which gets first Q from parent)
       const firstAIMessage: MessageType = {
         id: crypto.randomUUID(),
         sender: "ai",
@@ -168,9 +173,9 @@ export function ChatInterface({
         context?.lesson
       );
     } else {
-        setMessages([]); // Start with empty messages if no existing convo and no initial system message
+        setMessages([]);
     }
-  }, [conversationId, initialSystemMessage, topic, userProfile, context]);
+  }, [conversationId, initialSystemMessage, topic, userProfile, context, isInteractiveQAMode]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -181,11 +186,12 @@ export function ChatInterface({
   useEffect(() => {
     if (initialInputQuery && initialInputQuery.trim() !== "") {
       setInput(initialInputQuery);
-      onInitialQueryConsumed?.(); // Call consume only if it exists
+      onInitialQueryConsumed?.();
     }
   }, [initialInputQuery, onInitialQueryConsumed]);
 
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    if (!enableImageUpload) return;
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 4 * 1024 * 1024) { // 4MB limit
@@ -209,7 +215,7 @@ export function ChatInterface({
     setUploadedImage(null);
     setUploadedImageName(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""; 
+      fileInputRef.current.value = "";
     }
   };
 
@@ -228,7 +234,7 @@ export function ChatInterface({
           );
           const convo = getConversationById(conversationId);
           if (convo) {
-            convo.messages = updatedMessages; // Persist the generated image URI in the conversation
+            convo.messages = updatedMessages;
             saveConversation(convo);
           }
           return updatedMessages;
@@ -254,7 +260,7 @@ export function ChatInterface({
     if ((!input.trim() && !uploadedImage) || isLoading || !userProfile) return;
 
     let userMessageText = input.trim();
-    if (uploadedImage && uploadedImageName) {
+    if (uploadedImage && uploadedImageName && enableImageUpload) {
        userMessageText = userMessageText ? `${userMessageText} (Context from uploaded image: ${uploadedImageName})` : `(Context from uploaded image: ${uploadedImageName})`;
     }
 
@@ -263,22 +269,23 @@ export function ChatInterface({
       sender: "user",
       text: userMessageText,
       timestamp: Date.now(),
-      attachmentPreview: uploadedImage, // Store preview for this message
+      attachmentPreview: enableImageUpload ? uploadedImage : null,
     };
-
-    setMessages((prev) => [...prev, userMessage]);
+    
+    const currentMessagesBeforeUserSubmit = [...messages, userMessage];
+    setMessages(currentMessagesBeforeUserSubmit);
     addMessageToConversation(
         conversationId,
-        topic, // This should be the specific topic, e.g. "Refraction", "Homework Help", "Visual Learning"
+        topic,
         userMessage,
         userProfile,
-        context?.subject, // Broader subject
-        context?.lesson // Broader lesson
+        context?.subject,
+        context?.lesson
     );
 
-    const imageToSendAsPhotoDataUri = uploadedImage; // Capture current state for AI call
+    const imageToSendAsPhotoDataUri = enableImageUpload ? uploadedImage : null;
     setInput("");
-    setUploadedImage(null); // Clear after sending
+    setUploadedImage(null);
     setUploadedImageName(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -286,75 +293,81 @@ export function ChatInterface({
     setIsLoading(true);
 
     try {
-      const aiInput: AIGuidedStudySessionInput = {
-        studentProfile: {
-          name: userProfile.name,
-          age: Number(userProfile.age),
-          gender: userProfile.gender,
-          country: userProfile.country,
-          state: userProfile.state,
-          preferredLanguage: userProfile.preferredLanguage,
-          educationQualification: {
-            boardExam: userProfile.educationCategory === 'board' ? userProfile.educationQualification.boardExams : undefined,
-            competitiveExam: userProfile.educationCategory === 'competitive' ? userProfile.educationQualification.competitiveExams : undefined,
-            universityExam: userProfile.educationCategory === 'university' ? userProfile.educationQualification.universityExams : undefined,
+      let aiResponseMessage: MessageType;
+
+      if (isInteractiveQAMode) {
+        // Find the previous AI question
+        let previousAIQuestionText: string | undefined;
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].sender === 'ai') {
+            previousAIQuestionText = messages[i].text;
+            break;
           }
-        },
-        subject: context?.subject || undefined,
-        lesson: context?.lesson || undefined,
-        specificTopic: topic, // Crucial for AI to know the mode/topic
-        question: userMessage.text.replace(`(Context from uploaded image: ${uploadedImageName})`, '').trim(), // Send text without image attachment info
-        photoDataUri: imageToSendAsPhotoDataUri || undefined, // Send the Data URI
-      };
+        }
 
-      const aiResponse = await aiGuidedStudySession(aiInput);
-
-      if (aiResponse && aiResponse.response) {
-        const aiMessage: MessageType = {
-          id: crypto.randomUUID(),
-          sender: "ai",
-          text: aiResponse.response,
-          suggestions: aiResponse.suggestions,
-          visualElement: aiResponse.visualElement,
-          timestamp: Date.now(),
+        const qAndAInput: InteractiveQAndAInput = {
+          studentProfile: { ...userProfile, age: Number(userProfile.age) },
+          subject: context?.subject || topic, // Fallback to topic if subject not available
+          lesson: context?.lesson || topic,   // Fallback to topic if lesson not available
+          topic: topic,
+          studentAnswer: userMessage.text,
+          previousQuestion: previousAIQuestionText,
+          conversationHistory: formatConversationForAI(messages), // History up to the last AI message
         };
-        setMessages((prev) => [...prev, aiMessage]);
-        addMessageToConversation(
-            conversationId,
-            topic,
-            aiMessage,
-            userProfile,
-            context?.subject,
-            context?.lesson
-        );
-      } else {
-        throw new Error("AI response was empty or invalid.");
+        const qAndAResponse = await interactiveQAndA(qAndAInput);
+        let responseText = qAndAResponse.question;
+        if (qAndAResponse.feedback) {
+            responseText = `${qAndAResponse.feedback}\n\n${qAndAResponse.question}`;
+        }
+        aiResponseMessage = {
+            id: crypto.randomUUID(),
+            sender: "ai",
+            text: responseText,
+            feedback: qAndAResponse.feedback,
+            isCorrect: qAndAResponse.isCorrect,
+            suggestions: qAndAResponse.suggestions,
+            timestamp: Date.now(),
+        };
+
+      } else { // Use aiGuidedStudySession for special modes
+        const aiInput: AIGuidedStudySessionInput = {
+          studentProfile: { ...userProfile, age: Number(userProfile.age) },
+          subject: context?.subject || undefined,
+          lesson: context?.lesson || undefined,
+          specificTopic: topic,
+          question: userMessage.text.replace(`(Context from uploaded image: ${uploadedImageName})`, '').trim(),
+          photoDataUri: imageToSendAsPhotoDataUri || undefined,
+        };
+        const aiResponse = await aiGuidedStudySession(aiInput);
+        if (!aiResponse || !aiResponse.response) throw new Error("AI response was empty or invalid.");
+        aiResponseMessage = {
+            id: crypto.randomUUID(),
+            sender: "ai",
+            text: aiResponse.response,
+            suggestions: aiResponse.suggestions,
+            visualElement: aiResponse.visualElement,
+            timestamp: Date.now(),
+        };
       }
+
+      setMessages((prev) => [...prev, aiResponseMessage]);
+      addMessageToConversation(
+          conversationId, topic, aiResponseMessage, userProfile, context?.subject, context?.lesson
+      );
+
     } catch (error) {
       console.error("Error getting AI response:", error);
       const errorText = error instanceof Error ? error.message : "Failed to get a response from AI. Please try again.";
-      toast({
-        title: "AI Communication Error",
-        description: errorText,
-        variant: "destructive",
-      });
+      toast({ title: "AI Communication Error", description: errorText, variant: "destructive" });
       const errorMessageContent = error instanceof Error && error.message.includes("IMAGE_SIZE_LIMIT_EXCEEDED")
         ? "The uploaded image is too large for me to process. Please try a smaller one."
         : `I encountered an error: "${errorText}". Please try asking again or rephrasing.`;
       const errorMessage: MessageType = {
-        id: crypto.randomUUID(),
-        sender: "ai",
-        text: errorMessageContent,
-        timestamp: Date.now(),
+        id: crypto.randomUUID(), sender: "ai", text: errorMessageContent, timestamp: Date.now(),
       };
        setMessages((prev) => [...prev, errorMessage]);
        addMessageToConversation(
-           conversationId,
-           topic,
-           errorMessage,
-           userProfile,
-           context?.subject,
-           context?.lesson
+           conversationId, topic, errorMessage, userProfile, context?.subject, context?.lesson
         );
     } finally {
       setIsLoading(false);
@@ -364,6 +377,17 @@ export function ChatInterface({
   if (!userProfile) {
     return <div className="flex items-center justify-center h-full text-muted-foreground p-8 text-center">Please complete the onboarding process to use the chat features.</div>;
   }
+  
+  const renderMessageContent = (message: MessageType) => {
+    let textToShow = message.text;
+    if (message.sender === 'ai' && isInteractiveQAMode && message.feedback && !message.text.startsWith("Feedback:")) {
+        // The text already includes feedback and question from interactiveQAndA
+        // If text is just the question, and feedback exists, prepend it.
+        // This logic is now handled in handleSubmit when creating aiResponseMessage.
+    }
+    return <p className="whitespace-pre-wrap leading-relaxed">{textToShow}</p>;
+  };
+
 
   return (
     <div className="flex flex-col h-full bg-card rounded-lg shadow-xl border border-border/50">
@@ -373,7 +397,7 @@ export function ChatInterface({
             <div
               key={message.id}
               className={cn(
-                "flex items-start gap-3", // Use items-start for better alignment with multi-line messages
+                "flex items-start gap-3",
                 message.sender === "user" ? "justify-end" : "justify-start"
               )}
             >
@@ -390,7 +414,7 @@ export function ChatInterface({
                     : "bg-muted text-foreground rounded-bl-none border border-border/70"
                 )}
               >
-                {message.attachmentPreview && message.sender === 'user' && (
+                {message.attachmentPreview && message.sender === 'user' && enableImageUpload && (
                   <div className="mb-2 p-1 bg-background/50 rounded-md">
                     <Image
                       src={message.attachmentPreview}
@@ -401,7 +425,21 @@ export function ChatInterface({
                     />
                   </div>
                 )}
-                <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
+
+                {message.sender === 'ai' && message.isCorrect === false && isInteractiveQAMode && (
+                    <div className="flex items-center text-xs text-destructive mb-1">
+                        <AlertCircleIcon className="h-3.5 w-3.5 mr-1.5"/>
+                        <span>Let's review that. </span>
+                    </div>
+                )}
+                 {message.sender === 'ai' && message.isCorrect === true && isInteractiveQAMode && (
+                    <div className="flex items-center text-xs text-green-600 dark:text-green-500 mb-1">
+                        <Check className="h-3.5 w-3.5 mr-1.5"/>
+                        <span>Correct! </span>
+                    </div>
+                )}
+
+                {renderMessageContent(message)}
 
                 {message.sender === "ai" && message.visualElement && (
                   <Card className="mt-3 bg-background/50 border-primary/20 shadow-sm">
@@ -509,7 +547,7 @@ export function ChatInterface({
           )}
         </div>
       </ScrollArea>
-      {uploadedImage && uploadedImageName && (
+      {uploadedImage && uploadedImageName && enableImageUpload && (
         <div className="p-2 border-t bg-muted/50 flex items-center justify-between text-xs mx-3 mt-1 rounded-t-md">
           <div className="flex items-center gap-2 text-muted-foreground overflow-hidden">
             <Paperclip className="h-4 w-4 flex-shrink-0" />
@@ -525,32 +563,36 @@ export function ChatInterface({
         onSubmit={handleSubmit}
         className="flex items-center gap-2 sm:gap-3 border-t border-border/50 p-3 bg-background rounded-b-lg"
       >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
-              aria-label="Upload Image"
-              className="flex-shrink-0 text-muted-foreground hover:text-primary"
-            >
-              <ImagePlus className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Upload Image (max 4MB)</p>
-          </TooltipContent>
-        </Tooltip>
-        <Input
-          type="file"
-          accept="image/*"
-          ref={fileInputRef}
-          onChange={handleImageUpload}
-          className="hidden"
-          disabled={isLoading}
-        />
+        {enableImageUpload && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                aria-label="Upload Image"
+                className="flex-shrink-0 text-muted-foreground hover:text-primary"
+              >
+                <ImagePlus className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Upload Image (max 4MB)</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {enableImageUpload && (
+          <Input
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            onChange={handleImageUpload}
+            className="hidden"
+            disabled={isLoading}
+          />
+        )}
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -558,8 +600,8 @@ export function ChatInterface({
           className="flex-grow text-sm h-10"
           disabled={isLoading}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && (input.trim() || uploadedImage)) {
-              e.preventDefault(); // Prevent newline in input
+            if (e.key === 'Enter' && !e.shiftKey && (input.trim() || (enableImageUpload && uploadedImage))) {
+              e.preventDefault();
               handleSubmit();
             }
           }}
@@ -567,7 +609,7 @@ export function ChatInterface({
         />
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button type="submit" size="icon" disabled={isLoading || (!input.trim() && !uploadedImage)} aria-label="Send message" className="flex-shrink-0">
+            <Button type="submit" size="icon" disabled={isLoading || (!input.trim() && !(enableImageUpload && uploadedImage))} aria-label="Send message" className="flex-shrink-0">
               <SendHorizonal className="h-5 w-5" />
             </Button>
           </TooltipTrigger>
@@ -582,3 +624,4 @@ export function ChatInterface({
     </div>
   );
 }
+
