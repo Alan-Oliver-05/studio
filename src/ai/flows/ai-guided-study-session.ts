@@ -170,11 +170,16 @@ const prompt = ai.definePrompt({
           *   Suggestions in this mode could be links to online dictionaries for further exploration (prioritize official/academic dictionary sites).
   12. **Visual Learning Mode Specialization**:
       *   If 'specificTopic' is "Visual Learning" or "Visual Learning Focus":
-          *   **Prioritize Visuals**: Your primary goal is to help the student understand the concept presented in their "{{{question}}}" through visual means.
-          *   **Image Generation Focus**: If the concept can be effectively illustrated with a diagram, an image, or a visual representation, strongly consider providing an 'image_generation_prompt' in the 'visualElement' output. Be descriptive in your image prompt. For example, for a mind map or diagram requiring text, the image generation prompt MUST include a directive like: 'Render all text labels clearly and legibly. Labels should be bold and easy to read.' alongside the description of the visual (e.g., 'Generate a mind map of the water cycle. Render all text labels clearly and legibly. Labels should be bold and easy to read.').
-          *   **Charts and Flowcharts**: If structured data (like comparisons, trends, processes) is more suitable, suggest 'bar_chart_data', 'line_chart_data', or 'flowchart_description' as appropriate. Ensure chart data is specific and useful.
-          *   **Explain the Visual**: In your main 'response' text, explain the concept and how the suggested visual (or the image you're proposing to generate) helps in understanding it.
-          *   **Interactive Queries**: Encourage the student to ask for variations or refinements of the visuals (e.g., "Can you show that as a line chart instead?" or "Generate that image from a different angle.").
+          *   **Prioritize Visuals**: Your primary goal is to help the student understand the concept presented in their "{{{question}}}" through visual means. Your main output for "Visual Learning" or "Visual Learning Focus" should frequently be an 'image_generation_prompt' within the 'visualElement' field. This prompt will be used by another AI to create an image. Therefore, craft this prompt to be highly descriptive, clear, and specific to ensure the subsequent image generation is accurate and effective.
+          *   **Crafting Effective Image Prompts**:
+              *   **Detail is Key**: The image prompt should include details about the subject(s), the setting or background, specific actions or relationships, and desired style (e.g., 'photorealistic', 'scientific diagram', 'cartoon illustration', 'abstract representation'). Mention colors if important.
+              *   **Text Legibility**: CRITICAL: If the image requires text (e.g., labels on a diagram, text within a mind map, annotations), the image generation prompt *MUST* explicitly include instructions for clarity, such as: 'Ensure all text labels are clearly rendered, legible, and easy to read. Use bold, high-contrast text for labels where appropriate.' or 'Render all text elements distinctly and legibly.'
+              *   **Composition and Focus**: Guide the composition. For example: "Close-up view of...", "Wide shot showing...", "Focus on the interaction between...".
+              *   **Example Prompt Structure**: "Generate a detailed scientific diagram of a plant cell. Include and clearly label the nucleus, mitochondria, chloroplasts, cell wall, and cell membrane with bold, legible, white text on a contrasting background. Illustrate the overall cell structure with a clean, modern aesthetic."
+              *   **Relevance**: The image prompt must directly address the student's "{{{question}}}" and aim to visually clarify the concept they are asking about.
+          *   **Charts and Flowcharts**: If structured data (like comparisons, trends, processes) is more suitable than a generated image, suggest 'bar_chart_data', 'line_chart_data', or 'flowchart_description' as appropriate. Ensure chart data is specific and useful for direct rendering, or flowchart descriptions are clear enough to be visualized.
+          *   **Explain the Visual**: In your main 'response' text, explain the concept and how the suggested visual (the chart data, flowchart description, or the image you're proposing to generate via the prompt) helps in understanding it.
+          *   **Interactive Queries**: Encourage the student to ask for variations or refinements of the visuals (e.g., "Can you show that as a line chart instead?" or "Generate that image from a different angle with more vibrant colors.").
           *   Reference the uploaded image if provided to help generate or explain a visual.
 
   Consider the student's country ({{{studentProfile.country}}}) and state ({{{studentProfile.state}}}) for tailoring content, especially if state-specific curriculum or resources are relevant.
@@ -246,3 +251,5 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     
 
     
+
+      
