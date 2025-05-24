@@ -53,7 +53,7 @@ const InteractiveQAndAOutputSchema = z.object({
   question: z.string().describe('The next question posed by the AI tutor, or a concluding remark if stage is "completed".'),
   feedback: z.string().optional().describe('Concise feedback on the student\'s answer (if provided).'),
   isCorrect: z.boolean().optional().describe('Indicates if the student\'s last answer was correct. Null if no answer was provided or not applicable.'),
-  suggestions: z.array(z.string()).optional().describe("A list of 1-2 specific suggestions for further study within the current topic/stage."),
+  suggestions: z.array(z.string()).optional().describe("A list of 1-2 specific suggestions for further study within the current topic/stage, such as related sub-topics or concepts the student might ask about next."),
   nextStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed']).optional()
     .describe("The stage the AI suggests moving to next. If omitted, assume current stage continues. 'completed' means this topic session is finished."),
   isStageComplete: z.boolean().optional()
@@ -67,7 +67,7 @@ export async function interactiveQAndA(input: InteractiveQAndAInput): Promise<In
 
 const prompt = ai.definePrompt({
   name: 'interactiveQAndAPrompt',
-  input: {schema: InteractiveQAndAInputSchema},
+  input: {schema: InteractiveQAndAInputSchema}, // Input schema is still InteractiveQAndAInputSchema for the prompt definition
   output: {schema: InteractiveQAndAOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are a Focused Topic AI Tutor implementing a multi-stage Q&A strategy.
@@ -94,44 +94,45 @@ const prompt = ai.definePrompt({
   Your Task:
   1.  **If a 'studentAnswer' is provided**: Evaluate it based *only* on the '{{{topic}}}' content (for 'initial_material' and 'deeper_material' stages). Set 'isCorrect'. Provide concise 'feedback' in {{{studentProfile.preferredLanguage}}}.
   2.  **If NO 'studentAnswer' is provided (e.g., start of a new stage after AI transition, or very first question of session)**: Set 'isCorrect' to null. 'feedback' can be null or a brief stage intro like "Let's start with some foundational questions." or "Now, let's explore this topic more deeply.".
+  3.  **Question Style**: Generate a multiple-choice question (MCQ) about the explained topic or a related concept discussed in the conversation. Provide 3-4 distinct options (labeled A, B, C, D) for the student to choose from. This is the primary question style.
+  4.  **Conciseness & Focus**: Ask ONE question at a time.
+  5.  **Suggestions**: After feedback (if any) and asking a new question (unless stage is 'completed'), provide 1-2 'suggestions' for related aspects *within the current topic '{{{topic}}}'* relevant to the current stage's objective. These suggestions should guide the student on what they might explore or ask about next within the topic.
+  6.  **Language**: All 'question', 'feedback', 'suggestions' in {{{studentProfile.preferredLanguage}}}.
+  7.  **Output**: Ensure a single, valid JSON object matching output schema. Always populate 'nextStage'. If the current stage's question target is met or you deem it covered, set 'isStageComplete' to true; otherwise, false.
+  8.  **RAG Simulation**: For 'initial_material' & 'deeper_material', act as if retrieving info ONLY from '{{{topic}}}'. For 'out_of_syllabus', you may draw on related general knowledge.
+  9.  **Transition Question**: When 'isStageComplete' is true and 'nextStage' is different from 'currentStage' (and not 'completed'), the 'question' field in your output MUST be the *first* question for that 'nextStage'. Feedback (if any) should still be for the student's last answer in the *previous* stage.
 
   Stage-Specific Questioning Strategy:
 
-  {{#if (eq currentStage "initial_material")}}
+  {{#if isInitialMaterialStage}}
   **Current Stage: Initial Material Review (Target: 3-4 questions total in this stage)**
   *   Objective: Test foundational understanding of core concepts from '{{{topic}}}'.
   *   Action:
       *   If {{questionsAskedInStage}} < 3: Ask a new multiple-choice question (MCQ) about a core concept. Set 'nextStage' to 'initial_material' and 'isStageComplete' to false.
       *   If {{questionsAskedInStage}} >= 3: You've asked enough for this stage. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to true. Your 'question' field should then contain the *first* question for the 'deeper_material' stage.
-  {{else if (eq currentStage "deeper_material")}}
+  {{/if}}
+  {{#if isDeeperMaterialStage}}
   **Current Stage: Deeper Material Analysis (Target: 2-3 questions total in this stage)**
   *   Objective: Ask analytical or connecting MCQs about '{{{topic}}}', requiring more than simple recall, but still within the material.
   *   Action:
       *   If {{questionsAskedInStage}} < 2: Ask a new analytical MCQ. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to false.
       *   If {{questionsAskedInStage}} >= 2: You've asked enough. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to true. Your 'question' field should be the *first* question for 'out_of_syllabus'.
-  {{else if (eq currentStage "out_of_syllabus")}}
+  {{/if}}
+  {{#if isOutOfSyllabusStage}}
   **Current Stage: Beyond the Syllabus (Target: 1-2 questions total in this stage)**
   *   Objective: Ask 1-2 MCQs or short-answer questions connecting '{{{topic}}}' to broader concepts or related fields.
   *   Action:
       *   If {{questionsAskedInStage}} < 1: Ask a new "beyond syllabus" question. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to false.
       *   If {{questionsAskedInStage}} >= 1: You've asked enough. Set 'nextStage' to 'completed' and 'isStageComplete' to true. Your 'question' field should be a concluding remark about the topic '{{{topic}}}'.
-  {{else if (eq currentStage "completed")}}
+  {{/if}}
+  {{#if isCompletedStage}}
   **Topic Completed**
   *   Your 'question' should be a polite concluding remark for the topic '{{{topic}}}' (e.g., "We've covered the key aspects of {{{topic}}}. Well done!"). Do not ask a new question.
   *   Set 'nextStage' to 'completed' and 'isStageComplete' to true. Feedback and suggestions are optional.
   {{/if}}
-
-  Additional Rules:
-  *   **Question Style (CRITICAL for 'initial_material' & 'deeper_material')**: Primarily use MCQs with 3-4 distinct options. For 'out_of_syllabus', MCQs or direct short answer questions are fine.
-  *   **Conciseness & Focus**: ONE question at a time.
-  *   **Suggestions**: After feedback (if any) and asking a new question (unless stage is 'completed'), provide 1-2 'suggestions' for related aspects *within the current topic '{{{topic}}}'* relevant to the current stage's objective.
-  *   **Language**: All 'question', 'feedback', 'suggestions' in {{{studentProfile.preferredLanguage}}}.
-  *   **Output**: Ensure a single, valid JSON object matching output schema. Always populate 'nextStage'. If the current stage's question target is met or you deem it covered, set 'isStageComplete' to true; otherwise, false.
-  *   **RAG Simulation**: For 'initial_material' & 'deeper_material', act as if retrieving info ONLY from '{{{topic}}}'. For 'out_of_syllabus', you may draw on related general knowledge.
-  *   **Transition Question**: When 'isStageComplete' is true and 'nextStage' is different from 'currentStage' (and not 'completed'), the 'question' field in your output MUST be the *first* question for that 'nextStage'. Feedback (if any) should still be for the student's last answer in the *previous* stage.
   `,
   config: {
-    temperature: 0.25, // Slightly lower for more focused, RAG-like behavior in early stages.
+    temperature: 0.25, 
      safetySettings: [
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -148,9 +149,7 @@ const interactiveQAndAFlow = ai.defineFlow(
     outputSchema: InteractiveQAndAOutputSchema,
   },
   async (inputUnsafe) => {
-    // Ensure studentProfile.educationQualification and its sub-objects exist for Handlebars
-    // Also ensure currentStage and questionsAskedInStage have defaults if not provided by client.
-    const input = {
+    const baseInput = {
       ...inputUnsafe,
       studentProfile: {
         ...inputUnsafe.studentProfile,
@@ -164,7 +163,15 @@ const interactiveQAndAFlow = ai.defineFlow(
       questionsAskedInStage: inputUnsafe.questionsAskedInStage || 0,
     };
 
-    const {output} = await prompt(input);
+    const stageEnhancedInput = {
+      ...baseInput,
+      isInitialMaterialStage: baseInput.currentStage === 'initial_material',
+      isDeeperMaterialStage: baseInput.currentStage === 'deeper_material',
+      isOutOfSyllabusStage: baseInput.currentStage === 'out_of_syllabus',
+      isCompletedStage: baseInput.currentStage === 'completed',
+    };
+
+    const {output} = await prompt(stageEnhancedInput);
 
     if (output && output.question) {
         return {
@@ -172,19 +179,22 @@ const interactiveQAndAFlow = ai.defineFlow(
             feedback: output.feedback || undefined,
             isCorrect: output.isCorrect === undefined ? undefined : output.isCorrect,
             suggestions: output.suggestions || [],
-            nextStage: output.nextStage || input.currentStage, // Default to current stage if AI doesn't specify next
+            nextStage: output.nextStage || stageEnhancedInput.currentStage, 
             isStageComplete: output.isStageComplete || false,
         };
     }
     
-    console.warn("Interactive Q&A: AI output was malformed or missing question. Input:", JSON.stringify(input));
+    console.warn("Interactive Q&A: AI output was malformed or missing question. Input:", JSON.stringify(stageEnhancedInput));
     return {
-        question: `I'm having a bit of trouble formulating a question for the stage '${input.currentStage}' about ${input.topic}. Could you perhaps ask me something about it instead, or suggest where we should start?`,
+        question: `I'm having a bit of trouble formulating a question for the stage '${stageEnhancedInput.currentStage}' about ${stageEnhancedInput.topic}. Could you perhaps ask me something about it instead, or suggest where we should start?`,
         feedback: "Apologies, I couldn't process the last interaction fully.",
         isCorrect: undefined,
         suggestions: [],
-        nextStage: input.currentStage, // Fallback to current stage
-        isStageComplete: false, // Assume stage is not complete on error
+        nextStage: stageEnhancedInput.currentStage, 
+        isStageComplete: false, 
     };
   }
 );
+
+
+    
