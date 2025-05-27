@@ -17,9 +17,6 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 
-
-const LOCAL_STORAGE_NOTES_KEY = 'eduai-notes';
-
 interface EditorToolbarButtonProps extends React.ComponentProps<typeof Button> {
   label: string;
 }
@@ -37,6 +34,8 @@ const EditorToolbarButton: React.FC<EditorToolbarButtonProps> = ({ label, childr
   );
 };
 
+const LOCAL_STORAGE_NOTES_KEY = 'eduai-notes';
+
 const NotePadPage: React.FC = () => {
   const [currentTitle, setCurrentTitle] = useState<string>('');
   const [currentContent, setCurrentContent] = useState<string>('');
@@ -46,8 +45,6 @@ const NotePadPage: React.FC = () => {
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
 
-  // State for the initial HTML content to set in the editor.
-  // This is used to programmatically set content without causing issues during user input.
   const [editorInitialHtml, setEditorInitialHtml] = useState<string>("");
 
   useEffect(() => {
@@ -69,20 +66,19 @@ const NotePadPage: React.FC = () => {
     }
   }, [notes, isClient]);
 
-  // Effect to update the editor's content directly via ref when editorInitialHtml changes
-  // (e.g., when a new note is loaded or a new note is started).
-  // This avoids using dangerouslySetInnerHTML on every render for the active editor.
   useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== editorInitialHtml) {
-      editorRef.current.innerHTML = editorInitialHtml;
-      // After setting content, ensure currentContent state is also synced if it wasn't already
-      // This helps if currentContent wasn't updated by the same action that changed editorInitialHtml
+    if (editorRef.current) {
+      // This effect is for when editorInitialHtml is programmatically changed
+      // (e.g., new note, load note). We want to update the DOM and sync currentContent.
+      if (editorRef.current.innerHTML !== editorInitialHtml) {
+        editorRef.current.innerHTML = editorInitialHtml;
+      }
+      // Sync currentContent to the editorInitialHtml, as this is a programmatic update.
       if (currentContent !== editorInitialHtml) {
-        setCurrentContent(editorInitialHtml);
+         setCurrentContent(editorInitialHtml);
       }
     }
-  }, [editorInitialHtml, currentContent]);
-
+  }, [editorInitialHtml]); // Only run when editorInitialHtml changes.
 
   const handleInput = (event: FormEvent<HTMLDivElement>) => {
     setCurrentContent(event.currentTarget.innerHTML);
@@ -90,16 +86,15 @@ const NotePadPage: React.FC = () => {
 
   const execCommand = (command: string, value?: string) => {
     if (isClient && document && editorRef.current) {
-      editorRef.current.focus(); // Focus the editor before executing the command
+      editorRef.current.focus(); 
       document.execCommand(command, false, value);
-      setCurrentContent(editorRef.current.innerHTML); // Update React state from the DOM after command
+      setCurrentContent(editorRef.current.innerHTML); 
     }
   };
 
   const handleNewNote = () => {
     setCurrentTitle('');
-    setEditorInitialHtml(''); // Set initial HTML for the editor (triggers useEffect)
-    setCurrentContent('');     // Keep currentContent state in sync
+    setEditorInitialHtml(''); 
     setEditingNoteId(null);
     if (editorRef.current) editorRef.current.focus();
      toast({ title: "New Note Ready", description: "Editor cleared. Start typing your new note!"});
@@ -141,8 +136,7 @@ const NotePadPage: React.FC = () => {
     const noteToLoad = notes.find(note => note.id === noteId);
     if (noteToLoad) {
       setCurrentTitle(noteToLoad.title);
-      setEditorInitialHtml(noteToLoad.content); // Set initial HTML for the editor (triggers useEffect)
-      setCurrentContent(noteToLoad.content);      // Keep currentContent state in sync
+      setEditorInitialHtml(noteToLoad.content); 
       setEditingNoteId(noteToLoad.id);
       if (editorRef.current) editorRef.current.focus();
       toast({ title: "Note Loaded", description: `"${noteToLoad.title}" is ready for editing.`});
@@ -219,8 +213,7 @@ const NotePadPage: React.FC = () => {
                   contentEditable={true}
                   onInput={handleInput}
                   className="w-full min-h-[20rem] lg:min-h-[25rem] p-4 focus:outline-none prose dark:prose-invert max-w-none bg-background text-sm leading-relaxed editor-content"
-                  // dangerouslySetInnerHTML removed here. Content is set via useEffect and editorInitialHtml.
-                  placeholder="Start typing your note here..." // For CSS :empty:before selector
+                  placeholder="Start typing your note here..."
                   role="textbox"
                   aria-multiline="true"
                   aria-label="Note Content"
