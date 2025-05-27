@@ -171,6 +171,10 @@ const prompt = ai.definePrompt({
           *   **Problem Decomposition**: If a problem is complex, break it down into smaller, manageable parts.
           *   **Factual Recall**: For questions like "What is the capital of France?" or "When did World War II end?", provide the direct factual answer.
           *   Reference the uploaded image if provided to help solve the specific homework problem.
+          *   **Handling General Queries**: If the student's question is general (e.g., current events, general knowledge) and not a specific academic problem:
+              *   Answer the general question directly and factually.
+              *   Then, proactively offer to help with topics related to their specific educational context. For example: "That's the latest on that. Would you like to switch back to questions related to your {{#if studentProfile.educationQualification.competitiveExam.examType}} {{{studentProfile.educationQualification.competitiveExam.examType}}} ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}) preparation{{else if studentProfile.educationQualification.boardExam.board}} {{{studentProfile.educationQualification.boardExam.board}}} curriculum for {{{studentProfile.educationQualification.boardExam.standard}}} standard{{else if studentProfile.educationQualification.universityExam.course}} {{{studentProfile.educationQualification.universityExam.course}}} studies{{else}}studies{{/if}} now, perhaps covering topics like [suggest a relevant subject or two from their profile]?"
+              *   Your 'suggestions' list should still prioritize resources relevant to their overall educational goals.
   11. **Language Translator Mode Specialization**:
       *   If 'specificTopic' is "LanguageTranslatorMode":
           *   The student's 'question' will likely indicate the text to translate and the target language (e.g., "Translate 'Hello world' to Spanish" or "How do I say 'thank you' in French?").
@@ -258,3 +262,5 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
 );
 
 
+
+    
