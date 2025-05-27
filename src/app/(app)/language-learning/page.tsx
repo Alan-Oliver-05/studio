@@ -10,7 +10,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { getConversationById } from "@/lib/chat-storage"; // Added for restoring mode
+import { getConversationById } from "@/lib/chat-storage";
+import VoiceTranslatorInterface from "./components/voice-translator-interface"; // New component
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -27,18 +28,15 @@ interface ModeOption {
   label: string;
   icon: React.ElementType;
   description: string;
-  actionButtonLabel?: string;
-  actionButtonIcon?: React.ElementType;
 }
 
 const modeOptions: ModeOption[] = [
-  { value: "text", label: "Text", icon: Type, description: "Translate typed text between languages.", actionButtonLabel: "Start Typing", actionButtonIcon: Type },
-  { value: "voice", label: "Voice", icon: Mic, description: "Speak and get instant voice translations.", actionButtonLabel: "Start Recording", actionButtonIcon: PlayCircle },
-  { value: "conversation", label: "Conversation", icon: MessageSquarePlus, description: "Have a bilingual conversation with AI assistance.", actionButtonLabel: "Start Conversation", actionButtonIcon: MessageCircle },
-  { value: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images using your camera or by uploading.", actionButtonLabel: "Upload or Scan", actionButtonIcon: UploadCloud },
+  { value: "text", label: "Text", icon: Type, description: "Translate typed text between languages." },
+  { value: "voice", label: "Voice", icon: Mic, description: "Speak and get instant voice translations." },
+  { value: "conversation", label: "Conversation", icon: MessageSquarePlus, description: "Have a bilingual conversation with AI assistance." },
+  { value: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images using your camera or by uploading." },
 ];
 
-// Helper to get the storage topic string for a mode
 const getStorageTopicForMode = (mode: TranslationMode): string => `lang-${mode}-mode`;
 
 export default function LanguageTranslatorPage() {
@@ -49,54 +47,45 @@ export default function LanguageTranslatorPage() {
   const [chatKey, setChatKey] = useState<string>('');
   const [activeMode, setActiveMode] = useState<TranslationMode>("text");
 
-  // Effect to handle session ID from URL and restore mode
   useEffect(() => {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
       const storedConversation = getConversationById(sessionIdFromQuery);
-      let modeFromStorage: TranslationMode = "text"; // Default if convo not found or topic malformed
-      if (storedConversation) {
-        if (storedConversation.topic && storedConversation.topic.startsWith('lang-')) {
-          const modePart = storedConversation.topic.split('-')[1] as TranslationMode;
-          if (['text', 'voice', 'conversation', 'camera'].includes(modePart)) {
-            modeFromStorage = modePart;
-          }
+      let modeFromStorage: TranslationMode = "text";
+      if (storedConversation && storedConversation.topic && storedConversation.topic.startsWith('lang-')) {
+        const modePart = storedConversation.topic.split('-')[1] as TranslationMode;
+        if (modeOptions.some(opt => opt.value === modePart)) {
+          modeFromStorage = modePart;
         }
       }
-      setActiveMode(modeFromStorage); // Set active mode based on loaded session
+      setActiveMode(modeFromStorage);
       setCurrentConversationId(sessionIdFromQuery);
-      setChatKey(sessionIdFromQuery); // Re-key chat interface if ID changes
-    }
-  }, [searchParams, profile]); // Only depends on searchParams and profile readiness
-
-  // Effect for default initialization if no session ID was processed or for activeMode changes
-  useEffect(() => {
-    const sessionIdFromQuery = searchParams.get('sessionId');
-    if (!sessionIdFromQuery && profile) {
-      // Initialize a new session for the *current* activeMode
-      // This runs on initial load if no sessionId, or if activeMode changes (e.g., by user click)
+      setChatKey(sessionIdFromQuery);
+    } else if (profile) {
       initializeNewSessionForMode(activeMode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
     }
-  }, [profile, activeMode, searchParams]); // Depends on activeMode to re-init if mode changes without sessionId
+  }, [searchParams, profile, activeMode]); // activeMode dependency ensures re-init if mode changed without session ID
 
   const initializeNewSessionForMode = (mode: TranslationMode, profileIdentifier: string) => {
       const newTimestamp = Date.now();
-      const newId = `lang-${mode}-${profileIdentifier}-${newTimestamp}`; // Conversation ID includes the mode
+      const newId = `lang-${mode}-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(newId);
       setChatKey(newId);
   };
 
   const handleNewSession = () => {
-    router.push('/language-learning', { scroll: false }); // Clear session ID from URL
+    router.push('/language-learning', { scroll: false });
     if (profile) {
-      // Initialize a new session FOR THE CURRENTLY ACTIVE MODE
       initializeNewSessionForMode(activeMode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
     }
   };
 
   const handleModeChange = (mode: TranslationMode) => {
-    setActiveMode(mode); // This will trigger the second useEffect to initialize a new session for the new mode
-    router.push('/language-learning', { scroll: false }); // Clear session ID from URL
+    setActiveMode(mode);
+    router.push('/language-learning', { scroll: false }); 
+    if (profile) {
+        initializeNewSessionForMode(mode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
+    }
   }
 
   if (profileLoading) {
@@ -133,60 +122,62 @@ export default function LanguageTranslatorPage() {
   }
   
   const initialChatMessageTextMode = `Hello ${profile.name}! Welcome to the Text Translator. What text would you like to translate, and to which language? For example: "Translate 'Hello, world!' to Spanish." or "How do I say 'Thank you very much' in French?"`;
-
-  const ComingSoonPlaceholder = ({ mode }: { mode: ModeOption }) => (
-    <Card className="w-full text-center shadow-xl bg-card/80 backdrop-blur-sm flex flex-col items-center justify-center flex-grow p-6 max-w-lg mx-auto">
-      <CardHeader className="p-2">
-        <div className="mx-auto bg-primary/10 rounded-full p-5 w-fit mb-4">
-          <mode.icon className="h-12 w-12 text-primary" />
-        </div>
-        <CardTitle className="text-2xl">{mode.label} Translation</CardTitle>
-        <CardDescription>{mode.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="p-2">
-        {mode.actionButtonLabel && mode.actionButtonIcon && (
-          <Button variant="outline" size="lg" disabled className="mt-4 w-full max-w-xs">
-            <mode.actionButtonIcon className="mr-2 h-5 w-5" /> {mode.actionButtonLabel} (Coming Soon)
-          </Button>
-        )}
-        {mode.value === "camera" && (
-             <ImageDown data-ai-hint="translation camera" src="https://placehold.co/300x200.png" alt="Camera placeholder" width={300} height={200} className="mt-4 rounded-md opacity-50 mx-auto" />
-        )}
-        <p className="text-muted-foreground text-sm mt-6">
-          The "{mode.label} Translation" feature is currently under development and will be available soon!
-        </p>
-        <Sparkles className="h-8 w-8 text-accent mx-auto mt-6 opacity-70" />
-      </CardContent>
-      <CardFooter className="justify-center pt-4 p-2">
-         <Button variant="default" onClick={() => handleModeChange("text")}>Switch to Text Translation</Button>
-      </CardFooter>
-    </Card>
-  );
+  const initialChatMessageCameraMode = `Hi ${profile.name}! Use the camera mode to translate text from images. Upload an image containing text, and I'll do my best to extract and translate it for you. For example, you can say "Translate the text in this image to German."`;
+  const initialChatMessageConversationMode = `Hello ${profile.name}! Let's have a practice conversation. Tell me the scenario, your language, and the language of the person I should simulate. For example: "I want to order coffee. I'll speak English, you be the French barista." I will translate and help facilitate the dialogue.`;
 
 
   const renderContent = () => {
-    if (activeMode === "text") {
-      return (
-        <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
-          {chatKey && currentConversationId && (
-            <DynamicChatInterface
-              key={chatKey} 
-              userProfile={profile}
-              topic={getStorageTopicForMode("text")} // e.g., "lang-text-mode" for storage
-              conversationId={currentConversationId}
-              initialSystemMessage={initialChatMessageTextMode}
-              placeholderText="E.g., Translate 'How are you?' to German"
-              enableImageUpload={false} 
+    if (!profile || !currentConversationId || !chatKey) {
+        return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <p className="ml-2">Loading interface...</p></div>;
+    }
+    switch(activeMode) {
+      case "text":
+        return (
+          <DynamicChatInterface
+            key={chatKey} 
+            userProfile={profile}
+            topic={getStorageTopicForMode("text")}
+            conversationId={currentConversationId}
+            initialSystemMessage={initialChatMessageTextMode}
+            placeholderText="E.g., Translate 'How are you?' to German"
+            enableImageUpload={false} 
+          />
+        );
+      case "camera":
+        return (
+           <DynamicChatInterface
+            key={chatKey}
+            userProfile={profile}
+            topic={getStorageTopicForMode("camera")}
+            conversationId={currentConversationId}
+            initialSystemMessage={initialChatMessageCameraMode}
+            placeholderText="Upload image and ask for translation, e.g., 'Translate this to French'"
+            enableImageUpload={true}
+          />
+        );
+      case "voice":
+        return (
+            <VoiceTranslatorInterface
+                key={chatKey}
+                userProfile={profile}
+                conversationId={currentConversationId}
+                topic={getStorageTopicForMode("voice")}
             />
-          )}
-        </div>
-      );
-    } else {
-      const selectedModeDetails = modeOptions.find(m => m.value === activeMode);
-      if (selectedModeDetails) {
-        return <ComingSoonPlaceholder mode={selectedModeDetails} />;
-      }
-      return <p>Error: Mode not found.</p>; // Fallback
+        );
+      case "conversation":
+        return (
+          <DynamicChatInterface
+            key={chatKey}
+            userProfile={profile}
+            topic={getStorageTopicForMode("conversation")}
+            conversationId={currentConversationId}
+            initialSystemMessage={initialChatMessageConversationMode}
+            placeholderText="Type your part of the conversation..."
+            enableImageUpload={false}
+          />
+        );
+      default:
+        return <p>Error: Mode not found.</p>; 
     }
   };
 
@@ -197,7 +188,7 @@ export default function LanguageTranslatorPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
                 <Languages className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Language Translator
             </h1>
-            <p className="text-muted-foreground mt-1">Translate text, and soon voice, conversations, and images.</p>
+            <p className="text-muted-foreground mt-1">Translate text, voice, images, and practice conversations.</p>
         </div>
         <Button onClick={handleNewSession} variant="outline" className="mt-2 sm:mt-0">
           <RotateCcw className="mr-2 h-4 w-4" /> New Session
@@ -224,8 +215,9 @@ export default function LanguageTranslatorPage() {
         </div>
       </div>
 
-      {renderContent()}
+      <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
+        {renderContent()}
+      </div>
     </div>
   );
 }
-
