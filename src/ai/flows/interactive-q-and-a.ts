@@ -94,13 +94,13 @@ const prompt = ai.definePrompt({
   Your Task:
   1.  **Feedback Generation (if 'studentAnswer' is provided)**:
       *   Evaluate the 'studentAnswer' based *only* on the '{{{topic}}}' content (for 'initial_material' and 'deeper_material' stages). Set 'isCorrect'.
-      *   If the answer is correct: 'feedback' MUST be a short, positive affirmation (e.g., "Correct!", "Excellent!", "That's right! Spot on."). Avoid "null".
-      *   If the answer is incorrect or partially correct: 'feedback' MUST gently explain the mistake and clarify the concept, guiding them towards the correct understanding. Avoid "null".
+      *   If the answer is correct: 'feedback' MUST be a short, positive affirmation (e.g., "Correct!", "Excellent!", "That's right! Spot on."). Avoid "null" or empty strings.
+      *   If the answer is incorrect or partially correct: 'feedback' MUST gently explain the mistake and clarify the concept, guiding them towards the correct understanding. Avoid "null" or empty strings.
       *   All 'feedback' in {{{studentProfile.preferredLanguage}}}.
 
   2.  **Feedback Generation (if NO 'studentAnswer' is provided - e.g., start of session/new stage)**:
       *   Set 'isCorrect' to null.
-      *   'feedback' MUST be a brief stage introduction. For example:
+      *   'feedback' MUST be a brief stage introduction relevant to the topic and stage. For example:
           *   If 'initial_material' stage: "Let's start with some foundational questions on '{{{topic}}}'."
           *   If 'deeper_material' stage: "Great! Now, let's explore '{{{topic}}}' a bit more deeply."
           *   If 'out_of_syllabus' stage: "Okay, let's see how '{{{topic}}}' connects to broader ideas."
@@ -109,7 +109,7 @@ const prompt = ai.definePrompt({
   3.  **Question Style**: CRITICAL: Ask ONE multiple-choice question (MCQ) at a time about the current topic, relevant to the current stage.
       *   The question itself and its options MUST be part of your 'question' output field.
       *   Provide 3-4 distinct options (labeled A, B, C, D). Example format:
-          "Which of these is a primary color?\nA) Green\nB) Orange\nC) Blue\nD) Purple"
+          "Which of these is a primary color?\\nA) Green\\nB) Orange\\nC) Blue\\nD) Purple"
       *   Ensure options are plausible and test understanding, not just recall of superficial details.
 
   4.  **Conciseness & Focus**: Maintain a concise, focused interaction.
@@ -128,21 +128,21 @@ const prompt = ai.definePrompt({
 
   {{#if isInitialMaterialStage}}
   **Current Stage: Initial Material Review (Target: 3 questions total in this stage)**
-  *   Objective: Test foundational understanding of core concepts from '{{{topic}}}'.
+  *   Objective: Test foundational understanding of core concepts from '{{{topic}}}' by asking multiple-choice questions.
   *   Action:
       *   If {{questionsAskedInStage}} < 3: Ask a new multiple-choice question (MCQ) with options about a core concept. Set 'nextStage' to 'initial_material' and 'isStageComplete' to false.
       *   If {{questionsAskedInStage}} >= 3: You've asked enough for this stage. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to true. Your 'question' field should then contain the *first* multiple-choice question with options for the 'deeper_material' stage.
   {{/if}}
   {{#if isDeeperMaterialStage}}
   **Current Stage: Deeper Material Analysis (Target: 2 questions total in this stage)**
-  *   Objective: Ask analytical or connecting MCQs with options about '{{{topic}}}', requiring more than simple recall, but still within the material.
+  *   Objective: Ask analytical or connecting multiple-choice questions about '{{{topic}}}', requiring more than simple recall, but still within the material.
   *   Action:
       *   If {{questionsAskedInStage}} < 2: Ask a new analytical MCQ with options. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to false.
       *   If {{questionsAskedInStage}} >= 2: You've asked enough. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to true. Your 'question' field should be the *first* multiple-choice question with options for 'out_of_syllabus'.
   {{/if}}
   {{#if isOutOfSyllabusStage}}
   **Current Stage: Beyond the Syllabus (Target: 1 question total in this stage)**
-  *   Objective: Ask 1 MCQ with options or short-answer question connecting '{{{topic}}}' to broader concepts or related fields.
+  *   Objective: Ask 1 multiple-choice question connecting '{{{topic}}}' to broader concepts or related fields.
   *   Action:
       *   If {{questionsAskedInStage}} < 1: Ask a new "beyond syllabus" multiple-choice question with options. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to false.
       *   If {{questionsAskedInStage}} >= 1: You've asked enough. Set 'nextStage' to 'completed' and 'isStageComplete' to true. Your 'question' field should be a concluding remark about the topic '{{{topic}}}'.
@@ -154,7 +154,7 @@ const prompt = ai.definePrompt({
   {{/if}}
   `,
   config: {
-    temperature: 0.15, // Slightly lower temperature to encourage adherence to format
+    temperature: 0.15, 
      safetySettings: [
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
