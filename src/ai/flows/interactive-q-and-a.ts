@@ -53,7 +53,7 @@ const InteractiveQAndAOutputSchema = z.object({
   question: z.string().describe('The next question posed by the AI tutor, or a concluding remark if stage is "completed". If a multiple-choice question, include options A, B, C, D.'),
   feedback: z.string().optional().describe('Concise and encouraging feedback on the student\'s answer (if provided). Should be positive for correct answers or explanatory for incorrect ones. For new stages, it can be an introduction. This field MUST always be populated with a non-empty string unless the stage is "completed" and no final feedback is generated.'),
   isCorrect: z.boolean().optional().describe('Indicates if the student\'s last answer was correct. Null if no answer was provided or not applicable.'),
-  suggestions: z.array(z.string()).optional().describe("A list of 1-2 specific suggestions for further study within the current topic/stage, such as related sub-topics or concepts the student might ask about next."),
+  suggestions: z.array(z.string()).optional().describe("A list of 1-2 specific suggestions for further study within the current topic/stage, such as related sub-topics or concepts the student might ask about next within the current topic."),
   nextStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed']).optional()
     .describe("The stage the AI suggests moving to next. If omitted, assume current stage continues. 'completed' means this topic session is finished."),
   isStageComplete: z.boolean().optional()
@@ -75,6 +75,7 @@ const prompt = ai.definePrompt({
   Subject: {{{subject}}}
   Lesson: {{{lesson}}}
   Topic: {{{topic}}}
+  For these first two stages ('initial_material' and 'deeper_material'), you MUST NOT introduce any information, concepts, or terms not explicitly found or directly inferable from THIS specific '{{{topic}}}' material. All questions and evaluations must be based SOLELY on this provided context.
 
   Student Profile:
   Name: {{{studentProfile.name}}}
@@ -127,14 +128,14 @@ const prompt = ai.definePrompt({
 
   {{#if isInitialMaterialStage}}
   **Current Stage: Initial Material Review (Target: 3 questions total in this stage)**
-  *   Objective: Test foundational understanding of core concepts from '{{{topic}}}' by asking multiple-choice questions.
+  *   Objective: Test foundational understanding of core concepts from '{{{topic}}}' by asking multiple-choice questions. Ensure questions are directly answerable from, and strictly limited to, the '{{{topic}}}' material.
   *   Action:
       *   If {{questionsAskedInStage}} < 3: Ask a new multiple-choice question (MCQ) with options about a core concept. Set 'nextStage' to 'initial_material' and 'isStageComplete' to false.
       *   If {{questionsAskedInStage}} >= 3: You've asked enough for this stage. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to true. Your 'question' field should then contain the *first* multiple-choice question with options for the 'deeper_material' stage.
   {{/if}}
   {{#if isDeeperMaterialStage}}
   **Current Stage: Deeper Material Analysis (Target: 2 questions total in this stage)**
-  *   Objective: Ask analytical or connecting multiple-choice questions about '{{{topic}}}', requiring more than simple recall, but still within the material.
+  *   Objective: Ask analytical or connecting multiple-choice questions about '{{{topic}}}', requiring more than simple recall. Questions must still be strictly within the material provided for '{{{topic}}}'. Do not go outside this topic.
   *   Action:
       *   If {{questionsAskedInStage}} < 2: Ask a new analytical MCQ with options. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to false.
       *   If {{questionsAskedInStage}} >= 2: You've asked enough. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to true. Your 'question' field should be the *first* multiple-choice question with options for 'out_of_syllabus'.
