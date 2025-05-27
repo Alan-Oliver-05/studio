@@ -12,14 +12,10 @@ import {
   Settings,
   GraduationCap,
   ListChecks, 
-  Languages,
+  Languages, 
   BarChartBig,
   PieChartIcon,
   FileText,
-  Type as TypeIcon, // Renamed to avoid conflict
-  Mic,
-  MessagesSquare, // Corrected from MessageSquarePlus
-  Camera,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -41,10 +37,7 @@ const navItems = [
   { href: "/general-tutor", icon: Brain, label: "AI Learning Assistant" },
   { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
   { href: "/visual-learning", icon: PieChartIcon, label: "Visual Learning" },
-  { href: "/language-learning", icon: TypeIcon, label: "Text Translator" }, // Updated
-  { href: "/voice-translator", icon: Mic, label: "Voice Translator" }, // New
-  { href: "/conversation-translator", icon: MessagesSquare, label: "Conversation Translator" }, // New
-  { href: "/camera-translator", icon: Camera, label: "Camera Translator" }, // New
+  { href: "/language-learning", icon: Languages, label: "Language Translator" }, 
   { href: "/summarizer", icon: FileText, label: "AI Note Taker" },
   { href: "/todo", icon: ListChecks, label: "To-Do List" }, 
   { href: "/notepad", icon: NotebookText, label: "Note Pad" },
@@ -62,7 +55,9 @@ export function SidebarNav() {
 
   const isNavItemActive = (itemHref: string) => {
     if (itemHref === "/dashboard") return pathname === itemHref || pathname === "/";
-    return pathname.startsWith(itemHref); // Using startsWith for dynamic routes or sub-routes
+    // For language-learning, highlight if path starts with /language-learning (covers modes in query params)
+    if (itemHref === "/language-learning") return pathname.startsWith("/language-learning"); 
+    return pathname.startsWith(itemHref);
   };
   
   const sidebarOpen = !isMobile && sidebarState === "expanded";
@@ -143,3 +138,4 @@ const EDUCATION_CATEGORIES = [
   { value: "university", label: "University Student" },
   { value: "other", label: "Learner" },
 ];
+    

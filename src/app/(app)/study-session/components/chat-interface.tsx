@@ -29,7 +29,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 
 interface ChatInterfaceProps {
   userProfile: UserProfile | null;
-  topic: string; // This topic is used for storing the conversation and for client-side context
+  topic: string; 
   conversationId: string;
   initialSystemMessage?: string;
   placeholderText?: string;
@@ -45,7 +45,6 @@ interface ChatInterfaceProps {
 }
 
 const renderVisualElementContent = (visualElement: VisualElement) => {
-  // ... (existing implementation)
   let contentRepresentation = "Visual content details are not available or type is not recognized.";
   if (visualElement.content) {
     if (typeof visualElement.content === 'string') {
@@ -67,7 +66,6 @@ const renderVisualElementContent = (visualElement: VisualElement) => {
 };
 
 const RenderBarChartVisual = ({ visualElement }: { visualElement: VisualElement }) => {
-  // ... (existing implementation)
   if (!visualElement || visualElement.type !== 'bar_chart_data' || !Array.isArray(visualElement.content) || visualElement.content.length === 0) {
     return <p className="text-xs text-muted-foreground p-2">Invalid or empty chart data provided by AI.</p>;
   }
@@ -129,19 +127,28 @@ const RenderBarChartVisual = ({ visualElement }: { visualElement: VisualElement 
   );
 };
 
+// Define which topics are handled by aiGuidedStudySession vs interactiveQAndA
+const SPECIAL_MODES_FOR_AI_GUIDED_STUDY = [
+    "AI Learning Assistant Chat", 
+    "Homework Help", 
+    "Visual Learning Focus",
+    "Language Text Translation", 
+    "Language Voice Translation", 
+    "Language Conversation Practice", 
+    "Language Camera Translation", 
+];
 
-const SPECIAL_MODES_HANDLED_BY_AI_GUIDED_STUDY_SESSION = ["AI Learning Assistant Chat", "Homework Help", "Visual Learning Focus"]; // LanguageTranslatorMode handled differently
 
 export function ChatInterface({
   userProfile,
-  topic, // This `topic` prop is used for storing the conversation with its specific UI mode context (e.g., "lang-text-mode")
+  topic, 
   conversationId,
   initialSystemMessage,
   placeholderText = "Type your message here...",
   context,
   initialInputQuery,
   onInitialQueryConsumed,
-  enableImageUpload = true,
+  enableImageUpload = true, 
   initialQAStage = 'initial_material', 
   initialQuestionsInStage = 0,
 }: ChatInterfaceProps) {
@@ -155,9 +162,7 @@ export function ChatInterface({
   const { toast } = useToast();
   const [generatingImageForMessageId, setGeneratingImageForMessageId] = useState<string | null>(null);
   
-  // Determine if this chat is for Interactive Q&A (specific study topic) or a special mode
-  const isInteractiveQAMode = !SPECIAL_MODES_HANDLED_BY_AI_GUIDED_STUDY_SESSION.includes(topic) && !topic.startsWith("lang-");
-
+  const isInteractiveQAMode = !SPECIAL_MODES_FOR_AI_GUIDED_STUDY.includes(topic);
 
   const [currentClientStage, setCurrentClientStage] = useState<QAS_Stage>(initialQAStage);
   const [questionsAskedInClientStage, setQuestionsAskedInClientStage] = useState<number>(initialQuestionsInStage);
@@ -172,7 +177,7 @@ export function ChatInterface({
         const lastAiMessage = [...existingConversation.messages].reverse().find(m => m.sender === 'ai');
         if (lastAiMessage?.aiNextStage) {
           setCurrentClientStage(lastAiMessage.aiNextStage);
-          if (lastAiMessage.aiIsStageComplete && lastAiMessage.aiNextStage !== (lastAiMessage as any).currentStageInternal) {
+          if (lastAiMessage.aiIsStageComplete && lastAiMessage.aiNextStage !== (lastAiMessage as any).currentStageInternal) { 
             setQuestionsAskedInClientStage(0);
           } else {
             const aiQuestionsInThisStage = existingConversation.messages.filter(m => m.sender === 'ai' && m.aiNextStage === lastAiMessage.aiNextStage && !m.aiIsStageComplete).length;
@@ -189,13 +194,13 @@ export function ChatInterface({
           setIsTopicSessionCompleted(false);
         }
       }
-    } else if (initialSystemMessage && (!isInteractiveQAMode || topic.startsWith("lang-text-mode"))) { // Add initial message for text translation mode too
+    } else if (initialSystemMessage && !isInteractiveQAMode) { 
       const firstAIMessage: MessageType = {
         id: crypto.randomUUID(), sender: "ai", text: initialSystemMessage, timestamp: Date.now(),
       };
       setMessages([firstAIMessage]);
       addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
-      if(isInteractiveQAMode){ // Reset stage for new non-interactive session too, though not strictly QAMode
+      if(isInteractiveQAMode){ 
          setCurrentClientStage(initialQAStage); 
          setQuestionsAskedInClientStage(initialQuestionsInStage);
          setIsTopicSessionCompleted(false);
@@ -326,14 +331,16 @@ export function ChatInterface({
 
     try {
       let aiResponseMessage: MessageType;
-      let aiInteractionTopic = topic; // Use the storage/UI topic by default
-
-      if (topic.startsWith("lang-")) { // Specifically for language translator modes
-        aiInteractionTopic = "LanguageTranslatorMode"; // AI flow expects this to trigger translation logic
-      } else if (SPECIAL_MODES_HANDLED_BY_AI_GUIDED_STUDY_SESSION.includes(topic)) {
-        aiInteractionTopic = topic; // For General Tutor, Homework, Visual Learning, use the topic as is
+      
+      let aiFlowTopic: string;
+      if (topic.startsWith("Language ")) { 
+        aiFlowTopic = "LanguageTranslatorMode";
+      } else if (topic === "AI Learning Assistant Chat" || topic === "Homework Help" || topic === "Visual Learning Focus") {
+        aiFlowTopic = topic;
+      } else { // Default to interactive Q&A if not a special mode
+        aiFlowTopic = topic; 
       }
-      // If isInteractiveQAMode, aiInteractionTopic will be the specific study topic name.
+
 
       if (isInteractiveQAMode) {
         let previousAIQuestionText: string | undefined;
@@ -346,7 +353,7 @@ export function ChatInterface({
           studentProfile: { ...userProfile, age: Number(userProfile.age) },
           subject: context?.subject || topic, 
           lesson: context?.lesson || topic, 
-          topic: topic, // The specific topic for Q&A
+          topic: aiFlowTopic, 
           studentAnswer: userMessage.text,
           previousQuestion: previousAIQuestionText,
           conversationHistory: formatConversationForAI(currentMessagesWithUser.slice(-6)), 
@@ -376,11 +383,10 @@ export function ChatInterface({
         }
 
       } else { 
-        // For LanguageTranslatorMode, General AI Tutor, Homework Helper, Visual Learning Focus
         const aiInput: AIGuidedStudySessionInput = {
           studentProfile: { ...userProfile, age: Number(userProfile.age) },
           subject: context?.subject || undefined, lesson: context?.lesson || undefined,
-          specificTopic: aiInteractionTopic, // This will be "LanguageTranslatorMode", "AI Learning Assistant Chat", etc.
+          specificTopic: aiFlowTopic, 
           question: userMessage.text.replace(`(Context from uploaded image: ${uploadedImageName})`, '').trim(),
           photoDataUri: imageToSendAsPhotoDataUri || undefined,
         };
@@ -484,13 +490,13 @@ export function ChatInterface({
 
                 {message.sender === 'ai' && isInteractiveQAMode && (
                   <>
-                    {message.isCorrect === false && message.feedback && ( // Only show if feedback exists
+                    {message.isCorrect === false && message.feedback && ( 
                       <div className="flex items-center text-xs text-destructive mb-1.5 font-medium">
                         <AlertCircleIcon className="h-4 w-4 mr-1.5"/>
                         <span>Needs Review</span>
                       </div>
                     )}
-                    {message.isCorrect === true && message.feedback && ( // Only show if feedback exists
+                    {message.isCorrect === true && message.feedback && ( 
                       <div className="flex items-center text-xs text-green-600 dark:text-green-500 mb-1.5 font-medium">
                         <Check className="h-4 w-4 mr-1.5"/>
                         <span>Correct!</span>
@@ -501,7 +507,6 @@ export function ChatInterface({
                         <p className="whitespace-pre-wrap leading-relaxed text-sm opacity-90">{message.feedback}</p>
                       </div>
                     )}
-                     {/* Only display message.text if it's not considered part of a completed stage's concluding remark already handled by feedback */}
                     {!(isTopicSessionCompleted && message.feedback && message.text === message.feedback) && message.text && (
                          <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
                     )}
@@ -684,3 +689,4 @@ export function ChatInterface({
     </div>
   );
 }
+    

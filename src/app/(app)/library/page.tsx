@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2, PieChartIcon, Sparkles, ChevronDown, ChevronUp, Type as TypeIcon, Mic, MessagesSquare as MessagesSquareIcon, Camera as CameraIcon } from "lucide-react"; // Added new icons
+import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2, PieChartIcon, Sparkles, ChevronDown, ChevronUp, Type as TypeIcon, Mic, MessagesSquare as MessagesSquareIcon, Camera as CameraIcon } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +56,14 @@ export default function LibraryPage() {
     setIsClient(true); 
   }, []);
 
+  const getModeFromTopic = (topic: string): string | undefined => {
+    if (topic === "Language Text Translation") return "text";
+    if (topic === "Language Voice Translation") return "voice";
+    if (topic === "Language Conversation Practice") return "conversation";
+    if (topic === "Language Camera Translation") return "camera";
+    return undefined;
+  }
+
   const getGroupNameForConvo = useCallback((convo: Conversation): string => {
     if (convo.topic === "AI Learning Assistant Chat") return "General AI Tutor";
     if (convo.topic === "Homework Help") return "Homework Helper";
@@ -64,7 +72,7 @@ export default function LibraryPage() {
     if (convo.topic === "Language Voice Translation") return "Voice Translator";
     if (convo.topic === "Language Conversation Practice") return "Conversation Translator";
     if (convo.topic === "Language Camera Translation") return "Camera Translator";
-    if (convo.topic === "LanguageTranslatorMode") return "Language Translator (Legacy)"; // Fallback for older language sessions
+    if (convo.topic === "LanguageTranslatorMode") return "Language Translator (Legacy)"; 
     return convo.subjectContext || convo.topic || "Uncategorized Study Session";
   }, []);
 
@@ -195,15 +203,14 @@ export default function LibraryPage() {
   }
 
   const getRevisitLink = (convo: Conversation) => {
-    let baseHref = "";
+    let baseHref = "/language-learning"; 
     const queryParams = new URLSearchParams({ sessionId: convo.id });
-
-    if (convo.topic === "Homework Help") baseHref = "/homework-assistant";
+    const mode = getModeFromTopic(convo.topic);
+    
+    if (mode) {
+      queryParams.set("mode", mode);
+    } else if (convo.topic === "Homework Help") baseHref = "/homework-assistant";
     else if (convo.topic === "AI Learning Assistant Chat") baseHref = "/general-tutor";
-    else if (convo.topic === "Language Text Translation") baseHref = "/language-learning";
-    else if (convo.topic === "Language Voice Translation") baseHref = "/voice-translator";
-    else if (convo.topic === "Language Conversation Practice") baseHref = "/conversation-translator";
-    else if (convo.topic === "Language Camera Translation") baseHref = "/camera-translator";
     else if (convo.topic === "Visual Learning" || convo.topic === "Visual Learning Focus") baseHref = "/visual-learning";
     else if (convo.subjectContext && convo.lessonContext && convo.topic) {
       baseHref = `/study-session/${encodeURIComponent(convo.subjectContext)}`;
@@ -234,7 +241,7 @@ export default function LibraryPage() {
     if (groupName === "Voice Translator") return <Mic className="mr-2 h-5 w-5 text-teal-500" />;
     if (groupName === "Conversation Translator") return <MessagesSquareIcon className="mr-2 h-5 w-5 text-indigo-500" />;
     if (groupName === "Camera Translator") return <CameraIcon className="mr-2 h-5 w-5 text-pink-500" />;
-    if (groupName.includes("Translator")) return <Languages className="mr-2 h-5 w-5 text-green-500" />; // Fallback for legacy
+    if (groupName.includes("Translator")) return <Languages className="mr-2 h-5 w-5 text-green-500" />;
     return <BookCopy className="mr-2 h-5 w-5 text-gray-500" />;
   };
 
@@ -243,20 +250,18 @@ export default function LibraryPage() {
     const firstUserMessage = convo.messages.find(m => m.sender === 'user')?.text.substring(0, 50);
     const dateSuffix = `(${new Date(convo.lastUpdatedAt).toLocaleDateString([], {month: 'short', day: 'numeric'})})`;
     
-    if (firstUserMessage && !groupName.includes("Translator") && groupName !== "General AI Tutor" && groupName !== "Homework Helper" && groupName !== "Visual Learning") {
-      return `${firstUserMessage}... ${dateSuffix}`;
-    }
-    
-    // For specific functional groups, use a more descriptive default
-    if (groupName === "General AI Tutor") return `General Chat ${dateSuffix}`;
-    if (groupName === "Text Translator") return `Text Translation ${dateSuffix}`;
-    if (groupName === "Voice Translator") return `Voice Translation ${dateSuffix}`;
+    if (groupName === "Text Translator") return `Text Session ${dateSuffix}`;
+    if (groupName === "Voice Translator") return `Voice Session ${dateSuffix}`;
     if (groupName === "Conversation Translator") return `Conversation Practice ${dateSuffix}`;
-    if (groupName === "Camera Translator") return `Camera Translation ${dateSuffix}`;
+    if (groupName === "Camera Translator") return `Camera Session ${dateSuffix}`;
+    if (groupName === "General AI Tutor") return `General Chat ${dateSuffix}`;
     if (groupName === "Homework Helper") return `Homework Session ${dateSuffix}`;
     if (groupName === "Visual Learning") return `Visual Session ${dateSuffix}`;
     
-    // Fallback for study sessions or other categorized chats
+    if (firstUserMessage && !["Text Translator", "Voice Translator", "Conversation Translator", "Camera Translator", "General AI Tutor", "Homework Helper", "Visual Learning"].includes(groupName)) {
+      return `${firstUserMessage}... ${dateSuffix}`;
+    }
+    
     if (convo.topic && convo.topic !== groupName) return `${convo.topic} ${dateSuffix}`;
     return `${groupName} Session ${dateSuffix}`;
   };
@@ -335,11 +340,13 @@ export default function LibraryPage() {
                                 {convo.lessonContext && convo.lessonContext !== convo.topic && convo.lessonContext !== groupName && (
                                     <span className="flex items-center"><BookCopy className="mr-1 h-3 w-3"/>L: {convo.lessonContext}</span>
                                 )}
-                                {/* Show topic only if it's different from groupName and not part of a structured study session displayed above */}
-                                {convo.topic && convo.topic !== groupName && convo.topic !== convo.subjectContext && convo.topic !== convo.lessonContext && (
-                                  (groupName.includes("Translator") || groupName === "General AI Tutor" || groupName === "Homework Helper" || groupName === "Visual Learning") 
-                                  ? null // Don't show topic if it's the main functional topic itself
-                                  : <span className="flex items-center"><FileText className="mr-1 h-3 w-3"/>Topic: {convo.topic}</span>
+                                {convo.topic && 
+                                 !convo.topic.startsWith("Language ") && // Specific check for language modes
+                                 !["AI Learning Assistant Chat", "Homework Help", "Visual Learning Focus", "Visual Learning"].includes(convo.topic) && // Other general modes
+                                 convo.topic !== groupName && 
+                                 convo.topic !== convo.subjectContext && 
+                                 convo.topic !== convo.lessonContext && (
+                                  <span className="flex items-center"><FileText className="mr-1 h-3 w-3"/>Topic: {convo.topic}</span>
                                 )}
                                 <span className="flex items-center"><CalendarDays className="mr-1 h-3 w-3" />{timeAgo[convo.id] || 'Loading...'}</span>
                                 <span className="flex items-center"><MessageSquareText className="mr-1 h-3 w-3" />{convo.messages.length} msg</span>
@@ -395,3 +402,4 @@ export default function LibraryPage() {
     </div>
   );
 }
+    
