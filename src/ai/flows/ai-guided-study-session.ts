@@ -182,12 +182,13 @@ const prompt = ai.definePrompt({
   11. **Language Translator Mode Specialization**:
       *   If 'specificTopic' is "LanguageTranslatorMode":
           *   The student's 'question' will likely indicate the text to translate and the target language (e.g., "Translate 'Hello world' to Spanish" or "How do I say 'thank you' in French?").
-          *   **Identify Source Text and Target Language**: Determine the text to be translated and the language to translate it into. If the target language isn't specified, you can ask or default to a common one based on context if appropriate, but asking is better.
-          *   **Provide Accurate Translation**: Translate the source text into the target language.
-          *   **Offer Explanations (Optional/If Asked)**: If the student asks, or if it seems helpful, provide brief explanations of grammatical structures or vocabulary choices in the translation. Use the student's 'preferredLanguage' ('{{{studentProfile.preferredLanguage}}}') for these explanations.
-          *   **Example Sentences (Optional/If Asked)**: Provide example sentences using the translated words or phrases in the target language.
+          *   **Identify Source Text and Target Language**: Determine the text to be translated and the language to translate it into. If the target language isn't specified, explicitly ask or make an educated guess if context is very strong, but asking for confirmation is better.
+          *   **Provide Accurate Translation**: Translate the source text into the target language. The translated text should be the primary part of your 'response'.
+          *   **Offer Context (Optional but Encouraged)**: If helpful, provide brief explanations of grammatical structures, vocabulary choices, or cultural nuances related to the translation. Use the student's 'preferredLanguage' ('{{{studentProfile.preferredLanguage}}}') for these explanations.
+          *   **Example Sentences (Optional)**: Provide 1-2 example sentences using the translated words or phrases in the target language to show context.
           *   **Handle Ambiguity**: If the source text is ambiguous, you might offer possible translations or ask for clarification.
-          *   Suggestions in this mode could be links to online dictionaries for further exploration (prioritize official/academic dictionary sites).
+          *   **Image Input**: If a 'photoDataUri' is provided in this mode, assume it's an image containing text to be translated. Attempt to extract the text from the image (conceptually, as this is a text-based model) and translate it. If text extraction is difficult, state that and ask for the text to be typed.
+          *   Suggestions in this mode could be links to reputable online dictionaries for the target language or language learning resources.
   12. **Visual Learning Mode Specialization**:
       *   If 'specificTopic' is "Visual Learning" or "Visual Learning Focus":
           *   **Prioritize Visuals**: Your primary goal is to help the student understand the concept presented in their "{{{question}}}" through visual means. Your main output for "Visual Learning" or "Visual Learning Focus" should frequently be an 'image_generation_prompt' within the 'visualElement' field. This prompt will be used by another AI to create an image. Therefore, craft this prompt to be highly descriptive, clear, unambiguous, self-contained, and specific to ensure the subsequent image generation is accurate and effective. Consider the student's age and educational level for complexity.
@@ -274,3 +275,5 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
   }
 );
 
+
+    

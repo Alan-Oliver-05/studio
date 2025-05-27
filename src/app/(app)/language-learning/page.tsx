@@ -2,7 +2,7 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Languages, RotateCcw, Type, Mic, MessageCircle, Camera as CameraIcon, Sparkles, UploadCloud } from "lucide-react";
+import { Loader2, AlertTriangle, Languages, RotateCcw, Type, Mic, MessageCircle, Camera as CameraIcon, Sparkles, UploadCloud, PlayCircle, MessageSquarePlus, ImageDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
@@ -26,13 +26,15 @@ interface ModeOption {
   label: string;
   icon: React.ElementType;
   description: string;
+  actionButtonLabel?: string;
+  actionButtonIcon?: React.ElementType;
 }
 
 const modeOptions: ModeOption[] = [
   { value: "text", label: "Text", icon: Type, description: "Translate typed text between languages." },
-  { value: "voice", label: "Voice", icon: Mic, description: "Speak and get instant voice translations." },
-  { value: "conversation", label: "Conversation", icon: MessageCircle, description: "Have a bilingual conversation with AI assistance." },
-  { value: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images using your camera." },
+  { value: "voice", label: "Voice", icon: Mic, description: "Speak and get instant voice translations.", actionButtonLabel: "Start Recording", actionButtonIcon: PlayCircle },
+  { value: "conversation", label: "Conversation", icon: MessageSquarePlus, description: "Have a bilingual conversation with AI assistance.", actionButtonLabel: "Start Conversation", actionButtonIcon: MessageCircle },
+  { value: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images using your camera or by uploading.", actionButtonLabel: "Upload or Scan", actionButtonIcon: UploadCloud },
 ];
 
 export default function LanguageTranslatorPage() {
@@ -72,8 +74,6 @@ export default function LanguageTranslatorPage() {
       const newId = `lang-${mode}-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(newId);
       setChatKey(newId);
-      // Persist current mode with session ID if needed, e.g., in a simple map or part of conversation object in localStorage
-      // For simplicity, we are deriving it from conversationId or topic if stored.
   };
 
   const handleNewSession = () => {
@@ -86,11 +86,9 @@ export default function LanguageTranslatorPage() {
 
   const handleModeChange = (mode: TranslationMode) => {
     setActiveMode(mode);
-    if (profile && !searchParams.get('sessionId')) {
-      initializeNewSessionForMode(mode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
-    } else if (profile && searchParams.get('sessionId')) {
-      // If a session exists, changing mode should ideally start a new session for that mode
-      router.push('/language-learning', { scroll: false }); // Clear session ID from URL
+    // Always start a new session when mode changes to keep conversation contexts clean
+    router.push('/language-learning', { scroll: false }); // Clear session ID from URL
+    if (profile) {
       initializeNewSessionForMode(mode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
     }
   }
@@ -140,20 +138,13 @@ export default function LanguageTranslatorPage() {
         <CardDescription>{mode.description}</CardDescription>
       </CardHeader>
       <CardContent className="p-2">
-        {mode.value === "voice" && (
+        {mode.actionButtonLabel && mode.actionButtonIcon && (
           <Button variant="outline" size="lg" disabled className="mt-4 w-full max-w-xs">
-            <Mic className="mr-2 h-5 w-5" /> Start Recording (Coming Soon)
-          </Button>
-        )}
-        {mode.value === "conversation" && (
-           <Button variant="outline" size="lg" disabled className="mt-4 w-full max-w-xs">
-            <MessageCircle className="mr-2 h-5 w-5" /> Start Conversation (Coming Soon)
+            <mode.actionButtonIcon className="mr-2 h-5 w-5" /> {mode.actionButtonLabel} (Coming Soon)
           </Button>
         )}
         {mode.value === "camera" && (
-           <Button variant="outline" size="lg" disabled className="mt-4 w-full max-w-xs">
-            <UploadCloud className="mr-2 h-5 w-5" /> Upload or Scan Image (Coming Soon)
-          </Button>
+             <ImageDown data-ai-hint="translation camera" src="https://placehold.co/300x200.png" alt="Camera placeholder" width={300} height={200} className="mt-4 rounded-md opacity-50 mx-auto" />
         )}
         <p className="text-muted-foreground text-sm mt-6">
           The "{mode.label} Translation" feature is currently under development and will be available soon!
@@ -173,12 +164,13 @@ export default function LanguageTranslatorPage() {
         <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
           {chatKey && currentConversationId && (
             <DynamicChatInterface
-              key={chatKey}
+              key={chatKey} // Topic should be specific to the mode to ensure proper AI handling
               userProfile={profile}
-              topic="LanguageTranslatorMode" 
+              topic="LanguageTranslatorMode" // This signals the AI to use translator specialization
               conversationId={currentConversationId}
               initialSystemMessage={initialChatMessageTextMode}
               placeholderText="E.g., Translate 'How are you?' to German"
+              enableImageUpload={false} // Text mode doesn't need image upload directly in chat; camera mode would.
             />
           )}
         </div>
@@ -230,5 +222,6 @@ export default function LanguageTranslatorPage() {
     </div>
   );
 }
+
 
     
