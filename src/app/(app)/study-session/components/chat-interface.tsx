@@ -29,7 +29,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 
 interface ChatInterfaceProps {
   userProfile: UserProfile | null;
-  topic: string;
+  topic: string; // This topic is used for storing the conversation and for client-side context
   conversationId: string;
   initialSystemMessage?: string;
   placeholderText?: string;
@@ -130,11 +130,11 @@ const RenderBarChartVisual = ({ visualElement }: { visualElement: VisualElement 
 };
 
 
-const SPECIAL_MODES = ["AI Learning Assistant Chat", "Homework Help", "Visual Learning Focus", "LanguageTranslatorMode"];
+const SPECIAL_MODES_HANDLED_BY_AI_GUIDED_STUDY_SESSION = ["AI Learning Assistant Chat", "Homework Help", "Visual Learning Focus"]; // LanguageTranslatorMode handled differently
 
 export function ChatInterface({
   userProfile,
-  topic,
+  topic, // This `topic` prop is used for storing the conversation with its specific UI mode context (e.g., "lang-text-mode")
   conversationId,
   initialSystemMessage,
   placeholderText = "Type your message here...",
@@ -142,8 +142,8 @@ export function ChatInterface({
   initialInputQuery,
   onInitialQueryConsumed,
   enableImageUpload = true,
-  initialQAStage = 'initial_material', // Default initial stage
-  initialQuestionsInStage = 0, // Default initial count
+  initialQAStage = 'initial_material', 
+  initialQuestionsInStage = 0,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [input, setInput] = useState("");
@@ -155,9 +155,10 @@ export function ChatInterface({
   const { toast } = useToast();
   const [generatingImageForMessageId, setGeneratingImageForMessageId] = useState<string | null>(null);
   
-  const isInteractiveQAMode = !SPECIAL_MODES.includes(topic);
+  // Determine if this chat is for Interactive Q&A (specific study topic) or a special mode
+  const isInteractiveQAMode = !SPECIAL_MODES_HANDLED_BY_AI_GUIDED_STUDY_SESSION.includes(topic) && !topic.startsWith("lang-");
 
-  // State for Q&A progression within the chat interface
+
   const [currentClientStage, setCurrentClientStage] = useState<QAS_Stage>(initialQAStage);
   const [questionsAskedInClientStage, setQuestionsAskedInClientStage] = useState<number>(initialQuestionsInStage);
   const [isTopicSessionCompleted, setIsTopicSessionCompleted] = useState<boolean>(false);
@@ -167,15 +168,13 @@ export function ChatInterface({
     const existingConversation = getConversationById(conversationId);
     if (existingConversation && existingConversation.messages.length > 0) {
       setMessages(existingConversation.messages);
-      // Restore Q&A stage from the last AI message if in interactive mode
       if (isInteractiveQAMode) {
         const lastAiMessage = [...existingConversation.messages].reverse().find(m => m.sender === 'ai');
         if (lastAiMessage?.aiNextStage) {
           setCurrentClientStage(lastAiMessage.aiNextStage);
-          if (lastAiMessage.aiIsStageComplete && lastAiMessage.aiNextStage !== (lastAiMessage as any).currentStageInternal) { // (lastAiMessage as any).currentStageInternal is a placeholder for the stage it was in
+          if (lastAiMessage.aiIsStageComplete && lastAiMessage.aiNextStage !== (lastAiMessage as any).currentStageInternal) {
             setQuestionsAskedInClientStage(0);
           } else {
-            // More robust count needed: count AI turns in this stage from history
             const aiQuestionsInThisStage = existingConversation.messages.filter(m => m.sender === 'ai' && m.aiNextStage === lastAiMessage.aiNextStage && !m.aiIsStageComplete).length;
             setQuestionsAskedInClientStage(aiQuestionsInThisStage);
           }
@@ -184,26 +183,30 @@ export function ChatInterface({
           } else {
             setIsTopicSessionCompleted(false);
           }
-        } else { // No stage info, reset for this conversation
+        } else { 
           setCurrentClientStage(initialQAStage);
           setQuestionsAskedInClientStage(initialQuestionsInStage);
           setIsTopicSessionCompleted(false);
         }
       }
-    } else if (initialSystemMessage && !isInteractiveQAMode) { // Only add initial system message if not interactive QA (which has its own AI first message)
+    } else if (initialSystemMessage && (!isInteractiveQAMode || topic.startsWith("lang-text-mode"))) { // Add initial message for text translation mode too
       const firstAIMessage: MessageType = {
         id: crypto.randomUUID(), sender: "ai", text: initialSystemMessage, timestamp: Date.now(),
       };
       setMessages([firstAIMessage]);
       addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
-      setCurrentClientStage(initialQAStage); // Reset for new non-interactive session too
-      setQuestionsAskedInClientStage(initialQuestionsInStage);
-      setIsTopicSessionCompleted(false);
-    } else { // For new interactive Q&A sessions, messages will be populated by startInteractiveQASession
+      if(isInteractiveQAMode){ // Reset stage for new non-interactive session too, though not strictly QAMode
+         setCurrentClientStage(initialQAStage); 
+         setQuestionsAskedInClientStage(initialQuestionsInStage);
+         setIsTopicSessionCompleted(false);
+      }
+    } else { 
         setMessages([]);
-        setCurrentClientStage(initialQAStage);
-        setQuestionsAskedInClientStage(initialQuestionsInStage);
-        setIsTopicSessionCompleted(false);
+         if(isInteractiveQAMode){
+            setCurrentClientStage(initialQAStage);
+            setQuestionsAskedInClientStage(initialQuestionsInStage);
+            setIsTopicSessionCompleted(false);
+        }
     }
   }, [conversationId, initialSystemMessage, topic, userProfile, context, isInteractiveQAMode, initialQAStage, initialQuestionsInStage]);
 
@@ -221,11 +224,10 @@ export function ChatInterface({
   }, [initialInputQuery, onInitialQueryConsumed]);
 
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
-    // ... (existing implementation)
     if (!enableImageUpload) return;
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 4 * 1024 * 1024) { // 4MB limit
+      if (file.size > 4 * 1024 * 1024) { 
         toast({
           title: "Image too large",
           description: "Please upload an image smaller than 4MB.",
@@ -243,7 +245,6 @@ export function ChatInterface({
   };
 
   const removeUploadedImage = () => {
-    // ... (existing implementation)
     setUploadedImage(null);
     setUploadedImageName(null);
     if (fileInputRef.current) {
@@ -252,7 +253,6 @@ export function ChatInterface({
   };
 
   const handleGenerateImage = async (messageId: string, promptText: string) => {
-    // ... (existing implementation)
     if (!promptText || promptText.trim() === "") {
         toast({ title: "Cannot Generate Image", description: "The prompt for image generation is empty.", variant: "destructive" });
         return;
@@ -294,7 +294,7 @@ export function ChatInterface({
 
     if (isInteractiveQAMode && isTopicSessionCompleted) {
         toast({ title: "Topic Q&A Completed", description: `You've finished the Q&A for ${topic}. Please go back to select a new topic or start a new session.`, duration: 7000, variant: "default" });
-        setInput(""); // Clear input to prevent resubmission
+        setInput(""); 
         return;
     }
 
@@ -326,6 +326,14 @@ export function ChatInterface({
 
     try {
       let aiResponseMessage: MessageType;
+      let aiInteractionTopic = topic; // Use the storage/UI topic by default
+
+      if (topic.startsWith("lang-")) { // Specifically for language translator modes
+        aiInteractionTopic = "LanguageTranslatorMode"; // AI flow expects this to trigger translation logic
+      } else if (SPECIAL_MODES_HANDLED_BY_AI_GUIDED_STUDY_SESSION.includes(topic)) {
+        aiInteractionTopic = topic; // For General Tutor, Homework, Visual Learning, use the topic as is
+      }
+      // If isInteractiveQAMode, aiInteractionTopic will be the specific study topic name.
 
       if (isInteractiveQAMode) {
         let previousAIQuestionText: string | undefined;
@@ -336,12 +344,12 @@ export function ChatInterface({
 
         const qAndAInput: InteractiveQAndAInput = {
           studentProfile: { ...userProfile, age: Number(userProfile.age) },
-          subject: context?.subject || topic, // Fallback to topic if no broader context
-          lesson: context?.lesson || topic, // Fallback to topic if no broader context
-          topic: topic,
+          subject: context?.subject || topic, 
+          lesson: context?.lesson || topic, 
+          topic: topic, // The specific topic for Q&A
           studentAnswer: userMessage.text,
           previousQuestion: previousAIQuestionText,
-          conversationHistory: formatConversationForAI(currentMessagesWithUser.slice(-6)), // Send recent history
+          conversationHistory: formatConversationForAI(currentMessagesWithUser.slice(-6)), 
           currentStage: currentClientStage,
           questionsAskedInStage: questionsAskedInClientStage,
         };
@@ -354,15 +362,13 @@ export function ChatInterface({
             aiNextStage: qAndAResponse.nextStage, aiIsStageComplete: qAndAResponse.isStageComplete,
         };
 
-        // Update client-side stage based on AI's response
         if (qAndAResponse.nextStage) {
-            setCurrentClientStage(qAndAResponse.nextStage); // Always update to what AI says next stage is
+            setCurrentClientStage(qAndAResponse.nextStage); 
             if (qAndAResponse.isStageComplete && qAndAResponse.nextStage !== currentClientStage) {
-                setQuestionsAskedInClientStage(0); // Reset for new stage
+                setQuestionsAskedInClientStage(0); 
             } else if (!qAndAResponse.isStageComplete && qAndAResponse.nextStage === currentClientStage) {
-                setQuestionsAskedInClientStage(prev => prev + 1); // Increment in current stage
+                setQuestionsAskedInClientStage(prev => prev + 1); 
             }
-             // If AI says stage is complete and nextStage is 'completed', mark session as done
             if (qAndAResponse.isStageComplete && qAndAResponse.nextStage === 'completed') {
                 setIsTopicSessionCompleted(true);
                 toast({ title: "Topic Q&A Completed!", description: `You've finished all stages for ${topic}. Great job!`, duration: 7000});
@@ -370,10 +376,12 @@ export function ChatInterface({
         }
 
       } else { 
+        // For LanguageTranslatorMode, General AI Tutor, Homework Helper, Visual Learning Focus
         const aiInput: AIGuidedStudySessionInput = {
           studentProfile: { ...userProfile, age: Number(userProfile.age) },
           subject: context?.subject || undefined, lesson: context?.lesson || undefined,
-          specificTopic: topic, question: userMessage.text.replace(`(Context from uploaded image: ${uploadedImageName})`, '').trim(),
+          specificTopic: aiInteractionTopic, // This will be "LanguageTranslatorMode", "AI Learning Assistant Chat", etc.
+          question: userMessage.text.replace(`(Context from uploaded image: ${uploadedImageName})`, '').trim(),
           photoDataUri: imageToSendAsPhotoDataUri || undefined,
         };
         const aiResponse = await aiGuidedStudySession(aiInput);
@@ -390,7 +398,6 @@ export function ChatInterface({
       );
 
     } catch (error) {
-      // ... (existing error handling)
       console.error("Error getting AI response:", error);
       const errorText = error instanceof Error ? error.message : "Failed to get a response from AI. Please try again.";
       toast({ title: "AI Communication Error", description: errorText, variant: "destructive" });
@@ -477,24 +484,27 @@ export function ChatInterface({
 
                 {message.sender === 'ai' && isInteractiveQAMode && (
                   <>
-                    {message.isCorrect === false && (
+                    {message.isCorrect === false && message.feedback && ( // Only show if feedback exists
                       <div className="flex items-center text-xs text-destructive mb-1.5 font-medium">
                         <AlertCircleIcon className="h-4 w-4 mr-1.5"/>
                         <span>Needs Review</span>
                       </div>
                     )}
-                    {message.isCorrect === true && (
+                    {message.isCorrect === true && message.feedback && ( // Only show if feedback exists
                       <div className="flex items-center text-xs text-green-600 dark:text-green-500 mb-1.5 font-medium">
                         <Check className="h-4 w-4 mr-1.5"/>
                         <span>Correct!</span>
                       </div>
                     )}
                     {message.feedback && (
-                      <div className="mb-2 border-b border-current/10 pb-2">
+                      <div className={cn("mb-2 pb-2", message.text ? "border-b border-current/10" : "")}>
                         <p className="whitespace-pre-wrap leading-relaxed text-sm opacity-90">{message.feedback}</p>
                       </div>
                     )}
-                    <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                     {/* Only display message.text if it's not considered part of a completed stage's concluding remark already handled by feedback */}
+                    {!(isTopicSessionCompleted && message.feedback && message.text === message.feedback) && message.text && (
+                         <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                    )}
                   </>
                 )}
 
@@ -504,7 +514,6 @@ export function ChatInterface({
 
                 {message.sender === "ai" && message.visualElement && (
                   <Card className="mt-3 bg-background/50 border-primary/20 shadow-sm">
-                    {/* ... existing visual element rendering ... */}
                      <CardHeader className="pb-2 pt-3 px-3">
                       <CardTitle className="text-xs sm:text-sm font-semibold text-primary flex items-center">
                         {message.visualElement.type.includes('chart') && <BarChartBig className="h-4 w-4 mr-1.5"/>}
@@ -610,7 +619,6 @@ export function ChatInterface({
         </div>
       </ScrollArea>
       {uploadedImage && uploadedImageName && enableImageUpload && (
-        // ... (existing uploaded image preview)
          <div className="p-2 border-t bg-muted/50 flex items-center justify-between text-xs mx-3 mt-1 rounded-t-md">
           <div className="flex items-center gap-2 text-muted-foreground overflow-hidden">
             <Paperclip className="h-4 w-4 flex-shrink-0" />

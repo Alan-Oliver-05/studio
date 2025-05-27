@@ -10,6 +10,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { getConversationById } from "@/lib/chat-storage"; // Added for restoring mode
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -31,11 +32,14 @@ interface ModeOption {
 }
 
 const modeOptions: ModeOption[] = [
-  { value: "text", label: "Text", icon: Type, description: "Translate typed text between languages." },
+  { value: "text", label: "Text", icon: Type, description: "Translate typed text between languages.", actionButtonLabel: "Start Typing", actionButtonIcon: Type },
   { value: "voice", label: "Voice", icon: Mic, description: "Speak and get instant voice translations.", actionButtonLabel: "Start Recording", actionButtonIcon: PlayCircle },
   { value: "conversation", label: "Conversation", icon: MessageSquarePlus, description: "Have a bilingual conversation with AI assistance.", actionButtonLabel: "Start Conversation", actionButtonIcon: MessageCircle },
   { value: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images using your camera or by uploading.", actionButtonLabel: "Upload or Scan", actionButtonIcon: UploadCloud },
 ];
+
+// Helper to get the storage topic string for a mode
+const getStorageTopicForMode = (mode: TranslationMode): string => `lang-${mode}-mode`;
 
 export default function LanguageTranslatorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
@@ -45,52 +49,54 @@ export default function LanguageTranslatorPage() {
   const [chatKey, setChatKey] = useState<string>('');
   const [activeMode, setActiveMode] = useState<TranslationMode>("text");
 
+  // Effect to handle session ID from URL and restore mode
   useEffect(() => {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
-      const storedConversation = localStorage.getItem(`eduai-conversation-${sessionIdFromQuery}`);
-      let modeFromStorage: TranslationMode = "text";
+      const storedConversation = getConversationById(sessionIdFromQuery);
+      let modeFromStorage: TranslationMode = "text"; // Default if convo not found or topic malformed
       if (storedConversation) {
-        try {
-          const conversationData = JSON.parse(storedConversation);
-          if (conversationData.topic && conversationData.topic.startsWith('lang-')) {
-            const modePart = conversationData.topic.split('-')[1] as TranslationMode;
-            if (['text', 'voice', 'conversation', 'camera'].includes(modePart)) {
-              modeFromStorage = modePart;
-            }
+        if (storedConversation.topic && storedConversation.topic.startsWith('lang-')) {
+          const modePart = storedConversation.topic.split('-')[1] as TranslationMode;
+          if (['text', 'voice', 'conversation', 'camera'].includes(modePart)) {
+            modeFromStorage = modePart;
           }
-        } catch (e) { console.error("Failed to parse conversation for mode", e); }
+        }
       }
-      setActiveMode(modeFromStorage);
+      setActiveMode(modeFromStorage); // Set active mode based on loaded session
       setCurrentConversationId(sessionIdFromQuery);
-      setChatKey(sessionIdFromQuery);
-    } else if (profile) {
+      setChatKey(sessionIdFromQuery); // Re-key chat interface if ID changes
+    }
+  }, [searchParams, profile]); // Only depends on searchParams and profile readiness
+
+  // Effect for default initialization if no session ID was processed or for activeMode changes
+  useEffect(() => {
+    const sessionIdFromQuery = searchParams.get('sessionId');
+    if (!sessionIdFromQuery && profile) {
+      // Initialize a new session for the *current* activeMode
+      // This runs on initial load if no sessionId, or if activeMode changes (e.g., by user click)
       initializeNewSessionForMode(activeMode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
     }
-  }, [searchParams, profile]);
+  }, [profile, activeMode, searchParams]); // Depends on activeMode to re-init if mode changes without sessionId
 
   const initializeNewSessionForMode = (mode: TranslationMode, profileIdentifier: string) => {
       const newTimestamp = Date.now();
-      const newId = `lang-${mode}-${profileIdentifier}-${newTimestamp}`;
+      const newId = `lang-${mode}-${profileIdentifier}-${newTimestamp}`; // Conversation ID includes the mode
       setCurrentConversationId(newId);
       setChatKey(newId);
   };
 
   const handleNewSession = () => {
-    router.push('/language-learning', { scroll: false });
-    setActiveMode("text"); 
+    router.push('/language-learning', { scroll: false }); // Clear session ID from URL
     if (profile) {
-      initializeNewSessionForMode("text", profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
+      // Initialize a new session FOR THE CURRENTLY ACTIVE MODE
+      initializeNewSessionForMode(activeMode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
     }
   };
 
   const handleModeChange = (mode: TranslationMode) => {
-    setActiveMode(mode);
-    // Always start a new session when mode changes to keep conversation contexts clean
+    setActiveMode(mode); // This will trigger the second useEffect to initialize a new session for the new mode
     router.push('/language-learning', { scroll: false }); // Clear session ID from URL
-    if (profile) {
-      initializeNewSessionForMode(mode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
-    }
   }
 
   if (profileLoading) {
@@ -164,13 +170,13 @@ export default function LanguageTranslatorPage() {
         <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
           {chatKey && currentConversationId && (
             <DynamicChatInterface
-              key={chatKey} // Topic should be specific to the mode to ensure proper AI handling
+              key={chatKey} 
               userProfile={profile}
-              topic="LanguageTranslatorMode" // This signals the AI to use translator specialization
+              topic={getStorageTopicForMode("text")} // e.g., "lang-text-mode" for storage
               conversationId={currentConversationId}
               initialSystemMessage={initialChatMessageTextMode}
               placeholderText="E.g., Translate 'How are you?' to German"
-              enableImageUpload={false} // Text mode doesn't need image upload directly in chat; camera mode would.
+              enableImageUpload={false} 
             />
           )}
         </div>
@@ -223,5 +229,3 @@ export default function LanguageTranslatorPage() {
   );
 }
 
-
-    
