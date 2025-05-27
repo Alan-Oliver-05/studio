@@ -11,7 +11,8 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
-import VoiceTranslatorInterface from "./components/voice-translator-interface"; // New component
+// VoiceTranslatorInterface is no longer directly imported here for rendering, but kept in codebase
+// import VoiceTranslatorInterface from "./components/voice-translator-interface";
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -28,13 +29,14 @@ interface ModeOption {
   label: string;
   icon: React.ElementType;
   description: string;
+  comingSoon?: boolean;
 }
 
 const modeOptions: ModeOption[] = [
   { value: "text", label: "Text", icon: Type, description: "Translate typed text between languages." },
-  { value: "voice", label: "Voice", icon: Mic, description: "Speak and get instant voice translations." },
-  { value: "conversation", label: "Conversation", icon: MessageSquarePlus, description: "Have a bilingual conversation with AI assistance." },
-  { value: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images using your camera or by uploading." },
+  { value: "voice", label: "Voice", icon: Mic, description: "Speak and get instant voice translations.", comingSoon: true },
+  { value: "conversation", label: "Conversation", icon: MessageSquarePlus, description: "Have a bilingual conversation with AI assistance.", comingSoon: true },
+  { value: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images using your camera or by uploading.", comingSoon: true },
 ];
 
 const getStorageTopicForMode = (mode: TranslationMode): string => `lang-${mode}-mode`;
@@ -64,7 +66,8 @@ export default function LanguageTranslatorPage() {
     } else if (profile) {
       initializeNewSessionForMode(activeMode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
     }
-  }, [searchParams, profile, activeMode]); // activeMode dependency ensures re-init if mode changed without session ID
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, profile]); // Removed activeMode dependency to prevent re-init loop without sessionID
 
   const initializeNewSessionForMode = (mode: TranslationMode, profileIdentifier: string) => {
       const newTimestamp = Date.now();
@@ -82,7 +85,7 @@ export default function LanguageTranslatorPage() {
 
   const handleModeChange = (mode: TranslationMode) => {
     setActiveMode(mode);
-    router.push('/language-learning', { scroll: false }); 
+    router.push('/language-learning', { scroll: false });
     if (profile) {
         initializeNewSessionForMode(mode, profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
     }
@@ -122,62 +125,60 @@ export default function LanguageTranslatorPage() {
   }
   
   const initialChatMessageTextMode = `Hello ${profile.name}! Welcome to the Text Translator. What text would you like to translate, and to which language? For example: "Translate 'Hello, world!' to Spanish." or "How do I say 'Thank you very much' in French?"`;
-  const initialChatMessageCameraMode = `Hi ${profile.name}! Use the camera mode to translate text from images. Upload an image containing text, and I'll do my best to extract and translate it for you. For example, you can say "Translate the text in this image to German."`;
-  const initialChatMessageConversationMode = `Hello ${profile.name}! Let's have a practice conversation. Tell me the scenario, your language, and the language of the person I should simulate. For example: "I want to order coffee. I'll speak English, you be the French barista." I will translate and help facilitate the dialogue.`;
+  const currentModeConfig = modeOptions.find(m => m.value === activeMode);
 
 
   const renderContent = () => {
-    if (!profile || !currentConversationId || !chatKey) {
+    if (!profile || !currentConversationId || !chatKey || !currentModeConfig) {
         return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /> <p className="ml-2">Loading interface...</p></div>;
     }
-    switch(activeMode) {
-      case "text":
+    if (activeMode === "text") {
         return (
           <DynamicChatInterface
-            key={chatKey} 
+            key={chatKey}
             userProfile={profile}
             topic={getStorageTopicForMode("text")}
             conversationId={currentConversationId}
             initialSystemMessage={initialChatMessageTextMode}
             placeholderText="E.g., Translate 'How are you?' to German"
-            enableImageUpload={false} 
-          />
-        );
-      case "camera":
-        return (
-           <DynamicChatInterface
-            key={chatKey}
-            userProfile={profile}
-            topic={getStorageTopicForMode("camera")}
-            conversationId={currentConversationId}
-            initialSystemMessage={initialChatMessageCameraMode}
-            placeholderText="Upload image and ask for translation, e.g., 'Translate this to French'"
-            enableImageUpload={true}
-          />
-        );
-      case "voice":
-        return (
-            <VoiceTranslatorInterface
-                key={chatKey}
-                userProfile={profile}
-                conversationId={currentConversationId}
-                topic={getStorageTopicForMode("voice")}
-            />
-        );
-      case "conversation":
-        return (
-          <DynamicChatInterface
-            key={chatKey}
-            userProfile={profile}
-            topic={getStorageTopicForMode("conversation")}
-            conversationId={currentConversationId}
-            initialSystemMessage={initialChatMessageConversationMode}
-            placeholderText="Type your part of the conversation..."
             enableImageUpload={false}
           />
         );
-      default:
-        return <p>Error: Mode not found.</p>; 
+    } else {
+        // Placeholder for other modes
+        return (
+            <Card className="w-full max-w-2xl mx-auto text-center shadow-lg border-dashed border-primary/50">
+                <CardHeader className="pt-8">
+                    <div className="mx-auto bg-primary/10 rounded-full p-4 w-fit mb-4">
+                        <currentModeConfig.icon className="h-12 w-12 text-primary" />
+                    </div>
+                    <CardTitle className="text-2xl text-primary">{currentModeConfig.label} Translation</CardTitle>
+                    <CardDescription className="text-md">{currentModeConfig.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="py-8">
+                    <div className="flex flex-col items-center space-y-4">
+                       {activeMode === "voice" && (
+                         <Button disabled className="w-40"><Mic className="mr-2 h-5 w-5"/> Start Recording</Button>
+                       )}
+                       {activeMode === "conversation" && (
+                         <Button disabled className="w-48"><MessageSquarePlus className="mr-2 h-5 w-5"/> Start Conversation</Button>
+                       )}
+                       {activeMode === "camera" && (
+                         <Button disabled className="w-52"><CameraIcon className="mr-2 h-5 w-5"/> Upload or Scan Image</Button>
+                       )}
+                        <p className="text-lg font-semibold text-accent animate-pulse">Feature Coming Soon!</p>
+                        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                           We're working hard to bring you {currentModeConfig.label.toLowerCase()} translation. Stay tuned for updates!
+                        </p>
+                    </div>
+                </CardContent>
+                 <CardFooter className="justify-center">
+                    <Button variant="outline" onClick={() => handleModeChange("text")}>
+                        Use Text Translator
+                    </Button>
+                </CardFooter>
+            </Card>
+        );
     }
   };
 
@@ -188,7 +189,7 @@ export default function LanguageTranslatorPage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
                 <Languages className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Language Translator
             </h1>
-            <p className="text-muted-foreground mt-1">Translate text, voice, images, and practice conversations.</p>
+            <p className="text-muted-foreground mt-1">Translate text. Voice, conversation, and camera modes coming soon!</p>
         </div>
         <Button onClick={handleNewSession} variant="outline" className="mt-2 sm:mt-0">
           <RotateCcw className="mr-2 h-4 w-4" /> New Session
