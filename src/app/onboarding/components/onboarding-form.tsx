@@ -24,16 +24,17 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { UserProfile, EducationCategory } from "@/types";
+import type { UserProfile, EducationCategory, LearningStyle } from "@/types";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
-import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, BOARD_STANDARDS, UNIVERSITY_YEARS, CENTRAL_BOARDS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE } from "@/lib/constants";
+import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, BOARD_STANDARDS, UNIVERSITY_YEARS, CENTRAL_BOARDS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE, LEARNING_STYLES } from "@/lib/constants";
 import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 
 const onboardingSteps = [
   { id: "personal", title: "Personal Details" },
   { id: "location", title: "Location & Language" },
+  { id: "learningStyle", title: "Learning Style" },
   { id: "educationCategory", title: "Education Focus" },
   { id: "educationDetails", title: "Education Specifics" },
   { id: "review", title: "Review & Complete" },
@@ -53,8 +54,14 @@ const LocationLanguageSchema = z.object({
   preferredLanguage: z.string().min(1, { message: "Please select a preferred language." }),
 });
 
+const LearningStyleSchema = z.object({
+  learningStyle: z.enum(["visual", "auditory", "kinesthetic", "reading_writing", "balanced", ""], {
+    required_error: "Please select a learning style preference.",
+  }).optional(),
+});
+
 const EducationCategorySchema = z.object({
-    educationCategory: z.enum(["board", "competitive", "university", "other"], {
+    educationCategory: z.enum(["board", "competitive", "university", "other", ""], {
     required_error: "You need to select an education category.",
   }),
 });
@@ -79,7 +86,7 @@ const EducationDetailsSchema = z.object({
 });
 
 
-const FormSchema = PersonalDetailsSchema.merge(LocationLanguageSchema).merge(EducationCategorySchema).merge(EducationDetailsSchema);
+const FormSchema = PersonalDetailsSchema.merge(LocationLanguageSchema).merge(LearningStyleSchema).merge(EducationCategorySchema).merge(EducationDetailsSchema);
 
 const defaultValues: UserProfile = {
   name: "",
@@ -88,6 +95,7 @@ const defaultValues: UserProfile = {
   country: COUNTRIES[0]?.value || "",
   state: "",
   preferredLanguage: LANGUAGES[0]?.value || "",
+  learningStyle: LEARNING_STYLES[0]?.value || "",
   educationCategory: EDUCATION_CATEGORIES[0]?.value as EducationCategory,
   educationQualification: {
     boardExams: { board: "", standard: "" },
@@ -105,9 +113,10 @@ export function OnboardingForm() {
     resolver: zodResolver(FormSchema),
     defaultValues: existingProfile && existingProfile.name ? {
       ...existingProfile,
-      age: existingProfile.age || "", // ensure age is not null
+      age: existingProfile.age || "", 
+      learningStyle: existingProfile.learningStyle || LEARNING_STYLES[0]?.value || "",
       educationCategory: existingProfile.educationCategory || EDUCATION_CATEGORIES[0]?.value as EducationCategory,
-      educationQualification: { // Ensure all nested objects exist
+      educationQualification: { 
         boardExams: existingProfile.educationQualification?.boardExams || { board: "", standard: "" },
         competitiveExams: existingProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "" },
         universityExams: existingProfile.educationQualification?.universityExams || { universityName: "", collegeName: "", course: "", currentYear: "" },
@@ -132,10 +141,13 @@ export function OnboardingForm() {
       isValid = await form.trigger(["name", "age", "gender"]);
     } else if (currentStep === "location") {
       isValid = await form.trigger(["country", "state", "preferredLanguage"]);
-    } else if (currentStep === "educationCategory") {
+    } else if (currentStep === "learningStyle") {
+      isValid = await form.trigger(["learningStyle"]);
+    }
+     else if (currentStep === "educationCategory") {
       isValid = await form.trigger(["educationCategory"]);
     } else if (currentStep === "educationDetails") {
-      isValid = true; // Assume valid initially for this step
+      isValid = true; 
       if (watchedEducationCategory === "board") {
         isValid = await form.trigger(["educationQualification.boardExams.board", "educationQualification.boardExams.standard"]) &&
                   !!form.getValues("educationQualification.boardExams.board") && 
@@ -157,7 +169,7 @@ export function OnboardingForm() {
       const currentIndex = onboardingSteps.findIndex(step => step.id === currentStep);
       if (currentIndex < onboardingSteps.length - 1) {
         if (currentStep === "educationCategory" && form.getValues("educationCategory") === "other") {
-           setCurrentStep("review"); // Skip educationDetails if "other"
+           setCurrentStep("review"); 
         } else {
           setCurrentStep(onboardingSteps[currentIndex + 1].id);
         }
@@ -168,7 +180,7 @@ export function OnboardingForm() {
   const handlePrevious = () => {
     const currentIndex = onboardingSteps.findIndex(step => step.id === currentStep);
      if (currentStep === "review" && form.getValues("educationCategory") === "other") {
-        setCurrentStep("educationCategory"); // Go back to educationCategory if "other" was selected
+        setCurrentStep("educationCategory"); 
     } else if (currentIndex > 0) {
       setCurrentStep(onboardingSteps[currentIndex - 1].id);
     }
@@ -178,7 +190,8 @@ export function OnboardingForm() {
     const finalProfile: UserProfile = {
       ...data,
       age: Number(data.age), 
-      id: existingProfile?.id || `user-${Date.now()}`, // Preserve ID or generate new one
+      id: existingProfile?.id || `user-${Date.now()}`, 
+      learningStyle: data.learningStyle || 'balanced', // Default if empty
       educationQualification: {
         boardExams: data.educationCategory === "board" ? data.educationQualification?.boardExams : undefined,
         competitiveExams: data.educationCategory === "competitive" ? data.educationQualification?.competitiveExams : undefined,
@@ -313,6 +326,30 @@ export function OnboardingForm() {
                 />
               </div>
             )}
+
+            {currentStep === "learningStyle" && (
+                 <FormField
+                  control={form.control}
+                  name="learningStyle"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preferred Learning Style</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value as LearningStyle} defaultValue={field.value as LearningStyle}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your learning style" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {LEARNING_STYLES.map(style => <SelectItem key={style.value} value={style.value}>{style.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>This helps us tailor content to how you learn best.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            )}
             
             {currentStep === "educationCategory" && (
                  <FormField
@@ -321,7 +358,7 @@ export function OnboardingForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>What is your primary education focus?</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value as EducationCategory}>
+                      <Select onValueChange={field.onChange} value={field.value as EducationCategory} defaultValue={field.value as EducationCategory}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select education category" />
@@ -552,6 +589,7 @@ export function OnboardingForm() {
                   <p><strong>Country:</strong> {COUNTRIES.find(c => c.value === form.getValues("country"))?.label || 'N/A'}</p>
                   <p><strong>State:</strong> {form.getValues("state")}</p>
                   <p><strong>Preferred Language:</strong> {LANGUAGES.find(l => l.value === form.getValues("preferredLanguage"))?.label || 'N/A'}</p>
+                  <p><strong>Learning Style:</strong> {LEARNING_STYLES.find(ls => ls.value === form.getValues("learningStyle"))?.label || 'Balanced'}</p>
                   <p><strong>Education Focus:</strong> {EDUCATION_CATEGORIES.find(ec => ec.value === watchedEducationCategory)?.label || 'N/A'}</p>
                   
                   {watchedEducationCategory === "board" && form.getValues("educationQualification.boardExams") && (

@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { UserProfile } from "@/types";
+import type { UserProfile, LearningStyle } from "@/types"; // Added LearningStyle
 import type { ReactNode } from "react";
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
@@ -31,6 +31,8 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
           competitiveExams: parsedProfile.educationQualification?.competitiveExams || {},
           universityExams: parsedProfile.educationQualification?.universityExams || {},
         };
+        // Ensure learningStyle exists
+        parsedProfile.learningStyle = parsedProfile.learningStyle || 'balanced';
         setProfileState(parsedProfile);
       }
     } catch (error) {
@@ -45,6 +47,7 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
       // Ensure nested educationQualification objects exist before saving
       const profileToSave: UserProfile = {
         ...newProfile,
+        learningStyle: newProfile.learningStyle || 'balanced', // Ensure learning style has a default
         educationQualification: {
           boardExams: newProfile.educationQualification?.boardExams || {},
           competitiveExams: newProfile.educationQualification?.competitiveExams || {},
@@ -61,16 +64,16 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
   
   const updateProfile = useCallback((updates: Partial<UserProfile>) => {
     setProfileState(prevProfile => {
-      if (!prevProfile) return null; // Should not happen if update is called on existing profile
+      if (!prevProfile) return null; 
       
       const updatedProfileData = { ...prevProfile, ...updates };
       
-      // Ensure nested educationQualification objects exist in the updated profile
       updatedProfileData.educationQualification = {
         boardExams: updatedProfileData.educationQualification?.boardExams || {},
         competitiveExams: updatedProfileData.educationQualification?.competitiveExams || {},
         universityExams: updatedProfileData.educationQualification?.universityExams || {},
       };
+      updatedProfileData.learningStyle = updatedProfileData.learningStyle || 'balanced';
 
       const updatedProfile = updatedProfileData as UserProfile;
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedProfile));

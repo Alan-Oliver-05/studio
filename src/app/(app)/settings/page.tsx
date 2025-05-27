@@ -1,17 +1,17 @@
 
 "use client";
 
-import { useState, useEffect } from "react"; // Added useEffect
+import { useState, useEffect } from "react"; 
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut, BookOpen, ListChecks, PenSquare, Brain, PieChartIcon, User as UserIcon } from "lucide-react";
+import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut, BookOpen, ListChecks, PenSquare, Brain, PieChartIcon, User as UserIcon, Palette } from "lucide-react"; // Added Palette
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES } from "@/lib/constants";
+import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, LEARNING_STYLES } from "@/lib/constants"; // Added LEARNING_STYLES
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +36,6 @@ export default function SettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
   
-  // State for notification preferences (UI only)
   const [notificationPreference, setNotificationPreference] = useState<string>("daily");
   const [remindIncompleteStudy, setRemindIncompleteStudy] = useState(true);
   const [remindPendingTodos, setRemindPendingTodos] = useState(true);
@@ -77,6 +76,8 @@ export default function SettingsPage() {
   const genderLabel = GENDERS.find(g => g.value === profile.gender)?.label || profile.gender;
   const countryLabel = COUNTRIES.find(c => c.value === profile.country)?.label || profile.country;
   const languageLabel = LANGUAGES.find(lang => lang.value === profile.preferredLanguage)?.label || profile.preferredLanguage;
+  const learningStyleLabel = LEARNING_STYLES.find(ls => ls.value === profile.learningStyle)?.label || "Balanced";
+
 
   const handlePasswordReset = () => {
     toast({
@@ -87,7 +88,7 @@ export default function SettingsPage() {
 
   const handleLogout = () => {
     setProfile(null); 
-    localStorage.clear(); // Clear all local storage for a full reset
+    localStorage.clear(); 
     router.push('/onboarding');
     toast({
       title: "Logged Out",
@@ -125,12 +126,16 @@ export default function SettingsPage() {
               </Avatar>
               <CardTitle className="text-2xl font-bold text-primary">{profile.name}</CardTitle>
               <CardDescription className="text-md text-muted-foreground">Age: {profile.age}</CardDescription>
-              <Badge variant="secondary" className="mt-1.5 text-xs">{genderLabel}</Badge>
+              <div className="flex flex-wrap justify-center gap-2 mt-1.5">
+                <Badge variant="secondary" className="text-xs">{genderLabel}</Badge>
+                <Badge variant="outline" className="text-xs">{learningStyleLabel}</Badge>
+              </div>
             </CardHeader>
             <CardContent className="p-4 space-y-1">
                 <DetailItem label="Country" value={countryLabel} icon={<MapPin className="h-4 w-4"/>}/>
-                <DetailItem label="State/Province" value={profile.state} icon={<MapPin className="h-4 w-4 opacity-0"/>} /> {/* Placeholder icon for alignment */}
+                <DetailItem label="State/Province" value={profile.state} icon={<MapPin className="h-4 w-4 opacity-0"/>} /> 
                 <DetailItem label="Preferred Language" value={languageLabel} icon={<LanguagesIcon className="h-4 w-4"/>} />
+                <DetailItem label="Preferred Learning Style" value={learningStyleLabel} icon={<Palette className="h-4 w-4"/>} />
                 <DetailItem label="Primary Focus" value={educationCategoryLabel} icon={<GraduationCap className="h-4 w-4"/>} />
                 
                 {profile.educationCategory === "board" && profile.educationQualification.boardExams && (

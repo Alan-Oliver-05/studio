@@ -1,5 +1,5 @@
 
-import type { TaskPriority } from "@/types";
+import type { TaskPriority, LearningStyle } from "@/types";
 
 export const GENDERS = [
   { value: "male", label: "Male" },
@@ -30,6 +30,14 @@ export const LANGUAGES = [
     { value: "mr", label: "Marathi" },
     { value: "bn", label: "Bengali" },
     // Add more languages
+];
+
+export const LEARNING_STYLES: { value: LearningStyle, label: string }[] = [
+    { value: "visual", label: "Visual (Graphs, Diagrams, Images)" },
+    { value: "auditory", label: "Auditory (Listening, Discussions)" },
+    { value: "reading_writing", label: "Reading/Writing (Text, Notes)" },
+    { value: "kinesthetic", label: "Kinesthetic (Hands-on, Interactive)" },
+    { value: "balanced", label: "Balanced (Mix of styles)" },
 ];
 
 

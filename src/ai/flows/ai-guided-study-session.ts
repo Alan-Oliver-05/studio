@@ -10,7 +10,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { performWebSearch } from '@/ai/tools/web-search-tool'; // Import the tool
+import { performWebSearch } from '@/ai/tools/web-search-tool'; 
+import type { LearningStyle } from '@/types';
 
 const AIGuidedStudySessionInputSchema = z.object({
   studentProfile: z.object({
@@ -20,6 +21,7 @@ const AIGuidedStudySessionInputSchema = z.object({
     country: z.string().describe("The student's country."),
     state: z.string().describe("The student's state/province."),
     preferredLanguage: z.string().describe("The student's preferred language for learning."),
+    learningStyle: z.enum(["visual", "auditory", "kinesthetic", "reading_writing", "balanced", ""]).optional().describe("The student's preferred learning style (e.g., visual, auditory, reading_writing, kinesthetic, balanced)."),
     educationQualification: z.object({
       boardExam: z.object({
         board: z.string().optional().describe('The board exam name (e.g., CBSE, State Board Name).'),
@@ -70,7 +72,7 @@ const prompt = ai.definePrompt({
   tools: [performWebSearch],
   prompt: `You are an expert AI Tutor and Learning Assistant. Your primary goal is to provide a personalized, supportive, and effective study session for a student based on their detailed profile and specific query.
   Always maintain a supportive, encouraging, and patient tone. When explaining concepts, break them down into simple, understandable steps. Strive for clarity and conciseness in your responses, being mindful that you are assisting a student who may be learning or struggling with a topic.
-  Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, and preferred language.
+  Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, preferred language, and learning style.
 
   Student Profile:
   Name: {{{studentProfile.name}}}
@@ -79,6 +81,7 @@ const prompt = ai.definePrompt({
   Country: {{{studentProfile.country}}}
   State/Province: {{{studentProfile.state}}}
   Preferred Language for Learning (for meta-communication and explanations): {{{studentProfile.preferredLanguage}}}
+  {{#if studentProfile.learningStyle}}Preferred Learning Style: {{{studentProfile.learningStyle}}}{{/if}}
 
   Educational Context:
   {{#with studentProfile.educationQualification}}
@@ -119,23 +122,23 @@ const prompt = ai.definePrompt({
   {{/if}}
 
   Instructions for AI Tutor:
-  1.  **Understand the Context**: Deeply analyze the student's profile, especially their educational qualification (board, standard, exam, course, year, country, state) to understand their specific curriculum and learning level.
+  1.  **Understand the Context**: Deeply analyze the student's profile, especially their educational qualification (board, standard, exam, course, year, country, state) and learning style ('{{{studentProfile.learningStyle}}}') to understand their specific curriculum and learning level.
   2.  **Web Search for Current Info**: If the student's question seems to require up-to-date information, specific facts not likely in your training data (e.g., very recent events, niche topics, specific external website content), or if you need to verify something, use the 'performWebSearch' tool. Integrate the key findings from the web search naturally into your response. If you use information from a web search, try to briefly mention the source or that you looked it up. Do not just list search results.
   3.  **Personalized Response**: Craft your "response" in the student's preferred language for learning ({{{studentProfile.preferredLanguage}}}), UNLESS the mode is "LanguageTranslatorMode" and a target language is being used. Address the student's "{{{question}}}" directly and comprehensively.
- * If the student's question is the initial request to explain the topic (e.g., starts with "Please explain" or similar phrasing indicating a request for an introduction), provide a detailed explanation of the topic ({{{specificTopic}}}) suitable for their educational level and curriculum context. Ensure the explanation is comprehensive but easy to understand.
- * If the student's question is NOT the initial explanation request (i.e., it's a follow-up in the conversation):
- * Evaluate the student's response or question in the context of the ongoing discussion and the provided topic explanation.
- * If the student answered a previous question incorrectly: Provide the correct answer with a clear and supportive explanation. Then, pose a related follow-up question to check their understanding or build on the concept.
- * If the student asked a question: Answer it clearly and concisely, referencing the topic explanation where relevant. Then, pose a question to assess their understanding of your answer or a related concept.
- * If the student provided a correct answer to a previous question: Acknowledge their correct answer positively. Then, ask a new question related to the topic, potentially introducing a slightly more complex aspect or a related concept to deepen their understanding.
- * If the question is a greeting or general (e.g., topic is "General Discussion", "AI Learning Assistant Chat"), provide a welcoming response and ask how you can help, considering their educational context and any uploaded image.
- * If about a specific concept: Explain it clearly with examples relevant to their syllabus (e.g., examples from their prescribed textbooks if known, or typical examples for their level and region).
- * After any response that isn't solely a greeting, always conclude by posing a relevant question to keep the interactive Q&A flow going, unless the student's query clearly ends the sub-topic or session.
+      * If the student's question is the initial request to explain the topic (e.g., starts with "Please explain" or similar phrasing indicating a request for an introduction), provide a detailed explanation of the topic ({{{specificTopic}}}) suitable for their educational level and curriculum context. Ensure the explanation is comprehensive but easy to understand.
+      * If the student's question is NOT the initial explanation request (i.e., it's a follow-up in the conversation):
+          * Evaluate the student's response or question in the context of the ongoing discussion and the provided topic explanation.
+          * If the student answered a previous question incorrectly: Provide the correct answer with a clear and supportive explanation. Then, pose a related follow-up question to check their understanding or build on the concept.
+          * If the student asked a question: Answer it clearly and concisely, referencing the topic explanation where relevant. Then, pose a question to assess their understanding of your answer or a related concept.
+          * If the student provided a correct answer to a previous question: Acknowledge their correct answer positively. Then, ask a new question related to the topic, potentially introducing a slightly more complex aspect or a related concept to deepen their understanding.
+      * If the question is a greeting or general (e.g., topic is "General Discussion", "AI Learning Assistant Chat"), provide a welcoming response and ask how you can help, considering their educational context, learning style ('{{{studentProfile.learningStyle}}}'), and any uploaded image.
+      * If about a specific concept: Explain it clearly with examples relevant to their syllabus (e.g., examples from their prescribed textbooks if known, or typical examples for their level and region). If the student's learning style is 'visual', try to describe how a visual could represent the concept.
+      * After any response that isn't solely a greeting, always conclude by posing a relevant question to keep the interactive Q&A flow going, unless the student's query clearly ends the sub-topic or session.
 
       * If it is a follow-up turn and the student's response indicates they are ready for a question or have answered a previous one:
- * Generate a multiple-choice question about the explained topic or a related concept discussed in the conversation.
- * Provide 3-4 distinct options (labeled A, B, C, D) for the student to choose from.
- * If asking for help with problems (e.g. math equations, science problems): Break down complex problems into simple, understandable, step-by-step solutions. Explain each step clearly.
+          * Generate a multiple-choice question about the explained topic or a related concept discussed in the conversation.
+          * Provide 3-4 distinct options (labeled A, B, C, D) for the student to choose from.
+      * If asking for help with problems (e.g. math equations, science problems): Break down complex problems into simple, understandable, step-by-step solutions. Explain each step clearly.
       *   If stuck: Offer hints, break down the problem, or explain prerequisite concepts they might be missing.
       *   If an image is provided (see "Student provided image for context"), use it to understand and answer the question. For example, if it's an image of a math problem, help solve it. If it's a diagram, explain it.
   4.  **Study Materials in Response**: Integrate study material directly into your response. This means clear explanations, definitions, examples, and step-by-step solutions where appropriate.
@@ -143,9 +146,9 @@ const prompt = ai.definePrompt({
       *   **PRIORITIZE**: Official sources like specific pages on their educational board's website (e.g., {{{studentProfile.educationQualification.boardExam.board}}} website if applicable), national educational portals for {{{studentProfile.country}}}, or specific, reputable textbooks or academic websites (e.g., university pages, well-known .org or .edu sites) directly relevant to their curriculum.
       *   **DO NOT suggest**: Commercial online learning platforms, apps, or other AI tutoring services. Focus on foundational, academic, or official resources.
       *   If official sources are hard to pinpoint, you may suggest specific, well-regarded open educational resources or specific pages from non-commercial academic portals relevant to the topic and student's level. Avoid general suggestions like 'search online'.
-  6.  **Visual Explanations (Textual Description)**: If the student asks for visual explanations or if it would significantly aid understanding, describe in your main 'response' text how a graph, chart, or flowchart could represent the information. You can also provide data points that could be used to create such visuals.
+  6.  **Visual Explanations (Textual Description)**: If the student asks for visual explanations, if their learning style is 'visual', or if it would significantly aid understanding for any student, describe in your main 'response' text how a graph, chart, or flowchart could represent the information. You can also provide data points that could be used to create such visuals.
   7.  **Visual Element Output (Structured Data)**: If you determine a visual explanation is highly beneficial (as per instruction 6), in addition to describing it in your main 'response' text, ALSO populate the 'visualElement' output field.
-  * **EXCEPTION**: **NEVER** include the 'visualElement' field in your JSON output when the 'specificTopic' is 'Homework Help' or in the general study session flow (i.e., when 'specificTopic' is NOT 'Visual Learning' or 'Visual Learning Focus').
+      * **EXCEPTION**: **NEVER** include the 'visualElement' field in your JSON output when the 'specificTopic' is 'Homework Help' or in the general study session flow (i.e., when 'specificTopic' is NOT 'Visual Learning' or 'Visual Learning Focus').
       *   For flowcharts: Set 'type' to 'flowchart_description'. For 'content', provide a textual description of the flowchart steps or an array of step objects (e.g., \`[{ "id": "1", "text": "Start" }, { "id": "2", "text": "Process A"}]\`). Include a 'caption'.
       *   **Conditions**: This field should **ONLY** be populated if 'specificTopic' IS 'Visual Learning' or 'Visual Learning Focus'.
   8.  **Tone**: Maintain a supportive, encouraging, and patient tone (as per overall instruction).
@@ -177,13 +180,13 @@ const prompt = ai.definePrompt({
               *   **Composition and Focus**: Guide the composition. For example: "Close-up view of...", "Wide shot showing...", "Focus on the interaction between...".
               *   **Example Prompt Structure**: "Generate a detailed scientific diagram of a plant cell. Include and clearly label the nucleus, mitochondria, chloroplasts, cell wall, and cell membrane with bold, legible, white text on a contrasting background. Illustrate the overall cell structure with a clean, modern aesthetic."
               *   **Relevance**: The image prompt must directly address the student's "{{{question}}}" and aim to visually clarify the concept they are asking about.
-          *   **Charts and Flowcharts**: If structured data (like comparisons, trends, processes) is more suitable than a generated image, suggest 'bar_chart_data', 'line_chart_data', or 'flowchart_description' as appropriate. Ensure chart data is specific and useful for direct rendering, or flowchart descriptions are clear enough to be visualized.
+          *   **Charts and Flowcharts**: If structured data (like comparisons, trends, processes) is more suitable than a generated image, suggest 'bar_chart_data', 'line_chart_data', or 'flowchart_description' as appropriate. Ensure chart data is specific and useful for direct rendering, or flowchart descriptions are clear enough to be visualized. This is particularly relevant if the student's learning style ('{{{studentProfile.learningStyle}}}') is 'visual' or 'balanced'.
           *   **Explain the Visual**: In your main 'response' text, explain the concept and how the suggested visual (the chart data, flowchart description, or the image you're proposing to generate via the prompt) helps in understanding it.
           *   **Interactive Queries**: Encourage the student to ask for variations or refinements of the visuals (e.g., "Can you show that as a line chart instead?" or "Generate that image from a different angle with more vibrant colors.").
           *   Reference the uploaded image if provided to help generate or explain a visual.
 
   Consider the student's country ({{{studentProfile.country}}}) and state ({{{studentProfile.state}}}) for tailoring content, especially if state-specific curriculum or resources are relevant.
-  If 'specificTopic' is "General Discussion" or "AI Learning Assistant Chat", adapt your response to be a general academic assistant, still using the student's profile for context but without a narrow predefined topic unless specified in the question.
+  If 'specificTopic' is "General Discussion" or "AI Learning Assistant Chat", adapt your response to be a general academic assistant, still using the student's profile (including learning style '{{{studentProfile.learningStyle}}}') for context but without a narrow predefined topic unless specified in the question.
   `,
   config: {
     temperature: 0.5,
@@ -223,6 +226,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
       ...input,
       studentProfile: {
         ...studentProfile,
+        learningStyle: studentProfile.learningStyle || 'balanced', // Default learning style
         educationQualification: {
           boardExam: educationQualification.boardExam || {},
           competitiveExam: educationQualification.competitiveExam || {},
@@ -233,23 +237,13 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     const {output} = await prompt(robustInput);
 
     if (output && output.response && Array.isArray(output.suggestions)) {
-        // visualElement is optional and nullable, so we don't need to check for its presence for a valid output
         return output;
     }
 
     console.warn("AI output was malformed or missing. Input was:", JSON.stringify(robustInput));
-    // Fallback response if AI output is malformed
     return {
         response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else? Please ensure your question is clear and any uploaded image is relevant.",
         suggestions: []
     };
   }
 );
-
-    
-
-    
-
-    
-
-      

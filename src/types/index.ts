@@ -24,6 +24,7 @@ export interface EducationQualification {
 }
 
 export type EducationCategory = 'board' | 'competitive' | 'university' | 'other' | '';
+export type LearningStyle = 'visual' | 'auditory' | 'kinesthetic' | 'reading_writing' | 'balanced' | '';
 
 export interface UserProfile {
   id?: string; // For potential future DB use
@@ -33,6 +34,7 @@ export interface UserProfile {
   country: string;
   state: string;
   preferredLanguage: string;
+  learningStyle?: LearningStyle; // Added learning style
   educationCategory: EducationCategory;
   educationQualification: EducationQualification;
 }
@@ -115,6 +117,7 @@ export interface InteractiveQAndAInput {
     age: number; // Ensure it's number here for AI
     country: string;
     preferredLanguage: string;
+    learningStyle?: LearningStyle;
     educationQualification?: {
       boardExam?: { board?: string; standard?: string };
       competitiveExam?: { examType?: string; specificExam?: string };
