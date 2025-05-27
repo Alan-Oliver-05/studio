@@ -51,7 +51,7 @@ export type InteractiveQAndAInput = z.infer<typeof InteractiveQAndAInputSchema>;
 
 const InteractiveQAndAOutputSchema = z.object({
   question: z.string().describe('The next question posed by the AI tutor, or a concluding remark if stage is "completed". If a multiple-choice question, include options A, B, C, D.'),
-  feedback: z.string().optional().describe('Concise and encouraging feedback on the student\'s answer (if provided). Should be positive for correct answers or explanatory for incorrect ones. For new stages, it can be an introduction.'),
+  feedback: z.string().optional().describe('Concise and encouraging feedback on the student\'s answer (if provided). Should be positive for correct answers or explanatory for incorrect ones. For new stages, it can be an introduction. This field MUST always be populated with a non-empty string unless the stage is "completed" and no final feedback is generated.'),
   isCorrect: z.boolean().optional().describe('Indicates if the student\'s last answer was correct. Null if no answer was provided or not applicable.'),
   suggestions: z.array(z.string()).optional().describe("A list of 1-2 specific suggestions for further study within the current topic/stage, such as related sub-topics or concepts the student might ask about next."),
   nextStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed']).optional()
@@ -94,23 +94,22 @@ const prompt = ai.definePrompt({
   Your Task:
   1.  **Feedback Generation (if 'studentAnswer' is provided)**:
       *   Evaluate the 'studentAnswer' based *only* on the '{{{topic}}}' content (for 'initial_material' and 'deeper_material' stages). Set 'isCorrect'.
-      *   If the answer is correct: 'feedback' MUST be a short, positive affirmation (e.g., "Correct!", "Excellent!", "That's right! Spot on."). Avoid "null" or empty strings.
-      *   If the answer is incorrect or partially correct: 'feedback' MUST gently explain the mistake and clarify the concept, guiding them towards the correct understanding. Avoid "null" or empty strings.
+      *   If the answer is correct: The 'feedback' field MUST contain a short, positive affirmation (e.g., "Correct!", "Excellent!", "That's right! Spot on."). Do not output "null" or an empty string for feedback.
+      *   If the answer is incorrect or partially correct: The 'feedback' field MUST contain a gentle explanation of the mistake and clarify the concept, guiding them towards the correct understanding. Do not output "null" or an empty string for feedback.
       *   All 'feedback' in {{{studentProfile.preferredLanguage}}}.
 
   2.  **Feedback Generation (if NO 'studentAnswer' is provided - e.g., start of session/new stage)**:
       *   Set 'isCorrect' to null.
-      *   'feedback' MUST be a brief stage introduction relevant to the topic and stage. For example:
+      *   The 'feedback' field MUST contain a brief stage introduction relevant to the topic and stage. For example:
           *   If 'initial_material' stage: "Let's start with some foundational questions on '{{{topic}}}'."
           *   If 'deeper_material' stage: "Great! Now, let's explore '{{{topic}}}' a bit more deeply."
           *   If 'out_of_syllabus' stage: "Okay, let's see how '{{{topic}}}' connects to broader ideas."
-      *   Avoid using "null" or empty strings for feedback.
+      *   Do not output "null" or an empty string for feedback.
 
   3.  **Question Style**: CRITICAL: Ask ONE multiple-choice question (MCQ) at a time about the current topic, relevant to the current stage.
-      *   The question itself and its options MUST be part of your 'question' output field.
-      *   Provide 3-4 distinct options (labeled A, B, C, D). Example format:
+      *   The question itself and its options MUST be part of your 'question' output field. Example format:
           "Which of these is a primary color?\\nA) Green\\nB) Orange\\nC) Blue\\nD) Purple"
-      *   Ensure options are plausible and test understanding, not just recall of superficial details.
+      *   Provide 3-4 distinct options. Ensure options are plausible and test understanding, not just recall of superficial details.
 
   4.  **Conciseness & Focus**: Maintain a concise, focused interaction.
 
@@ -149,12 +148,14 @@ const prompt = ai.definePrompt({
   {{/if}}
   {{#if isCompletedStage}}
   **Topic Completed**
-  *   Your 'question' should be a polite concluding remark for the topic '{{{topic}}}' (e.g., "We've covered the key aspects of {{{topic}}}. Well done! You can select a new topic or review this one again."). Do not ask a new question.
-  *   Set 'nextStage' to 'completed' and 'isStageComplete' to true. Feedback and suggestions are optional but can be a final encouragement.
+  *   Your 'question' field output MUST be a polite concluding remark for the topic '{{{topic}}}'. For example: "We've covered the key aspects of {{{topic}}}. Well done! You can select a new topic or use the 'New Q&A on This Topic' button to review it again." Do NOT ask a new question.
+  *   Your 'feedback' field output MUST be a short, positive concluding statement. For example: "Great job completing this topic session!" or "Excellent work on '{{{topic}}}'!". Avoid "null" or empty strings.
+  *   Set 'isCorrect' to null. 'suggestions' should be an empty array or not provided.
+  *   Set 'nextStage' to 'completed' and 'isStageComplete' to true.
   {{/if}}
   `,
   config: {
-    temperature: 0.15, 
+    temperature: 0.15,
      safetySettings: [
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -196,9 +197,12 @@ const interactiveQAndAFlow = ai.defineFlow(
     const {output} = await prompt(stageEnhancedInput);
 
     if (output && output.question) {
+        // Ensure feedback is a non-empty string if present, otherwise undefined
+        const feedbackString = (output.feedback && output.feedback.trim() !== "") ? output.feedback.trim() : undefined;
+
         return {
             question: output.question,
-            feedback: output.feedback || undefined, // Ensure feedback is undefined not null
+            feedback: feedbackString,
             isCorrect: output.isCorrect === undefined ? undefined : output.isCorrect, // Ensure isCorrect is undefined or boolean
             suggestions: output.suggestions || [],
             nextStage: output.nextStage || stageEnhancedInput.currentStage,
