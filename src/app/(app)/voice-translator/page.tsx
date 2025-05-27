@@ -2,51 +2,41 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Languages, RotateCcw, Type } from "lucide-react";
+import { Loader2, AlertTriangle, Mic, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
+import VoiceTranslatorInterface from "@/app/(app)/language-learning/components/voice-translator-interface"; // Re-use the component
 import { getConversationById } from "@/lib/chat-storage";
 
-const DynamicChatInterface = dynamic(() =>
-  import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
-  {
-    loading: () => <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
-    ssr: false
-  }
-);
+const VOICE_TRANSLATION_TOPIC = "Language Voice Translation";
 
-const TEXT_TRANSLATION_TOPIC = "Language Text Translation"; // Specific topic for storage
-
-export default function TextTranslatorPage() {
+export default function VoiceTranslatorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [chatKey, setChatKey] = useState<string>('');
+  const [chatKey, setChatKey] = useState<string>(Date.now().toString()); // Used as a key to force re-mount
 
   const initializeNewSession = (profileIdentifier: string) => {
     const newTimestamp = Date.now();
-    const newId = `lang-text-${profileIdentifier}-${newTimestamp}`;
+    const newId = `lang-voice-${profileIdentifier}-${newTimestamp}`;
     setCurrentConversationId(newId);
-    setChatKey(newId);
+    setChatKey(newId); // Force re-render of VoiceTranslatorInterface
   };
 
   useEffect(() => {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
       const storedConversation = getConversationById(sessionIdFromQuery);
-      // Ensure we are loading a text translation session
-      if (storedConversation && storedConversation.topic === TEXT_TRANSLATION_TOPIC) {
-        setCurrentConversationId(sessionIdFromQuery);
-        setChatKey(sessionIdFromQuery);
+      if (storedConversation && storedConversation.topic === VOICE_TRANSLATION_TOPIC) {
+          setCurrentConversationId(sessionIdFromQuery);
+          setChatKey(sessionIdFromQuery); // Use session ID as key
       } else {
-        // If sessionId is for a different type or invalid, start a new text session
-        router.replace('/language-learning'); // Clear invalid sessionId from URL
+        router.replace('/voice-translator');
         if (profile) {
-          initializeNewSession(profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
+            initializeNewSession(profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
         }
       }
     } else if (profile) {
@@ -55,20 +45,18 @@ export default function TextTranslatorPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, profile, router]);
 
-
   const handleNewSession = () => {
-    router.push('/language-learning', { scroll: false });
+    router.push('/voice-translator', { scroll: false });
     if (profile) {
       initializeNewSession(profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`);
     }
   };
 
-
   if (profileLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Loading Text Translator...</p>
+        <p className="mt-4 text-muted-foreground">Loading Voice Translator...</p>
       </div>
     );
   }
@@ -79,7 +67,7 @@ export default function TextTranslatorPage() {
         <AlertTriangle className="h-16 w-16 text-destructive mb-6" />
         <h2 className="text-3xl font-semibold mb-3">Profile Required</h2>
         <p className="text-muted-foreground mb-6 max-w-md">
-          To use the Text Translator, we need your profile information. Please complete the onboarding process first.
+          To use the Voice Translator, we need your profile information. Please complete the onboarding process first.
         </p>
         <Button asChild size="lg">
           <Link href="/onboarding">Go to Onboarding</Link>
@@ -88,43 +76,37 @@ export default function TextTranslatorPage() {
     );
   }
 
-   if (!currentConversationId || !chatKey) {
-     return (
-      <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Initializing translator...</p>
-      </div>
-    );
-  }
-  
-  const initialChatMessageTextMode = `Hello ${profile.name}! Welcome to the Text Translator. What text would you like to translate, and to which language? For example: "Translate 'Hello, world!' to Spanish." or "How do I say 'Thank you very much' in French?"`;
+  if (!currentConversationId || !chatKey) {
+    return (
+     <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
+       <Loader2 className="h-12 w-12 animate-spin text-primary" />
+       <p className="mt-4 text-muted-foreground">Initializing voice session...</p>
+     </div>
+   );
+ }
 
   return (
     <div className="h-full flex flex-col pt-0">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 pt-0 mt-0">
         <div className="text-center sm:text-left">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-                <Type className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Text Translator
+                <Mic className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Voice Translator
             </h1>
-            <p className="text-muted-foreground mt-1">Translate typed text between languages.</p>
+            <p className="text-muted-foreground mt-1">Speak and get instant voice translations.</p>
         </div>
         <Button onClick={handleNewSession} variant="outline" className="mt-3 sm:mt-0">
-          <RotateCcw className="mr-2 h-4 w-4" /> New Text Session
+          <RotateCcw className="mr-2 h-4 w-4" /> New Voice Session
         </Button>
       </div>
-
       <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
-         {chatKey && currentConversationId && (
-            <DynamicChatInterface
-                key={chatKey}
+        {profile && currentConversationId && (
+            <VoiceTranslatorInterface
+                key={chatKey} // Use chatKey to force re-mount on new session
                 userProfile={profile}
-                topic={TEXT_TRANSLATION_TOPIC} // Specific topic for text translation storage
                 conversationId={currentConversationId}
-                initialSystemMessage={initialChatMessageTextMode}
-                placeholderText="E.g., Translate 'How are you?' to German"
-                enableImageUpload={false} 
+                topic={VOICE_TRANSLATION_TOPIC}
             />
-         )}
+        )}
       </div>
     </div>
   );

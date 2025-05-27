@@ -4,7 +4,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { getConversations, deleteConversation, updateConversationCustomTitle, getConversationById, saveConversation, formatConversationForAI } from "@/lib/chat-storage";
 import { summarizeConversation } from "@/ai/flows/summarize-conversation";
-import type { Conversation, Message } from "@/types"; // Added Message type
+import type { Conversation, Message } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2, PieChartIcon, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2, PieChartIcon, Sparkles, ChevronDown, ChevronUp, Type as TypeIcon, Mic, MessagesSquare as MessagesSquareIcon, Camera as CameraIcon } from "lucide-react"; // Added new icons
 import { formatDistanceToNow } from 'date-fns';
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -32,7 +32,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Input } from "@/components/ui/input"; // For renaming
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 
@@ -56,6 +56,18 @@ export default function LibraryPage() {
     setIsClient(true); 
   }, []);
 
+  const getGroupNameForConvo = useCallback((convo: Conversation): string => {
+    if (convo.topic === "AI Learning Assistant Chat") return "General AI Tutor";
+    if (convo.topic === "Homework Help") return "Homework Helper";
+    if (convo.topic === "Visual Learning Focus" || convo.topic === "Visual Learning") return "Visual Learning";
+    if (convo.topic === "Language Text Translation") return "Text Translator";
+    if (convo.topic === "Language Voice Translation") return "Voice Translator";
+    if (convo.topic === "Language Conversation Practice") return "Conversation Translator";
+    if (convo.topic === "Language Camera Translation") return "Camera Translator";
+    if (convo.topic === "LanguageTranslatorMode") return "Language Translator (Legacy)"; // Fallback for older language sessions
+    return convo.subjectContext || convo.topic || "Uncategorized Study Session";
+  }, []);
+
   const loadConversations = useCallback(() => {
     if (isClient) {
       setIsLoading(true);
@@ -70,7 +82,7 @@ export default function LibraryPage() {
           groups[groupKey].push(convo);
         });
         setGroupedConversations(groups);
-        // Initially expand the first group if available
+        
         const firstGroupKey = Object.keys(groups)[0];
         if (firstGroupKey && expandedGroups.length === 0) {
             setExpandedGroups([firstGroupKey]);
@@ -83,11 +95,11 @@ export default function LibraryPage() {
         setIsLoading(false);
       }
     }
-  }, [isClient, expandedGroups.length]); // Added expandedGroups.length to dependencies
+  }, [isClient, getGroupNameForConvo, expandedGroups.length]);
 
   useEffect(() => {
     loadConversations();
-  }, [isClient, loadConversations]); // loadConversations is now a dependency
+  }, [isClient, loadConversations]); 
 
   useEffect(() => {
     if (isClient && allConversations.length > 0) {
@@ -162,15 +174,6 @@ export default function LibraryPage() {
     }
   };
   
-  const getGroupNameForConvo = (convo: Conversation): string => {
-    let groupKey = convo.subjectContext || convo.topic || "Uncategorized";
-    if (groupKey === "AI Learning Assistant Chat") groupKey = "General AI Tutor";
-    else if (groupKey === "LanguageTranslatorMode") groupKey = "Language Translator";
-    else if (groupKey === "Homework Help") groupKey = "Homework Helper";
-    else if (groupKey === "Visual Learning Focus" || groupKey === "Visual Learning") groupKey = "Visual Learning";
-    return groupKey;
-  }
-
 
   if (isLoading || !isClient) {
     return (
@@ -197,11 +200,13 @@ export default function LibraryPage() {
 
     if (convo.topic === "Homework Help") baseHref = "/homework-assistant";
     else if (convo.topic === "AI Learning Assistant Chat") baseHref = "/general-tutor";
-    else if (convo.topic === "LanguageTranslatorMode") baseHref = "/language-learning";
+    else if (convo.topic === "Language Text Translation") baseHref = "/language-learning";
+    else if (convo.topic === "Language Voice Translation") baseHref = "/voice-translator";
+    else if (convo.topic === "Language Conversation Practice") baseHref = "/conversation-translator";
+    else if (convo.topic === "Language Camera Translation") baseHref = "/camera-translator";
     else if (convo.topic === "Visual Learning" || convo.topic === "Visual Learning Focus") baseHref = "/visual-learning";
     else if (convo.subjectContext && convo.lessonContext && convo.topic) {
       baseHref = `/study-session/${encodeURIComponent(convo.subjectContext)}`;
-      // No need to pass lesson/topic in query if session ID handles full context restoration
     } else {
         baseHref = `/study-session/${encodeURIComponent(convo.subjectContext || convo.topic || 'general')}`;
     }
@@ -209,21 +214,27 @@ export default function LibraryPage() {
   };
   
   const sortedGroupNames = Object.keys(groupedConversations).sort((a, b) => {
-    // Prioritize specific groups
-    const priority = ["General AI Tutor", "Homework Helper", "Language Translator", "Visual Learning"];
+    const priority = [
+      "General AI Tutor", "Homework Helper", "Visual Learning", 
+      "Text Translator", "Voice Translator", "Conversation Translator", "Camera Translator"
+    ];
     const indexA = priority.indexOf(a);
     const indexB = priority.indexOf(b);
     if (indexA !== -1 && indexB !== -1) return indexA - indexB;
     if (indexA !== -1) return -1;
     if (indexB !== -1) return 1;
-    return a.localeCompare(b); // Fallback to alphabetical
+    return a.localeCompare(b);
   });
 
   const getGroupIcon = (groupName: string) => {
     if (groupName === "General AI Tutor") return <Brain className="mr-2 h-5 w-5 text-blue-500" />;
     if (groupName === "Homework Helper") return <PenSquare className="mr-2 h-5 w-5 text-purple-500" />;
-    if (groupName === "Language Translator") return <Languages className="mr-2 h-5 w-5 text-green-500" />;
     if (groupName === "Visual Learning") return <PieChartIcon className="mr-2 h-5 w-5 text-orange-500" />;
+    if (groupName === "Text Translator") return <TypeIcon className="mr-2 h-5 w-5 text-green-600" />;
+    if (groupName === "Voice Translator") return <Mic className="mr-2 h-5 w-5 text-teal-500" />;
+    if (groupName === "Conversation Translator") return <MessagesSquareIcon className="mr-2 h-5 w-5 text-indigo-500" />;
+    if (groupName === "Camera Translator") return <CameraIcon className="mr-2 h-5 w-5 text-pink-500" />;
+    if (groupName.includes("Translator")) return <Languages className="mr-2 h-5 w-5 text-green-500" />; // Fallback for legacy
     return <BookCopy className="mr-2 h-5 w-5 text-gray-500" />;
   };
 
@@ -232,14 +243,22 @@ export default function LibraryPage() {
     const firstUserMessage = convo.messages.find(m => m.sender === 'user')?.text.substring(0, 50);
     const dateSuffix = `(${new Date(convo.lastUpdatedAt).toLocaleDateString([], {month: 'short', day: 'numeric'})})`;
     
-    if (firstUserMessage) return `${firstUserMessage}... ${dateSuffix}`;
-
+    if (firstUserMessage && !groupName.includes("Translator") && groupName !== "General AI Tutor" && groupName !== "Homework Helper" && groupName !== "Visual Learning") {
+      return `${firstUserMessage}... ${dateSuffix}`;
+    }
+    
+    // For specific functional groups, use a more descriptive default
     if (groupName === "General AI Tutor") return `General Chat ${dateSuffix}`;
-    if (groupName === "Language Translator") return `Translation Session ${dateSuffix}`;
+    if (groupName === "Text Translator") return `Text Translation ${dateSuffix}`;
+    if (groupName === "Voice Translator") return `Voice Translation ${dateSuffix}`;
+    if (groupName === "Conversation Translator") return `Conversation Practice ${dateSuffix}`;
+    if (groupName === "Camera Translator") return `Camera Translation ${dateSuffix}`;
     if (groupName === "Homework Helper") return `Homework Session ${dateSuffix}`;
     if (groupName === "Visual Learning") return `Visual Session ${dateSuffix}`;
     
-    return convo.topic || `Session ${dateSuffix}`;
+    // Fallback for study sessions or other categorized chats
+    if (convo.topic && convo.topic !== groupName) return `${convo.topic} ${dateSuffix}`;
+    return `${groupName} Session ${dateSuffix}`;
   };
 
   return (
@@ -305,16 +324,22 @@ export default function LibraryPage() {
                             </div>
                         ) : (
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full">
-                          <div className="flex-grow mb-2 sm:mb-0 min-w-0"> {/* Added min-w-0 */}
+                          <div className="flex-grow mb-2 sm:mb-0 min-w-0">
                             <h3 className="text-sm md:text-base font-medium text-foreground truncate pr-2" title={getConversationDisplayTitle(convo, groupName)}>
                               {getConversationDisplayTitle(convo, groupName)}
                             </h3>
                             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
-                                {convo.subjectContext && convo.subjectContext !== groupName && (
+                                {convo.subjectContext && convo.subjectContext !== groupName && convo.subjectContext !== convo.topic && (
                                     <span className="flex items-center"><Layers className="mr-1 h-3 w-3"/>S: {convo.subjectContext}</span>
                                 )}
-                                {convo.lessonContext && convo.lessonContext !== convo.topic && (
+                                {convo.lessonContext && convo.lessonContext !== convo.topic && convo.lessonContext !== groupName && (
                                     <span className="flex items-center"><BookCopy className="mr-1 h-3 w-3"/>L: {convo.lessonContext}</span>
+                                )}
+                                {/* Show topic only if it's different from groupName and not part of a structured study session displayed above */}
+                                {convo.topic && convo.topic !== groupName && convo.topic !== convo.subjectContext && convo.topic !== convo.lessonContext && (
+                                  (groupName.includes("Translator") || groupName === "General AI Tutor" || groupName === "Homework Helper" || groupName === "Visual Learning") 
+                                  ? null // Don't show topic if it's the main functional topic itself
+                                  : <span className="flex items-center"><FileText className="mr-1 h-3 w-3"/>Topic: {convo.topic}</span>
                                 )}
                                 <span className="flex items-center"><CalendarDays className="mr-1 h-3 w-3" />{timeAgo[convo.id] || 'Loading...'}</span>
                                 <span className="flex items-center"><MessageSquareText className="mr-1 h-3 w-3" />{convo.messages.length} msg</span>

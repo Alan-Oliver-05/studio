@@ -16,6 +16,10 @@ import {
   BarChartBig,
   PieChartIcon,
   FileText,
+  Type as TypeIcon, // Renamed to avoid conflict
+  Mic,
+  MessagesSquare, // Corrected from MessageSquarePlus
+  Camera,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -28,16 +32,19 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useUserProfile } from "@/contexts/user-profile-context"; // Import useUserProfile
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"; // Import Avatar components
-import { UserCircle2 } from "lucide-react"; // Import UserCircle2 for fallback
+import { useUserProfile } from "@/contexts/user-profile-context";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserCircle2 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/general-tutor", icon: Brain, label: "AI Learning Assistant" },
   { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
   { href: "/visual-learning", icon: PieChartIcon, label: "Visual Learning" },
-  { href: "/language-learning", icon: Languages, label: "Language Translator" },
+  { href: "/language-learning", icon: TypeIcon, label: "Text Translator" }, // Updated
+  { href: "/voice-translator", icon: Mic, label: "Voice Translator" }, // New
+  { href: "/conversation-translator", icon: MessagesSquare, label: "Conversation Translator" }, // New
+  { href: "/camera-translator", icon: Camera, label: "Camera Translator" }, // New
   { href: "/summarizer", icon: FileText, label: "AI Note Taker" },
   { href: "/todo", icon: ListChecks, label: "To-Do List" }, 
   { href: "/notepad", icon: NotebookText, label: "Note Pad" },
@@ -53,12 +60,9 @@ export function SidebarNav() {
   const { profile } = useUserProfile(); 
   const { state: sidebarState, isMobile } = useSidebar(); 
 
-  const isNavItemActive = (itemHref: string, isDynamic?: boolean) => {
-    if (itemHref === "/dashboard") return pathname === itemHref || pathname === "/"; // Handle root path as dashboard
-    if (isDynamic) {
-      return pathname.startsWith(itemHref);
-    }
-    return pathname === itemHref;
+  const isNavItemActive = (itemHref: string) => {
+    if (itemHref === "/dashboard") return pathname === itemHref || pathname === "/";
+    return pathname.startsWith(itemHref); // Using startsWith for dynamic routes or sub-routes
   };
   
   const sidebarOpen = !isMobile && sidebarState === "expanded";
@@ -74,7 +78,7 @@ export function SidebarNav() {
       <SidebarContent className="flex-grow p-2">
         <SidebarMenu>
           {navItems.map((item) => {
-            const isActive = isNavItemActive(item.href, item.isDynamic);
+            const isActive = isNavItemActive(item.href);
             return (
             <SidebarMenuItem key={item.href}>
               <Link href={item.href} legacyBehavior passHref>
@@ -132,7 +136,7 @@ export function SidebarNav() {
   );
 }
 
-// Helper to find education category label (can be moved to constants or utils if needed elsewhere)
+// Helper to find education category label
 const EDUCATION_CATEGORIES = [
   { value: "board", label: "School Learner" },
   { value: "competitive", label: "Exam Aspirant" },
