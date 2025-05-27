@@ -2,7 +2,7 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Languages, RotateCcw, Type as TypeIcon, Mic, MessagesSquare, Camera as CameraIcon } from "lucide-react"; // Added TypeIcon
+import { Loader2, AlertTriangle, Languages, RotateCcw, Type as TypeIcon, Mic, MessagesSquare, Camera as CameraIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
@@ -10,7 +10,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { getConversationById } // Assuming this function exists
+import { getConversationById } from "@/lib/chat-storage";
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -42,19 +42,20 @@ interface ModeConfig {
 
 const modes: ModeConfig[] = [
   {
-    id: "text", label: "Text", icon: TypeIcon, description: "Translate typed text.", storageTopic: "Language Text Translation",
-    initialMessage: "Welcome to Text Translator! Type text and specify target language.", enableImageUpload: false
+    id: "text", label: "Text", icon: TypeIcon, description: "Translate typed text and get contextual explanations.", storageTopic: "Language Text Translation",
+    initialMessage: "Welcome to Text Translator! Type text and specify target language (e.g., 'Translate hello to Spanish'). I can also explain grammar or usage.", enableImageUpload: false
   },
   {
-    id: "voice", label: "Voice", icon: Mic, description: "Speak and get voice translations.", storageTopic: "Language Voice Translation"
+    id: "voice", label: "Voice", icon: Mic, description: "Speak and get instant voice translations.", storageTopic: "Language Voice Translation"
+    // VoiceTranslatorInterface handles its own initial setup
   },
   {
-    id: "conversation", label: "Conversation", icon: MessagesSquare, description: "Practice bilingual dialogues.", storageTopic: "Language Conversation Practice",
-    initialMessage: "Let's practice a conversation! Tell me the scenario, your role/language, and my role/language.", enableImageUpload: false
+    id: "conversation", label: "Conversation", icon: MessagesSquare, description: "Practice bilingual dialogues with an AI partner.", storageTopic: "Language Conversation Practice",
+    initialMessage: "Let's practice a conversation! Tell me the scenario, your role/language, and my role/language. For example: 'I want to order food. I'll be the customer in English, and you be the waiter in French.'", enableImageUpload: false
   },
   {
-    id: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images.", storageTopic: "Language Camera Translation",
-    initialMessage: "Upload an image with text and specify the target language.", enableImageUpload: true
+    id: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images captured or uploaded.", storageTopic: "Language Camera Translation",
+    initialMessage: "Upload an image with text, and I'll do my best to translate it. Please also specify the target language if it's not obvious.", enableImageUpload: true
   },
 ];
 
@@ -65,20 +66,19 @@ export default function LanguageLearningPage() {
 
   const [activeMode, setActiveMode] = useState<TranslationMode>("text");
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [chatKey, setChatKey] = useState<string>(Date.now().toString()); // Key to force re-mount components
+  const [chatKey, setChatKey] = useState<string>(Date.now().toString());
 
   const getStorageTopicForMode = (mode: TranslationMode): string => {
     return modes.find(m => m.id === mode)?.storageTopic || "Language Translator General";
   };
-  
+
   const initializeNewSession = (mode: TranslationMode) => {
     if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
       const newTimestamp = Date.now();
-      const newId = `lang-${mode}-${profileIdentifier}-${newTimestamp}`;
+      const newId = `${getStorageTopicForMode(mode).replace(/\s+/g, '-').toLowerCase()}-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(newId);
-      setChatKey(newId); // Force re-render of child components
-      // Update URL to remove sessionId but keep mode
+      setChatKey(newId);
       router.push(`/language-learning?mode=${mode}`, { scroll: false });
     }
   };
@@ -86,50 +86,50 @@ export default function LanguageLearningPage() {
   useEffect(() => {
     const modeFromQuery = searchParams.get('mode') as TranslationMode | null;
     const sessionIdFromQuery = searchParams.get('sessionId');
+    let targetMode = modeFromQuery || activeMode; // Prioritize query, then current state
 
-    let currentEffectiveMode = activeMode;
-    if (modeFromQuery && modes.map(m => m.id).includes(modeFromQuery)) {
-      currentEffectiveMode = modeFromQuery;
-      if (activeMode !== modeFromQuery) {
-        setActiveMode(modeFromQuery);
-      }
-    }
-    
     if (sessionIdFromQuery) {
       const conversation = getConversationById(sessionIdFromQuery);
       if (conversation) {
-        const foundMode = modes.find(m => m.storageTopic === conversation.topic);
-        if (foundMode && foundMode.id !== currentEffectiveMode) {
-           currentEffectiveMode = foundMode.id;
-           setActiveMode(foundMode.id);
+        const foundModeConfig = modes.find(m => m.storageTopic === conversation.topic);
+        if (foundModeConfig) {
+            targetMode = foundModeConfig.id; // Mode from stored conversation takes precedence
         }
         setCurrentConversationId(sessionIdFromQuery);
         setChatKey(sessionIdFromQuery);
-        // Ensure URL reflects the correct mode if derived from session or different from query
-        if (searchParams.get('mode') !== currentEffectiveMode) {
-            router.replace(`/language-learning?sessionId=${sessionIdFromQuery}&mode=${currentEffectiveMode}`, { scroll: false });
+        // Ensure URL reflects the authoritative mode from conversation if different
+        if (targetMode !== (searchParams.get('mode') || 'text')) {
+            router.replace(`/language-learning?sessionId=${sessionIdFromQuery}&mode=${targetMode}`, { scroll: false });
         }
-
       } else {
-        // Invalid sessionId, initialize new session for the current/default mode
-        initializeNewSession(currentEffectiveMode);
+        // Invalid sessionId, initialize new session for targetMode
+        initializeNewSession(targetMode);
       }
     } else {
-      // No sessionId, initialize new session for the current/default mode
-      initializeNewSession(currentEffectiveMode);
+      // No sessionId, initialize new session for targetMode (from URL or default 'text')
+      initializeNewSession(targetMode);
+    }
+     if (activeMode !== targetMode) { // Sync local activeMode state if needed
+        setActiveMode(targetMode);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, profile]); // Rerun if searchParams or profile changes
+  }, [searchParams, profile]); // Removed activeMode from dependencies to avoid loops
 
   const handleModeChange = (newMode: TranslationMode) => {
-    // setActiveMode(newMode); // setActiveMode is now handled by useEffect based on URL
-    initializeNewSession(newMode); // This will update the URL, triggering useEffect
+    // Only re-initialize if mode actually changes and there's no active session restoring
+    if (newMode !== activeMode || !searchParams.get('sessionId')) {
+      initializeNewSession(newMode);
+    } else {
+      // If mode is the same but we want to ensure URL reflects it (e.g. after clearing session ID)
+      router.push(`/language-learning?mode=${newMode}`, { scroll: false });
+      setActiveMode(newMode); // Ensure local state is also set
+    }
   };
 
   const handleNewSessionClick = () => {
     initializeNewSession(activeMode);
   };
-  
+
   const activeModeConfig = modes.find(m => m.id === activeMode) || modes[0];
 
   if (profileLoading) {
@@ -155,7 +155,7 @@ export default function LanguageLearningPage() {
       </div>
     );
   }
-  
+
    if (!currentConversationId || !chatKey) {
      return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
@@ -163,6 +163,10 @@ export default function LanguageLearningPage() {
         <p className="mt-4 text-muted-foreground">Initializing translator...</p>
       </div>
     );
+  }
+
+  const getInitialMessageForMode = (modeConfig: ModeConfig) => {
+    return modeConfig.initialMessage?.replace('${profile.name}', profile.name) || `Hello ${profile.name}! Welcome to ${modeConfig.label} Translation.`;
   }
 
   return (
@@ -179,35 +183,42 @@ export default function LanguageLearningPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {modes.map((mode) => (
           <Card
             key={mode.id}
             onClick={() => handleModeChange(mode.id)}
             className={cn(
-              "cursor-pointer hover:shadow-lg transition-shadow border-2",
+              "cursor-pointer hover:shadow-lg transition-shadow border-2 flex flex-col",
               activeMode === mode.id ? "border-primary ring-2 ring-primary/50 bg-primary/5" : "border-border bg-card"
             )}
+            tabIndex={0}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleModeChange(mode.id)}
+            role="button"
+            aria-pressed={activeMode === mode.id}
+            aria-label={`Switch to ${mode.label} translation mode`}
           >
             <CardHeader className="flex flex-col items-center justify-center p-3 sm:p-4 text-center">
               <mode.icon className={cn("h-6 w-6 sm:h-7 sm:h-7 mb-1.5", activeMode === mode.id ? "text-primary" : "text-muted-foreground")} />
               <CardTitle className="text-xs sm:text-sm font-semibold">{mode.label}</CardTitle>
-              <CardDescription className="text-xs hidden md:block mt-0.5">{mode.description}</CardDescription>
             </CardHeader>
+            <CardContent className="p-3 pt-0 text-center flex-grow">
+                 <CardDescription className="text-xs">{mode.description}</CardDescription>
+            </CardContent>
           </Card>
         ))}
       </div>
-      
+
       <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
         {profile && currentConversationId && chatKey && (
           <>
             {activeMode === "text" && (
               <DynamicChatInterface
-                key={chatKey} 
+                key={chatKey}
                 userProfile={profile}
                 topic={getStorageTopicForMode("text")}
                 conversationId={currentConversationId}
-                initialSystemMessage={modes.find(m=>m.id==='text')?.initialMessage?.replace('${profile.name}', profile.name) || `Hello ${profile.name}! Welcome to Text Translation.`}
+                initialSystemMessage={getInitialMessageForMode(modes.find(m=>m.id==='text')!)}
                 placeholderText="E.g., Translate 'How are you?' to German"
                 enableImageUpload={false}
               />
@@ -226,7 +237,7 @@ export default function LanguageLearningPage() {
                 userProfile={profile}
                 topic={getStorageTopicForMode("conversation")}
                 conversationId={currentConversationId}
-                initialSystemMessage={modes.find(m=>m.id==='conversation')?.initialMessage?.replace('${profile.name}', profile.name) || `Hello ${profile.name}! Let's practice a conversation.`}
+                initialSystemMessage={getInitialMessageForMode(modes.find(m=>m.id==='conversation')!)}
                 placeholderText="Start the conversation or give instructions..."
                 enableImageUpload={false}
               />
@@ -237,7 +248,7 @@ export default function LanguageLearningPage() {
                 userProfile={profile}
                 topic={getStorageTopicForMode("camera")}
                 conversationId={currentConversationId}
-                initialSystemMessage={modes.find(m=>m.id==='camera')?.initialMessage?.replace('${profile.name}', profile.name) || `Hello ${profile.name}! Upload an image for translation.`}
+                initialSystemMessage={getInitialMessageForMode(modes.find(m=>m.id==='camera')!)}
                 placeholderText="Upload an image and specify target language..."
                 enableImageUpload={true}
               />
@@ -248,4 +259,5 @@ export default function LanguageLearningPage() {
     </div>
   );
 }
+
     
