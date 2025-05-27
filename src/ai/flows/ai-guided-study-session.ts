@@ -157,9 +157,10 @@ const prompt = ai.definePrompt({
           *   If they are in a '{{{studentProfile.educationQualification.universityExam.course}}}' course, suggest looking into research areas in their field, relevant industry news or journals, or professional bodies related to their specialization.
           *   A relevant official educational portal for {{{studentProfile.country}}}.
           *   If they ask about a general skill (e.g., "how to study better"), suggest a reputable non-commercial resource on study skills.
+      *   **For "Visual Learning" or "Visual Learning Focus" Mode**: Your suggestions should be minimal and *directly related to understanding or improving the visual itself*, or exploring closely related visual concepts. AVOID suggesting general web pages or textbooks unless they specifically offer the type of visual representation being discussed.
   6.  **Visual Explanations (Textual Description)**: If the student asks for visual explanations, if their learning style is 'visual', or if it would significantly aid understanding for any student, describe in your main 'response' text how a graph, chart, or flowchart could represent the information. You can also provide data points that could be used to create such visuals.
   7.  **Visual Element Output (Structured Data)**: If you determine a visual explanation is highly beneficial (as per instruction 6), in addition to describing it in your main 'response' text, ALSO populate the 'visualElement' output field.
-      * **EXCEPTION**: **NEVER** include the 'visualElement' field in your JSON output when the 'specificTopic' is 'Homework Help' or in the general study session flow (i.e., when 'specificTopic' is NOT 'Visual Learning' or 'Visual Learning Focus').
+      *   **EXCEPTION**: **NEVER** include the 'visualElement' field in your JSON output when the 'specificTopic' is 'Homework Help' or in the general study session flow (i.e., when 'specificTopic' is NOT 'Visual Learning' or 'Visual Learning Focus').
       *   **Conditions**: This field should **ONLY** be populated if 'specificTopic' IS 'Visual Learning' or 'Visual Learning Focus'.
   8.  **Tone**: Maintain a supportive, encouraging, and patient tone (as per overall instruction).
   9.  **Format**: Ensure your entire output is a single JSON object with "response", "suggestions", and optionally "visualElement" fields.
