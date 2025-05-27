@@ -10,7 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { performWebSearch } from '@/ai/tools/web-search-tool'; 
+import { performWebSearch } from '@/ai/tools/web-search-tool';
 import type { LearningStyle } from '@/types';
 
 const AIGuidedStudySessionInputSchema = z.object({
@@ -49,7 +49,7 @@ export type AIGuidedStudySessionInput = z.infer<typeof AIGuidedStudySessionInput
 
 const VisualElementSchema = z.object({
   type: z.enum(['bar_chart_data', 'line_chart_data', 'flowchart_description', 'image_generation_prompt']).describe('The type of visual element suggested.'),
-  content: z.any().describe('Structured data for charts (e.g., array of objects for bar/line charts), textual description for flowcharts, or a string prompt for image generation.'),
+  content: z.any().describe('Structured data for charts (e.g., array of objects for bar/line charts), structured data for flowcharts (array of step objects), or a string prompt for image generation.'),
   caption: z.string().optional().describe('A brief caption or title for the visual element.'),
 }).describe('A structured representation of a visual aid suggested by the AI.');
 
@@ -133,8 +133,8 @@ const prompt = ai.definePrompt({
           *   If the student provided a correct answer to a previous question: Acknowledge their correct answer positively. Then, ask a new question related to the topic, potentially introducing a slightly more complex aspect or a related concept to deepen their understanding.
       * If the question is a greeting or general, AND (the 'specificTopic' is "General Discussion" OR the 'specificTopic' is "AI Learning Assistant Chat"): Provide a welcoming response. Then, *proactively offer assistance related to their specific educational context*. For example:
         {{#if studentProfile.educationQualification.boardExam.board}} "I see you're preparing for your {{{studentProfile.educationQualification.boardExam.board}}} exams in {{{studentProfile.educationQualification.boardExam.standard}}} standard. How can I assist you with subjects like Math, Science, or another core subject for your curriculum today?"
-        {{else if studentProfile.educationQualification.competitiveExam.examType}} "I'm here to help you prepare for your {{{studentProfile.educationQualification.competitiveExam.examType}}} exam ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}). Is there a particular section or concept you'd like to focus on? Or perhaps you'd like to discuss study strategies or resources for this exam?"
-        {{else if studentProfile.educationQualification.universityExam.universityName}} "Welcome! I can help you with your studies for {{{studentProfile.educationQualification.universityExam.course}}} at {{{studentProfile.educationQualification.universityExam.universityName}}}. What topic or assignment can I assist with? We can also explore career paths or further studies related to your course."
+        {{else if studentProfile.educationQualification.competitiveExam.examType}} "I'm here to help you prepare for your {{{studentProfile.educationQualification.competitiveExam.examType}}} exam ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}). Is there a particular section or concept you'd like to focus on? Or perhaps you'd like to discuss study strategies or resources for this exam? We could also explore career paths related to your exam."
+        {{else if studentProfile.educationQualification.universityExam.universityName}} "Welcome! I can help you with your studies for {{{studentProfile.educationQualification.universityExam.course}}} at {{{studentProfile.educationQualification.universityExam.universityName}}}. What topic or assignment can I assist with? We can also explore career paths or further studies related to your course, or look into current research or industry news in your field."
         {{else}} "How can I assist you with your learning goals today? I can help with general academic queries, or we can focus on something specific if you have it in mind."{{/if}}
         Always consider their learning style ('{{{studentProfile.learningStyle}}}') and any uploaded image.
       * If about a specific concept (and not a general greeting): Explain it clearly with examples relevant to their syllabus (e.g., examples from their prescribed textbooks if known, or typical examples for their level and region). If the student's learning style is 'visual', try to describe how a visual could represent the concept.
@@ -160,7 +160,6 @@ const prompt = ai.definePrompt({
   6.  **Visual Explanations (Textual Description)**: If the student asks for visual explanations, if their learning style is 'visual', or if it would significantly aid understanding for any student, describe in your main 'response' text how a graph, chart, or flowchart could represent the information. You can also provide data points that could be used to create such visuals.
   7.  **Visual Element Output (Structured Data)**: If you determine a visual explanation is highly beneficial (as per instruction 6), in addition to describing it in your main 'response' text, ALSO populate the 'visualElement' output field.
       * **EXCEPTION**: **NEVER** include the 'visualElement' field in your JSON output when the 'specificTopic' is 'Homework Help' or in the general study session flow (i.e., when 'specificTopic' is NOT 'Visual Learning' or 'Visual Learning Focus').
-      *   For flowcharts: Set 'type' to 'flowchart_description'. For 'content', provide a textual description of the flowchart steps or an array of step objects (e.g., \`[{ "id": "1", "text": "Start" }, { "id": "2", "text": "Process A" }]\`). Include a 'caption'.
       *   **Conditions**: This field should **ONLY** be populated if 'specificTopic' IS 'Visual Learning' or 'Visual Learning Focus'.
   8.  **Tone**: Maintain a supportive, encouraging, and patient tone (as per overall instruction).
   9.  **Format**: Ensure your entire output is a single JSON object with "response", "suggestions", and optionally "visualElement" fields.
@@ -190,14 +189,18 @@ const prompt = ai.definePrompt({
           *   Suggestions in this mode could be links to online dictionaries for further exploration (prioritize official/academic dictionary sites).
   12. **Visual Learning Mode Specialization**:
       *   If 'specificTopic' is "Visual Learning" or "Visual Learning Focus":
-          *   **Prioritize Visuals**: Your primary goal is to help the student understand the concept presented in their "{{{question}}}" through visual means. Your main output for "Visual Learning" or "Visual Learning Focus" should frequently be an 'image_generation_prompt' within the 'visualElement' field. This prompt will be used by another AI to create an image. Therefore, craft this prompt to be highly descriptive, clear, and specific to ensure the subsequent image generation is accurate and effective.
+          *   **Prioritize Visuals**: Your primary goal is to help the student understand the concept presented in their "{{{question}}}" through visual means. Your main output for "Visual Learning" or "Visual Learning Focus" should frequently be an 'image_generation_prompt' within the 'visualElement' field. This prompt will be used by another AI to create an image. Therefore, craft this prompt to be highly descriptive, clear, unambiguous, self-contained, and specific to ensure the subsequent image generation is accurate and effective. Consider the student's age and educational level for complexity.
           *   **Crafting Effective Image Prompts**:
-              *   **Detail is Key**: The image prompt should include details about the subject(s), the setting or background, specific actions or relationships, and desired style (e.g., 'photorealistic', 'scientific diagram', 'cartoon illustration', 'abstract representation'). Mention colors if important.
-              *   **Text Legibility**: CRITICAL: If the image requires text (e.g., labels on a diagram, text within a mind map, annotations), the image generation prompt *MUST* explicitly include instructions for clarity, such as: 'Ensure all text labels are clearly rendered, legible, and easy to read. Use bold, high-contrast text for labels where appropriate.' or 'Render all text elements distinctly and legibly.'
+              *   **Detail is Key**: The image prompt should include details about the subject(s), the setting or background, specific actions or relationships. Imagine you are describing this image to someone who cannot see it, ensuring they can perfectly reconstruct it in their mind.
+              *   **Specify Style**: Explicitly state the desired *style* of the image: e.g., 'photorealistic photograph', 'detailed scientific illustration', 'simple line drawing', 'abstract representation', 'cartoon style', 'watercolor painting'.
+              *   **Text Legibility**: CRITICAL: If the image requires text (e.g., labels on a diagram, text within a mind map, annotations), the image generation prompt *MUST* explicitly include instructions for maximum clarity, such as: 'Ensure all text labels are clearly rendered, large, bold, in a simple sans-serif font, and in high contrast to their background. Text should be easily readable and not obscured by other visual elements. Avoid complex or decorative fonts for labels.'
               *   **Composition and Focus**: Guide the composition. For example: "Close-up view of...", "Wide shot showing...", "Focus on the interaction between...".
-              *   **Example Prompt Structure**: "Generate a detailed scientific diagram of a plant cell. Include and clearly label the nucleus, mitochondria, chloroplasts, cell wall, and cell membrane with bold, legible, white text on a contrasting background. Illustrate the overall cell structure with a clean, modern aesthetic."
+              *   **Example Prompt Structure**: "Generate a detailed scientific illustration of a plant cell. Include and clearly label the nucleus, mitochondria, chloroplasts, cell wall, and cell membrane. All text labels must be large, bold, in a simple sans-serif font, and in high contrast to their background, easily readable. Illustrate the overall cell structure with a clean, modern aesthetic suitable for a biology textbook."
               *   **Relevance**: The image prompt must directly address the student's "{{{question}}}" and aim to visually clarify the concept they are asking about.
-          *   **Charts and Flowcharts**: If structured data (like comparisons, trends, processes) is more suitable than a generated image, suggest 'bar_chart_data', 'line_chart_data', or 'flowchart_description' as appropriate. Ensure chart data is specific and useful for direct rendering, or flowchart descriptions are clear enough to be visualized. This is particularly relevant if the student's learning style ('{{{studentProfile.learningStyle}}}') is 'visual' or 'balanced'.
+          *   **Charts and Flowcharts**:
+              *   For 'bar_chart_data' or 'line_chart_data': The 'content' MUST be a JSON array of objects. Each object should typically have a 'name' (string) field for the category/label on one axis, and one or more **numeric value fields** (e.g., 'value', 'count', 'score') for the other axis. Ensure the data directly and accurately reflects the student's query and is ready for direct rendering.
+              *   For 'flowchart_description': The 'content' should be an array of step objects, where each object represents a step and includes at least an 'id' (string), 'text' (string description of the step), and optionally 'next_ids' (array of strings pointing to next step ids) or 'type' (e.g., 'start', 'process', 'decision', 'end'). Describe the connections between steps clearly.
+              *   This is particularly relevant if the student's learning style ('{{{studentProfile.learningStyle}}}') is 'visual' or 'balanced'.
           *   **Explain the Visual**: In your main 'response' text, explain the concept and how the suggested visual (the chart data, flowchart description, or the image you're proposing to generate via the prompt) helps in understanding it.
           *   **Interactive Queries**: Encourage the student to ask for variations or refinements of the visuals (e.g., "Can you show that as a line chart instead?" or "Generate that image from a different angle with more vibrant colors.").
           *   Reference the uploaded image if provided to help generate or explain a visual.
@@ -270,6 +273,3 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
   }
 );
 
-
-
-    
