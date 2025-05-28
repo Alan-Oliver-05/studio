@@ -70,13 +70,30 @@ export const CENTRAL_BOARDS = [
   { value: "CBSE", label: "CBSE (Central Board of Secondary Education)" },
   { value: "CISCE", label: "CISCE (ISC/ICSE)" },
   { value: "NIOS", label: "NIOS (National Institute of Open Schooling)" },
-  { value: "Other", label: "Other Central Board"},
+  { value: "Other_Central_Board", label: "Other Central Board (Specify below)"},
 ];
 
 
 export const COMPETITIVE_EXAM_TYPES_CENTRAL = [
-    { value: "JEE", label: "JEE (Engineering Entrance)"},
-    { value: "NEET", label: "NEET (Medical Entrance)"},
+    // Engineering
+    { value: "JEE_Main_Advanced", label: "JEE Main / Advanced (Engineering)"},
+    { value: "GATE", label: "GATE (PG Engineering & PSU)"},
+    // Medical
+    { value: "NEET_UG", label: "NEET UG (Medical)"},
+    { value: "NEET_PG", label: "NEET PG (PG Medical)"},
+    // Management
+    { value: "CAT", label: "CAT (Management)"},
+    { value: "MAT", label: "MAT (Management)"},
+    { value: "XAT", label: "XAT (Management)"},
+    { value: "GMAT", label: "GMAT (Management)"},
+    // Law
+    { value: "CLAT", label: "CLAT (Law)"},
+    { value: "AILET", label: "AILET (Law)"},
+    // Specialized Fields
+    { value: "NATA", label: "NATA (Architecture)"},
+    { value: "CEED", label: "CEED (Design)"},
+    { value: "Other_Specialized_Entrance", label: "Other Specialized Entrance (Fine Arts, Hospitality, etc. - Specify below)"},
+    // Existing Government & Banking
     { value: "UPSC_CSE", label: "UPSC Civil Services Exam"},
     { value: "UPSC_Other", label: "UPSC Other Exams (CDS, NDA, etc.)"},
     { value: "Banking_PO_Clerk", label: "Banking Exams (IBPS PO/Clerk, SBI PO/Clerk)"},
@@ -87,24 +104,25 @@ export const COMPETITIVE_EXAM_TYPES_CENTRAL = [
     { value: "SSC_CGL", label: "SSC CGL"},
     { value: "SSC_CHSL", label: "SSC CHSL"},
     { value: "Railways_RRB", label: "Railways (RRB NTPC, Group D)"},
-    { value: "GATE", label: "GATE (Engineering PG Entrance)"},
-    { value: "CAT", label: "CAT (MBA Entrance)"},
-    { value: "Other_Central", label: "Other Central Govt Exam / Entrance (Specify below)"},
+    // General Other
+    { value: "Other_Central_Exam", label: "Other Central Govt Exam / Entrance (Specify below)"},
 ];
 
 export const COMPETITIVE_EXAM_TYPES_STATE = [
+    { value: "State_Engineering_Entrance", label: "State Level Engineering Entrance (Specify Name)"},
+    { value: "State_Medical_Entrance", label: "State Level Medical Entrance (Specify Name)"},
+    { value: "State_Law_Entrance", label: "State Level Law Entrance (Specify Name)"},
+    // Existing State
     { value: "State_PSC_Group1", label: "State PSC - Group 1 / Class 1"},
     { value: "State_PSC_Group2", label: "State PSC - Group 2 / Class 2"},
     { value: "State_PSC_Other", label: "State PSC - Other Gazetted/Non-Gazetted"},
     { value: "State_Police_SI", label: "State Police - Sub Inspector"},
     { value: "State_Police_Constable", label: "State Police - Constable"},
     { value: "State_TET", label: "State Teacher Eligibility Test (TET)"},
-    { value: "State_Engineering_Entrance", label: "State Engineering Entrance"},
-    { value: "State_Medical_Entrance", label: "State Medical Entrance"},
     { value: "State_Cooperative_Banking", label: "State Cooperative Banking Exams (PO, Clerk)"},
     { value: "State_RRB", label: "Regional Rural Bank (RRB) Exams (PO, Clerk)"},
     { value: "Other_Banking_State", label: "Other State Banking Exam (Specify below)"},
-    { value: "Other_State", label: "Other State Govt Exam / Entrance (Specify below)"},
+    { value: "Other_State_Exam", label: "Other State Govt Exam / Entrance (Specify below)"},
 ];
 
 export const PROFESSIONAL_CERTIFICATION_EXAMS = [
@@ -115,7 +133,7 @@ export const PROFESSIONAL_CERTIFICATION_EXAMS = [
   { value: "CFA", label: "CFA (Chartered Financial Analyst)" },
   { value: "ACCA", label: "ACCA (Association of Chartered Certified Accountants)" },
   { value: "FRM", label: "FRM (Financial Risk Manager)" },
-  { value: "Other_Professional", label: "Other Professional Certification (Specify below)" },
+  { value: "Other_Professional_Cert", label: "Other Professional Certification (Specify below)" },
 ];
 
 export const TASK_CATEGORIES = [
@@ -136,6 +154,3 @@ export const TASK_PRIORITIES: { value: TaskPriority, label: string }[] = [
     { value: "Medium", label: "Medium" },
     { value: "High", label: "High" },
 ];
-
-
-    
