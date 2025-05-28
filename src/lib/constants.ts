@@ -43,7 +43,7 @@ export const LEARNING_STYLES: { value: LearningStyle, label: string }[] = [
 
 export const EDUCATION_CATEGORIES = [
   { value: "board", label: "School Board Exams (e.g., 10th, 12th)" },
-  { value: "competitive", label: "Competitive Exams (Govt Jobs, Entrance)" },
+  { value: "competitive", label: "Competitive Exams (Govt Jobs, Entrance, Certifications)" },
   { value: "university", label: "University / College Exams" },
   { value: "other", label: "Other / Not Applicable" },
 ];
@@ -100,6 +100,17 @@ export const COMPETITIVE_EXAM_TYPES_STATE = [
     { value: "Other_State", label: "Other State Govt Exam / Entrance"},
 ];
 
+export const PROFESSIONAL_CERTIFICATION_EXAMS = [
+  { value: "CA", label: "CA (Chartered Accountant)" },
+  { value: "CMA", label: "CMA (Cost and Management Accountant)" },
+  { value: "CS", label: "CS (Company Secretary)" },
+  { value: "CPA", label: "CPA (Certified Public Accountant)" },
+  { value: "CFA", label: "CFA (Chartered Financial Analyst)" },
+  { value: "ACCA", label: "ACCA (Association of Chartered Certified Accountants)" },
+  { value: "FRM", label: "FRM (Financial Risk Manager)" },
+  { value: "Other_Professional", label: "Other Professional Certification" },
+];
+
 export const TASK_CATEGORIES = [
     { value: "Assignment", label: "Assignment" },
     { value: "Concept Review", label: "Concept Review" },
@@ -118,4 +129,3 @@ export const TASK_PRIORITIES: { value: TaskPriority, label: string }[] = [
     { value: "Medium", label: "Medium" },
     { value: "High", label: "High" },
 ];
-

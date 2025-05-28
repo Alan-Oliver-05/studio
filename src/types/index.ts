@@ -6,8 +6,8 @@ export interface BoardExamInfo {
 }
 
 export interface CompetitiveExamInfo {
-  examType?: string; // e.g. Central Govt, State Govt, Other
-  specificExam?: string; // e.g. JEE, NEET, UPSC CSE, TNPSC Group 1, Custom Exam Name
+  examType?: string; // e.g. Central Govt, State Govt, ProfessionalCertifications, Other
+  specificExam?: string; // e.g. JEE, NEET, UPSC CSE, CA, CMA, Custom Exam Name
 }
 
 export interface UniversityExamInfo {

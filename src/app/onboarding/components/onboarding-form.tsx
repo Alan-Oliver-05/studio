@@ -28,7 +28,7 @@ import type { UserProfile, EducationCategory, LearningStyle } from "@/types";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
-import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, BOARD_STANDARDS, UNIVERSITY_YEARS, CENTRAL_BOARDS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE, LEARNING_STYLES } from "@/lib/constants";
+import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, BOARD_STANDARDS, UNIVERSITY_YEARS, CENTRAL_BOARDS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE, LEARNING_STYLES, PROFESSIONAL_CERTIFICATION_EXAMS } from "@/lib/constants";
 import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 
 const onboardingSteps = [
@@ -438,6 +438,7 @@ export function OnboardingForm() {
                             <SelectContent>
                                 <SelectItem value="Central">Central Government Exams / Entrance</SelectItem>
                                 <SelectItem value="State">State Government Exams / Entrance</SelectItem>
+                                <SelectItem value="ProfessionalCertifications">Professional Certifications</SelectItem>
                                 <SelectItem value="Other">Other Competitive Exams</SelectItem>
                             </SelectContent>
                           </Select>
@@ -493,15 +494,39 @@ export function OnboardingForm() {
                         )}
                       />
                     )}
-                    {(watchedSpecificExam === "Other_Central" || watchedSpecificExam === "Other_State" || watchedCompetitiveExamType === "Other") && (
+                    {watchedCompetitiveExamType === "ProfessionalCertifications" && (
+                       <FormField
+                        control={form.control}
+                        name="educationQualification.competitiveExams.specificExam"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Specific Professional Certification</FormLabel>
+                             <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select Professional Certification" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {PROFESSIONAL_CERTIFICATION_EXAMS.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            {watchedSpecificExam === "Other_Professional" && 
+                              <FormDescription className="mt-1">Please specify the certification name in the next field if not listed.</FormDescription>}
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                    {(watchedSpecificExam === "Other_Central" || watchedSpecificExam === "Other_State" || watchedSpecificExam === "Other_Professional" || watchedCompetitiveExamType === "Other") && (
                         <FormField
                           control={form.control}
                           name="educationQualification.competitiveExams.specificExam"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Exam Name / Job Position</FormLabel>
+                              <FormLabel>{watchedSpecificExam === "Other_Professional" ? "Certification Name" : "Exam Name / Job Position"}</FormLabel>
                               <FormControl>
-                                <Input placeholder="E.g., Custom Exam Name or Railway Group D" {...field} />
+                                <Input placeholder={watchedSpecificExam === "Other_Professional" ? "E.g., My Custom Certification" : "E.g., Custom Exam Name or Railway Group D"} {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -601,8 +626,8 @@ export function OnboardingForm() {
                   {watchedEducationCategory === "competitive" && form.getValues("educationQualification.competitiveExams") && (
                      <div className="pl-4 mt-1 border-l-2 border-primary/50">
                       <p><strong>Exam Category:</strong> {form.getValues("educationQualification.competitiveExams.examType") || 'N/A'}</p>
-                      <p><strong>Specific Exam:</strong> {
-                        [...COMPETITIVE_EXAM_TYPES_CENTRAL, ...COMPETITIVE_EXAM_TYPES_STATE].find(e => e.value === form.getValues("educationQualification.competitiveExams.specificExam"))?.label || form.getValues("educationQualification.competitiveExams.specificExam") || 'N/A'
+                      <p><strong>Specific Exam/Certification:</strong> {
+                        [...COMPETITIVE_EXAM_TYPES_CENTRAL, ...COMPETITIVE_EXAM_TYPES_STATE, ...PROFESSIONAL_CERTIFICATION_EXAMS].find(e => e.value === form.getValues("educationQualification.competitiveExams.specificExam"))?.label || form.getValues("educationQualification.competitiveExams.specificExam") || 'N/A'
                       }</p>
                     </div>
                   )}
