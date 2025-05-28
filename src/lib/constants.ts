@@ -75,39 +75,52 @@ export const CENTRAL_BOARDS = [
 
 
 export const COMPETITIVE_EXAM_TYPES_CENTRAL = [
-    // Engineering
+    // Academic Entrance
     { value: "JEE_Main_Advanced", label: "JEE Main / Advanced (Engineering)"},
     { value: "GATE", label: "GATE (PG Engineering & PSU)"},
-    // Medical
     { value: "NEET_UG", label: "NEET UG (Medical)"},
     { value: "NEET_PG", label: "NEET PG (PG Medical)"},
-    // Management
     { value: "CAT", label: "CAT (Management)"},
     { value: "MAT", label: "MAT (Management)"},
     { value: "XAT", label: "XAT (Management)"},
     { value: "GMAT", label: "GMAT (Management)"},
-    // Law
     { value: "CLAT", label: "CLAT (Law)"},
     { value: "AILET", label: "AILET (Law)"},
-    // Specialized Fields
     { value: "NATA", label: "NATA (Architecture)"},
     { value: "CEED", label: "CEED (Design)"},
-    // Teaching and Research
-    { value: "UGC_NET", label: "UGC NET (University Teaching & Research)" },
-    { value: "CTET", label: "CTET (Central Teacher Eligibility Test)" },
-    { value: "Other_Specialized_Domain_Exam", label: "Specialized Domain Exam (Art, Sports, etc. - Specify below)"},
-    // Existing Government & Banking
-    { value: "UPSC_CSE", label: "UPSC Civil Services Exam"},
-    { value: "UPSC_Other", label: "UPSC Other Exams (CDS, NDA, etc.)"},
+    
+    // UPSC & Defense
+    { value: "UPSC_CSE", label: "UPSC Civil Services Exam (IAS, IPS, IFS, etc.)"},
+    { value: "UPSC_NDA_NA", label: "UPSC NDA & NA Exam"},
+    { value: "UPSC_CDS", label: "UPSC CDS Exam"},
+    { value: "AFCAT", label: "AFCAT (Air Force)"},
+    { value: "UPSC_Other", label: "UPSC Other Exams (IES, CAPF, etc. - Specify below)"},
+
+    // SSC Exams
+    { value: "SSC_CGL", label: "SSC CGL (Combined Graduate Level)"},
+    { value: "SSC_CHSL", label: "SSC CHSL (Combined Higher Secondary Level)"},
+    { value: "SSC_JE", label: "SSC JE (Junior Engineer)"},
+    { value: "SSC_JHT", label: "SSC JHT (Junior Hindi Translator)"},
+    { value: "SSC_GD_Constable", label: "SSC GD Constable"},
+    { value: "SSC_Steno", label: "SSC Stenographer"},
+    { value: "Other_SSC_Exam", label: "Other SSC Exam (Specify below)"},
+
+    // Banking Exams
     { value: "Banking_PO_Clerk", label: "Banking Exams (IBPS PO/Clerk, SBI PO/Clerk)"},
     { value: "Banking_RBI", label: "RBI Exams (Grade B, Assistant)"},
     { value: "Banking_NABARD_SIDBI", label: "NABARD & SIDBI Exams"},
     { value: "Banking_Specialist_Officer", label: "Specialist Officer Banking Exams (IBPS SO, SBI SO, etc.)"},
     { value: "Other_Banking_Central", label: "Other Central Banking Exam (Specify below)"},
-    { value: "SSC_CGL", label: "SSC CGL"},
-    { value: "SSC_CHSL", label: "SSC CHSL"},
-    { value: "Railways_RRB", label: "Railways (RRB NTPC, Group D)"},
-    // General Other
+
+    // Railway Recruitment
+    { value: "Railways_RRB", label: "Railways (RRB NTPC, Group D, ALP, JE, etc.)"},
+    
+    // Teaching and Research
+    { value: "UGC_NET", label: "UGC NET (University Teaching & Research)" },
+    { value: "CTET", label: "CTET (Central Teacher Eligibility Test)" },
+
+    // Other Specialized & General
+    { value: "Other_Specialized_Domain_Exam", label: "Specialized Domain Exam (Art, Sports, Design, etc. - Specify below)"},
     { value: "Other_Central_Exam", label: "Other Central Govt Exam / Entrance (Specify below)"},
 ];
 
@@ -115,7 +128,6 @@ export const COMPETITIVE_EXAM_TYPES_STATE = [
     { value: "State_Engineering_Entrance", label: "State Level Engineering Entrance (Specify Name)"},
     { value: "State_Medical_Entrance", label: "State Level Medical Entrance (Specify Name)"},
     { value: "State_Law_Entrance", label: "State Level Law Entrance (Specify Name)"},
-    // Existing State
     { value: "State_PSC_Group1", label: "State PSC - Group 1 / Class 1"},
     { value: "State_PSC_Group2", label: "State PSC - Group 2 / Class 2"},
     { value: "State_PSC_Other", label: "State PSC - Other Gazetted/Non-Gazetted"},
@@ -157,4 +169,3 @@ export const TASK_PRIORITIES: { value: TaskPriority, label: string }[] = [
     { value: "Medium", label: "Medium" },
     { value: "High", label: "High" },
 ];
-
