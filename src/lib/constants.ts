@@ -128,16 +128,16 @@ export const COMPETITIVE_EXAM_TYPES_STATE = [
     { value: "State_Engineering_Entrance", label: "State Level Engineering Entrance (Specify Name)"},
     { value: "State_Medical_Entrance", label: "State Level Medical Entrance (Specify Name)"},
     { value: "State_Law_Entrance", label: "State Level Law Entrance (Specify Name)"},
-    { value: "State_PSC_Group1", label: "State PSC - Group 1 / Class 1"},
-    { value: "State_PSC_Group2", label: "State PSC - Group 2 / Class 2"},
-    { value: "State_PSC_Other", label: "State PSC - Other Gazetted/Non-Gazetted"},
-    { value: "State_Police_SI", label: "State Police - Sub Inspector"},
-    { value: "State_Police_Constable", label: "State Police - Constable"},
-    { value: "State_TET", label: "State Teacher Eligibility Test (TET)"},
-    { value: "State_Cooperative_Banking", label: "State Cooperative Banking Exams (PO, Clerk)"},
-    { value: "State_RRB", label: "Regional Rural Bank (RRB) Exams (PO, Clerk)"},
-    { value: "Other_Banking_State", label: "Other State Banking Exam (Specify below)"},
-    { value: "Other_State_Exam", label: "Other State Govt Exam / Entrance (Specify below)"},
+    { value: "State_PSC_Group1", label: "State PSC - Group 1 / Class 1 (Specify State & Exam)"},
+    { value: "State_PSC_Group2", label: "State PSC - Group 2 / Class 2 (Specify State & Exam)"},
+    { value: "State_PSC_Other", label: "State PSC - Other Gazetted/Non-Gazetted (Specify State & Exam)"},
+    { value: "State_Police_SI", label: "State Police - Sub Inspector (Specify State)"},
+    { value: "State_Police_Constable", label: "State Police - Constable (Specify State)"},
+    { value: "State_TET", label: "State Teacher Eligibility Test (TET) (Specify State)"},
+    { value: "State_Cooperative_Banking", label: "State Cooperative Banking Exams (PO, Clerk) (Specify State)"},
+    { value: "State_RRB", label: "Regional Rural Bank (RRB) Exams (PO, Clerk) (State specific if applicable)"},
+    { value: "Other_Banking_State", label: "Other State Banking Exam (Specify State & Exam)"},
+    { value: "Other_State_Exam", label: "Other State Govt Exam / Entrance (Specify State & Exam)"},
 ];
 
 export const PROFESSIONAL_CERTIFICATION_EXAMS = [
@@ -169,3 +169,6 @@ export const TASK_PRIORITIES: { value: TaskPriority, label: string }[] = [
     { value: "Medium", label: "Medium" },
     { value: "High", label: "High" },
 ];
+
+
+    
