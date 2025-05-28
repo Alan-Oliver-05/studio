@@ -59,6 +59,8 @@ export const UNIVERSITY_YEARS = [
   { value: "3rd", label: "3rd Year" },
   { value: "4th", label: "4th Year" },
   { value: "5th", label: "5th Year (if applicable)" },
+  { value: "program_1_4_years", label: "1 year to 4 years" },
+  { value: "program_1_5_years", label: "1 year to 5 years" },
   { value: "Postgraduate", label: "Postgraduate Study" },
   { value: "Doctoral", label: "Doctoral Study" },
   { value: "other", label: "Other" },
