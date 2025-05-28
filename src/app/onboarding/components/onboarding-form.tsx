@@ -127,7 +127,7 @@ export function OnboardingForm() {
 
   const watchedEducationCategory = form.watch("educationCategory");
   const watchedCompetitiveExamType = form.watch("educationQualification.competitiveExams.examType");
-  const watchedSpecificExam = form.watch("educationQualification.competitiveExams.specificExam");
+  const watchedSpecificExamFromDropdown = form.watch("educationQualification.competitiveExams.specificExam");
 
 
   const progressValue = useMemo(() => {
@@ -153,9 +153,17 @@ export function OnboardingForm() {
                   !!form.getValues("educationQualification.boardExams.board") && 
                   !!form.getValues("educationQualification.boardExams.standard");
       } else if (watchedEducationCategory === "competitive") {
-        isValid = await form.trigger(["educationQualification.competitiveExams.examType", "educationQualification.competitiveExams.specificExam"]) &&
-                  !!form.getValues("educationQualification.competitiveExams.examType") &&
-                  !!form.getValues("educationQualification.competitiveExams.specificExam");
+        const examTypeSelected = !!form.getValues("educationQualification.competitiveExams.examType");
+        const specificExamSelected = !!form.getValues("educationQualification.competitiveExams.specificExam");
+        // If "Other..." is selected in dropdown, the text input for specificExam must also be filled.
+        // Otherwise, just selecting from the dropdown is enough.
+        if (watchedSpecificExamFromDropdown?.startsWith("Other_")) {
+            isValid = await form.trigger(["educationQualification.competitiveExams.examType", "educationQualification.competitiveExams.specificExam"]) && examTypeSelected && specificExamSelected;
+        } else {
+            isValid = await form.trigger(["educationQualification.competitiveExams.examType"]) && examTypeSelected && specificExamSelected;
+        }
+
+
       } else if (watchedEducationCategory === "university") {
         isValid = await form.trigger(["educationQualification.universityExams.universityName", "educationQualification.universityExams.course", "educationQualification.universityExams.currentYear"]) &&
                   !!form.getValues("educationQualification.universityExams.universityName") &&
@@ -203,6 +211,12 @@ export function OnboardingForm() {
   }
 
   const currentStepDetails = onboardingSteps.find(s => s.id === currentStep);
+
+  const showSpecificExamTextInput =
+    watchedEducationCategory === "competitive" &&
+    (watchedCompetitiveExamType === "Other" ||
+     watchedSpecificExamFromDropdown?.startsWith("Other_"));
+
 
   return (
     <Card className="w-full max-w-2xl shadow-2xl my-8">
@@ -429,7 +443,10 @@ export function OnboardingForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Exam Category</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                          <Select onValueChange={(value) => {
+                              field.onChange(value);
+                              form.setValue("educationQualification.competitiveExams.specificExam", ""); // Reset specific exam when category changes
+                            }} value={field.value} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Exam Category" />
@@ -463,8 +480,8 @@ export function OnboardingForm() {
                                 {COMPETITIVE_EXAM_TYPES_CENTRAL.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            {watchedSpecificExam === "Other_Central" && 
-                              <FormDescription className="mt-1">Please specify the exam name in the next field if not listed.</FormDescription>}
+                             {watchedSpecificExamFromDropdown === "Other_Central" && 
+                              <FormDescription className="mt-1">Please specify the exam name in the text field below.</FormDescription>}
                             <FormMessage />
                           </FormItem>
                         )}
@@ -487,8 +504,8 @@ export function OnboardingForm() {
                                 {COMPETITIVE_EXAM_TYPES_STATE.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            {watchedSpecificExam === "Other_State" && 
-                              <FormDescription className="mt-1">Please specify the exam name in the next field if not listed.</FormDescription>}
+                             {watchedSpecificExamFromDropdown === "Other_State" && 
+                              <FormDescription className="mt-1">Please specify the exam name in the text field below.</FormDescription>}
                             <FormMessage />
                           </FormItem>
                         )}
@@ -511,22 +528,37 @@ export function OnboardingForm() {
                                 {PROFESSIONAL_CERTIFICATION_EXAMS.map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                            {watchedSpecificExam === "Other_Professional" && 
-                              <FormDescription className="mt-1">Please specify the certification name in the next field if not listed.</FormDescription>}
+                             {watchedSpecificExamFromDropdown === "Other_Professional" && 
+                              <FormDescription className="mt-1">Please specify the certification name in the text field below.</FormDescription>}
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     )}
-                    {(watchedSpecificExam === "Other_Central" || watchedSpecificExam === "Other_State" || watchedSpecificExam === "Other_Professional" || watchedCompetitiveExamType === "Other") && (
+                    {showSpecificExamTextInput && (
                         <FormField
                           control={form.control}
                           name="educationQualification.competitiveExams.specificExam"
-                          render={({ field }) => (
+                           render={({ field: { onChange, value, ...restField } }) => ( // Destructure to intercept onChange if needed for "Other..."
                             <FormItem>
-                              <FormLabel>{watchedSpecificExam === "Other_Professional" ? "Certification Name" : "Exam Name / Job Position"}</FormLabel>
+                              <FormLabel>{watchedCompetitiveExamType === "ProfessionalCertifications" ? "Specify Certification Name" : "Specify Exam Name / Job Posting"}</FormLabel>
                               <FormControl>
-                                <Input placeholder={watchedSpecificExam === "Other_Professional" ? "E.g., My Custom Certification" : "E.g., Custom Exam Name or Railway Group D"} {...field} />
+                                <Input 
+                                  placeholder={
+                                    watchedCompetitiveExamType === "ProfessionalCertifications" 
+                                      ? "E.g., My Custom Certification" 
+                                      : watchedCompetitiveExamType === "Other" 
+                                        ? "E.g., Specific Exam or Job Title"
+                                        : "E.g., Name of the 'Other' exam selected above"
+                                  } 
+                                  value={value?.startsWith("Other_") ? "" : value} // Clear if it's an "Other_" placeholder
+                                  onChange={(e) => {
+                                    // If previous value was "Other...", this is new user input.
+                                    // Otherwise, it's just normal text input.
+                                    onChange(e.target.value);
+                                  }}
+                                  {...restField} 
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -627,6 +659,7 @@ export function OnboardingForm() {
                      <div className="pl-4 mt-1 border-l-2 border-primary/50">
                       <p><strong>Exam Category:</strong> {form.getValues("educationQualification.competitiveExams.examType") || 'N/A'}</p>
                       <p><strong>Specific Exam/Certification:</strong> {
+                        // Display label if it's from a predefined list, otherwise display the typed value
                         [...COMPETITIVE_EXAM_TYPES_CENTRAL, ...COMPETITIVE_EXAM_TYPES_STATE, ...PROFESSIONAL_CERTIFICATION_EXAMS].find(e => e.value === form.getValues("educationQualification.competitiveExams.specificExam"))?.label || form.getValues("educationQualification.competitiveExams.specificExam") || 'N/A'
                       }</p>
                     </div>
@@ -672,3 +705,5 @@ export function OnboardingForm() {
     </Card>
   );
 }
+
+    

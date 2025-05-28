@@ -80,12 +80,16 @@ export const COMPETITIVE_EXAM_TYPES_CENTRAL = [
     { value: "UPSC_CSE", label: "UPSC Civil Services Exam"},
     { value: "UPSC_Other", label: "UPSC Other Exams (CDS, NDA, etc.)"},
     { value: "Banking_PO_Clerk", label: "Banking Exams (IBPS PO/Clerk, SBI PO/Clerk)"},
+    { value: "Banking_RBI", label: "RBI Exams (Grade B, Assistant)"},
+    { value: "Banking_NABARD_SIDBI", label: "NABARD & SIDBI Exams"},
+    { value: "Banking_Specialist_Officer", label: "Specialist Officer Banking Exams (IBPS SO, SBI SO, etc.)"},
+    { value: "Other_Banking_Central", label: "Other Central Banking Exam (Specify below)"},
     { value: "SSC_CGL", label: "SSC CGL"},
     { value: "SSC_CHSL", label: "SSC CHSL"},
     { value: "Railways_RRB", label: "Railways (RRB NTPC, Group D)"},
     { value: "GATE", label: "GATE (Engineering PG Entrance)"},
     { value: "CAT", label: "CAT (MBA Entrance)"},
-    { value: "Other_Central", label: "Other Central Govt Exam / Entrance"},
+    { value: "Other_Central", label: "Other Central Govt Exam / Entrance (Specify below)"},
 ];
 
 export const COMPETITIVE_EXAM_TYPES_STATE = [
@@ -97,7 +101,10 @@ export const COMPETITIVE_EXAM_TYPES_STATE = [
     { value: "State_TET", label: "State Teacher Eligibility Test (TET)"},
     { value: "State_Engineering_Entrance", label: "State Engineering Entrance"},
     { value: "State_Medical_Entrance", label: "State Medical Entrance"},
-    { value: "Other_State", label: "Other State Govt Exam / Entrance"},
+    { value: "State_Cooperative_Banking", label: "State Cooperative Banking Exams (PO, Clerk)"},
+    { value: "State_RRB", label: "Regional Rural Bank (RRB) Exams (PO, Clerk)"},
+    { value: "Other_Banking_State", label: "Other State Banking Exam (Specify below)"},
+    { value: "Other_State", label: "Other State Govt Exam / Entrance (Specify below)"},
 ];
 
 export const PROFESSIONAL_CERTIFICATION_EXAMS = [
@@ -108,7 +115,7 @@ export const PROFESSIONAL_CERTIFICATION_EXAMS = [
   { value: "CFA", label: "CFA (Chartered Financial Analyst)" },
   { value: "ACCA", label: "ACCA (Association of Chartered Certified Accountants)" },
   { value: "FRM", label: "FRM (Financial Risk Manager)" },
-  { value: "Other_Professional", label: "Other Professional Certification" },
+  { value: "Other_Professional", label: "Other Professional Certification (Specify below)" },
 ];
 
 export const TASK_CATEGORIES = [
@@ -129,3 +136,6 @@ export const TASK_PRIORITIES: { value: TaskPriority, label: string }[] = [
     { value: "Medium", label: "Medium" },
     { value: "High", label: "High" },
 ];
+
+
+    
