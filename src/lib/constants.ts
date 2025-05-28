@@ -92,7 +92,10 @@ export const COMPETITIVE_EXAM_TYPES_CENTRAL = [
     // Specialized Fields
     { value: "NATA", label: "NATA (Architecture)"},
     { value: "CEED", label: "CEED (Design)"},
-    { value: "Other_Specialized_Entrance", label: "Other Specialized Entrance (Fine Arts, Hospitality, etc. - Specify below)"},
+    // Teaching and Research
+    { value: "UGC_NET", label: "UGC NET (University Teaching & Research)" },
+    { value: "CTET", label: "CTET (Central Teacher Eligibility Test)" },
+    { value: "Other_Specialized_Domain_Exam", label: "Specialized Domain Exam (Art, Sports, etc. - Specify below)"},
     // Existing Government & Banking
     { value: "UPSC_CSE", label: "UPSC Civil Services Exam"},
     { value: "UPSC_Other", label: "UPSC Other Exams (CDS, NDA, etc.)"},
@@ -154,3 +157,4 @@ export const TASK_PRIORITIES: { value: TaskPriority, label: string }[] = [
     { value: "Medium", label: "Medium" },
     { value: "High", label: "High" },
 ];
+
