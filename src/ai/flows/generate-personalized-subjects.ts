@@ -96,7 +96,7 @@ const prompt = ai.definePrompt({
       *   If a general competitive exam category (e.g., examType = "Banking") and no specificExam: "Quantitative Aptitude for Banking Exams - {{{country}}}", "Reasoning Ability for Banking Exams - {{{country}}}"
   2.  Provide a concise "description" for the subject, tailored to this student and their curriculum focus. If a specific exam like "{{{educationQualification.competitiveExams.specificExam}}}" is mentioned, the description MUST directly reflect preparation for that exam.
   3.  List key "studyMaterials" (which are core topics, chapters, or sections) directly relevant to their specific syllabus or exam pattern.
-      *   If 'educationQualification.competitiveExams.specificExam' is provided and recognized (like "JEE Main", "UPSC CSE", "NEET UG", "CAT", "CA"), the 'studyMaterials' MUST be the main sections/subjects tested in THAT PARTICULAR EXAM for {{{country}}}. For example, for "JEE Main", list Mathematics, Physics, Chemistry. For "UPSC CSE Prelims", list topics like Current Events, History of India, Indian and World Geography, etc.
+      *   If 'educationQualification.competitiveExams.specificExam' is provided and recognized (like "JEE Main", "UPSC CSE", "NEET UG", "CAT", "CA", "CMA", "CS", "CPA", "CFA", "ACCA", "FRM"): the 'studyMaterials' MUST be the main sections/subjects tested in THAT PARTICULAR EXAM for {{{country}}}. For example, for "JEE Main", list Mathematics, Physics, Chemistry. For "UPSC CSE Prelims", list topics like Current Events, History of India, Indian and World Geography, etc.
       *   If only a general competitive exam category (e.g., 'examType' = "Banking") is given without a 'specificExam', list general sections common to that category of exams in {{{country}}}.
       *   For board or university courses, list core chapters or units from the typical syllabus for that level and subject.
 
@@ -135,7 +135,6 @@ const generatePersonalizedSubjectsFlow = ai.defineFlow(
     return { subjects: [] };
   }
 );
-
     
-
+    
     
