@@ -16,6 +16,11 @@ import {
   BarChartBig,
   PieChartIcon,
   FileText,
+  User as UserIcon, // Added UserIcon as fallback
+  Mic, // Added Mic icon
+  MessagesSquare, // Added MessagesSquare icon
+  Camera as CameraIcon, // Added CameraIcon
+  Type as TypeIcon, // Added TypeIcon for text translation
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -31,6 +36,7 @@ import {
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { UserCircle2 } from "lucide-react";
+import { EDUCATION_CATEGORIES } from "@/lib/constants"; // Import from constants
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -131,11 +137,5 @@ export function SidebarNav() {
   );
 }
 
-// Helper to find education category label
-const EDUCATION_CATEGORIES = [
-  { value: "board", label: "School Learner" },
-  { value: "competitive", label: "Exam Aspirant" },
-  { value: "university", label: "University Student" },
-  { value: "other", label: "Learner" },
-];
+// Removed duplicate EDUCATION_CATEGORIES definition
     
