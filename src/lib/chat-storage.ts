@@ -4,7 +4,6 @@
 import type { Conversation, Message, UserProfile } from "@/types";
 
 const CONVERSATIONS_KEY = "eduai-conversations";
-// Removed MAX_CONVERSATIONS_TO_STORE
 
 export const getConversations = (): Conversation[] => {
   if (typeof window === "undefined") return [];
@@ -36,32 +35,33 @@ export const saveConversation = (conversationToSave: Conversation): void => {
   // Sort by lastUpdatedAt to ensure the newest ones are at the beginning
   conversations.sort((a, b) => b.lastUpdatedAt - a.lastUpdatedAt);
 
-  // Removed pruning logic based on MAX_CONVERSATIONS_TO_STORE
-
   try {
     localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(conversations));
   } catch (error) {
-    console.error("Error saving conversation to localStorage. Quota might be exceeded.", error);
+    console.error("Error saving conversation to localStorage:", error);
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-        console.error("localStorage quota exceeded. The new conversation or the total size of all conversations might be too large.");
-        // Consider alerting the user that storage is full if this happens.
+        console.warn(
+            "LocalStorage quota exceeded when trying to save conversations. " +
+            "The total size of all conversations, or this specific conversation, might be too large. " +
+            "Consider managing conversations in the Library page if this issue persists."
+        );
     }
   }
 };
 
 export const addMessageToConversation = (
   conversationId: string,
-  topic: string, // Specific topic of this message exchange
+  topic: string, 
   message: Message,
   profile?: UserProfile,
-  subjectContext?: string, // Broader subject
-  lessonContext?: string // Broader lesson
+  subjectContext?: string, 
+  lessonContext?: string 
 ): Conversation => {
   let conversation = getConversationById(conversationId);
   if (!conversation) {
     conversation = {
       id: conversationId,
-      topic: topic, // Store specific topic
+      topic: topic, 
       subjectContext: subjectContext,
       lessonContext: lessonContext,
       messages: [],
@@ -74,7 +74,6 @@ export const addMessageToConversation = (
   if (profile && !conversation.studentProfile) { 
     conversation.studentProfile = profile;
   }
-  // Ensure context is updated if it wasn't there initially or changed
   if (subjectContext && conversation.subjectContext !== subjectContext) {
     conversation.subjectContext = subjectContext;
   }
@@ -110,7 +109,7 @@ export const updateConversationCustomTitle = (id: string, customTitle: string): 
     const conversationToUpdate = { 
       ...conversations[conversationIndex], 
       customTitle: customTitle,
-      lastUpdatedAt: Date.now() // Also update timestamp
+      lastUpdatedAt: Date.now() 
     };
     saveConversation(conversationToUpdate); 
   } else {
