@@ -315,7 +315,7 @@ export default function StudySessionPage() {
                 Retry
             </Button>
             <Button variant="outline" asChild>
-                <Link href="/dashboard"><Home className="mr-2 h-4 w-4"/>Back to Dashboard</Link>
+                <Link href="/dashboard" legacyBehavior><Home className="mr-2 h-4 w-4"/>Back to Dashboard</Link>
             </Button>
         </div>
       </div>

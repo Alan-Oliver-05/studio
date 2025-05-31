@@ -87,7 +87,6 @@ const prompt = ai.definePrompt({
   Current Year: {{{educationQualification.universityExams.currentYear}}}
   Focus: University Curriculum for {{{educationQualification.universityExams.course}}}, year {{{educationQualification.universityExams.currentYear}}} at {{{educationQualification.universityExams.universityName}}} in {{{country}}}.
   {{/if}}
-
   Based on this precise profile, please carefully generate a list of subjects. For each subject:
   1.  Provide a "name" that precisely reflects the educational context and, if applicable, the specific exam. Examples:
       *   If a board exam: "Physics for {{{educationQualification.boardExams.standard}}} Standard {{{educationQualification.boardExams.board}}}"
@@ -97,9 +96,9 @@ const prompt = ai.definePrompt({
   2.  Provide a concise "description" for the subject, tailored to this student and their curriculum focus. If a specific exam like "{{{educationQualification.competitiveExams.specificExam}}}" is mentioned, the description MUST directly reflect preparation for that exam.
   3.  List key "studyMaterials" (which are core topics, chapters, or sections) directly relevant to their specific syllabus or exam pattern.
       *   If 'educationQualification.competitiveExams.specificExam' is provided and recognized (like "JEE Main", "UPSC CSE", "NEET UG", "CAT", "CA", "CMA", "CS", "CPA", "CFA", "ACCA", "FRM"): the 'studyMaterials' MUST be the main sections/subjects tested in THAT PARTICULAR EXAM for {{{country}}}. For example, for "JEE Main", list Mathematics, Physics, Chemistry. For "UPSC CSE Prelims", list topics like Current Events, History of India, Indian and World Geography, etc.
-      *   If only a general competitive exam category (e.g., 'examType' = "Banking") is given without a 'specificExam', list general sections common to that category of exams in {{{country}}}.
+      *   For recognized professional certifications (CS, CPA, CFA, ACCA, FRM), the 'studyMaterials' MUST be the main stages, levels, or parts of the certification.
       *   For board or university courses, list core chapters or units from the typical syllabus for that level and subject.
-
+  
   Output must be in the specified JSON format for the student's benefit.
   Consider the student's 'country' ({{{country}}}) and 'state' ({{{state}}}) to infer regional curriculum variations if applicable (e.g., for state boards in India or state-specific competitive exams).
   The output language for subject names and descriptions should be English, but the content focus must be based on the student's curriculum (derived from their profile, including {{{preferredLanguage}}} if relevant to the curriculum itself).

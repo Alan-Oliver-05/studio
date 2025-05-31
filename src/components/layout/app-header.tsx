@@ -16,9 +16,12 @@ export function AppHeader() {
       <div>
         <SidebarTrigger />
       </div>
-      <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold ">
-        <GraduationCap className="h-6 w-6 text-primary" />
-        <span className="text-gradient-primary font-bold">EduAI Tutor</span>
+      <Link
+        href="/dashboard">
+        <div className="flex items-center gap-2 text-lg font-semibold ">
+          <GraduationCap className="h-6 w-6 text-primary" />
+          <span className="text-gradient-primary font-bold">EduAI Tutor</span>
+        </div>
       </Link>
       <div className="ml-auto flex items-center gap-3">
         <ThemeToggleButton />

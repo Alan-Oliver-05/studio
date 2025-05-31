@@ -141,7 +141,6 @@ export default function VisualLearningPage() {
           <RotateCcw className="mr-2 h-4 w-4" /> New Visual Session
         </Button>
       </div>
-
       <div className="px-4 max-w-4xl mx-auto w-full mb-6">
         <Card className="p-4 bg-muted/30 border-dashed border-primary/30">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
@@ -165,7 +164,7 @@ export default function VisualLearningPage() {
           <p className="text-xs text-muted-foreground mb-1.5 text-center sm:text-left">Quick start suggestions:</p>
           <div className="flex flex-wrap justify-center sm:justify-start gap-1.5">
             {suggestionChips.slice(0,4).map((suggestion, index) => ( // Show fewer chips initially
-              <Button
+              (<Button
                 key={index}
                 variant="outline"
                 size="sm"
@@ -173,13 +172,11 @@ export default function VisualLearningPage() {
                 onClick={() => handleSuggestionChipClick(suggestion)}
               >
                 <Sparkles className="h-3 w-3 mr-1.5 text-accent opacity-70"/> {suggestion}
-              </Button>
+              </Button>)
             ))}
           </div>
         </Card>
       </div>
-
-
       <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto pb-4 px-0 sm:px-4">
         {chatKey && currentConversationId && (
           <DynamicChatInterface

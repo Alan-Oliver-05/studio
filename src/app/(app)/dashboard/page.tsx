@@ -126,7 +126,6 @@ export default function DashboardPage() {
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gradient-primary mt-0">Welcome, {profile.name}!</h1>
         <p className="text-lg sm:text-xl text-muted-foreground mt-2">Here are your personalized study recommendations.</p>
       </div>
-
       {subjects.length === 0 && !isLoadingSubjects && (
         <Card className="text-center py-8 shadow-lg max-w-2xl mx-auto bg-card/80 backdrop-blur-sm">
           <CardHeader className="p-4">
@@ -150,7 +149,6 @@ export default function DashboardPage() {
           </CardFooter>
         </Card>
       )}
-
       {subjects.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {subjects.map((subject, index) => (
@@ -190,7 +188,9 @@ export default function DashboardPage() {
               </CardContent>
               <CardFooter className="p-4 pt-2 border-t mt-auto">
                 <Button asChild className="w-full" variant="default">
-                  <Link href={`/study-session/${encodeURIComponent(subject.name)}`}>
+                  <Link
+                    href={`/study-session/${encodeURIComponent(subject.name)}`}
+                  >
                     <BookOpen className="mr-2 h-4 w-4" /> Start Studying <ChevronRight className="ml-auto h-4 w-4"/>
                   </Link>
                 </Button>

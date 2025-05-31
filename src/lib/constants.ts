@@ -143,6 +143,7 @@ export const COMPETITIVE_EXAM_TYPES_STATE = [
 export const PROFESSIONAL_CERTIFICATION_EXAMS = [
   { value: "CA", label: "CA (Chartered Accountant)" },
   { value: "CMA", label: "CMA (Cost and Management Accountant)" },
+  { value: "CFA_Institute_CFA", label: "CFA (Chartered Financial Analyst)" }, // Corrected value
   { value: "CS", label: "CS (Company Secretary)" },
   { value: "CPA", label: "CPA (Certified Public Accountant)" },
   { value: "CFA", label: "CFA (Chartered Financial Analyst)" },

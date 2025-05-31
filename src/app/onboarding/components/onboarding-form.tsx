@@ -36,7 +36,7 @@ const onboardingSteps = [
   { id: "location", title: "Location & Language" },
   { id: "learningStyle", title: "Learning Style" },
   { id: "educationCategory", title: "Education Focus" },
-  { id: "educationDetails", title: "Education Specifics" },
+  { id: "educationDetails", title: "Education Details" }, // Added this step explicitly
   { id: "review", title: "Review & Complete" },
 ] as const;
 
@@ -83,11 +83,9 @@ const EducationDetailsSchema = z.object({
       currentYear: z.string().optional(),
     }).optional(),
   }).optional(),
+  professionalCertification: z.string().optional(), // For the separate certification field if needed
 });
-
-
 const FormSchema = PersonalDetailsSchema.merge(LocationLanguageSchema).merge(LearningStyleSchema).merge(EducationCategorySchema).merge(EducationDetailsSchema);
-
 const defaultValues: UserProfile = {
   name: "",
   age: "",
@@ -121,13 +119,14 @@ export function OnboardingForm() {
         competitiveExams: existingProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "" },
         universityExams: existingProfile.educationQualification?.universityExams || { universityName: "", collegeName: "", course: "", currentYear: "" },
       }
-    } : defaultValues,
+ } : defaultValues,
+
     mode: "onChange", 
   });
 
   const watchedEducationCategory = form.watch("educationCategory");
   const watchedCompetitiveExamType = form.watch("educationQualification.competitiveExams.examType");
-  const watchedSpecificExamFromDropdown = form.watch("educationQualification.competitiveExams.specificExam");
+  const watchedSpecificExamFromDropdown = form.watch("educationQualification.competitiveExams.specificExam"); // This tracks the value from the dropdown
 
 
   const progressValue = useMemo(() => {
@@ -143,45 +142,59 @@ export function OnboardingForm() {
       isValid = await form.trigger(["country", "state", "preferredLanguage"]);
     } else if (currentStep === "learningStyle") {
       isValid = await form.trigger(["learningStyle"]);
-    }
-     else if (currentStep === "educationCategory") {
+    } else if (currentStep === "educationCategory") {
       isValid = await form.trigger(["educationCategory"]);
     } else if (currentStep === "educationDetails") {
       isValid = true; 
       if (watchedEducationCategory === "board") {
-        isValid = await form.trigger(["educationQualification.boardExams.board", "educationQualification.boardExams.standard"]) &&
-                  !!form.getValues("educationQualification.boardExams.board") && 
-                  !!form.getValues("educationQualification.boardExams.standard");
+        const boardSelected = !!form.getValues("educationQualification.boardExams.board");
+        const standardSelected = !!form.getValues("educationQualification.boardExams.standard");
+        if (!boardSelected) form.setError("educationQualification.boardExams.board", { type: "manual", message: "Please select or specify a board." });
+        if (!standardSelected) form.setError("educationQualification.boardExams.standard", { type: "manual", message: "Please select a standard." });
+        isValid = boardSelected && standardSelected && (await form.trigger(["educationQualification.boardExams.board", "educationQualification.boardExams.standard"]));
       } else if (watchedEducationCategory === "competitive") {
         const examTypeSelected = !!form.getValues("educationQualification.competitiveExams.examType");
-        const specificExamSelected = !!form.getValues("educationQualification.competitiveExams.specificExam");
+        const specificExamValue = form.getValues("educationQualification.competitiveExams.specificExam");
 
         if (!examTypeSelected) {
             form.setError("educationQualification.competitiveExams.examType", { type: "manual", message: "Please select an exam category." });
             isValid = false;
-        } else if (!specificExamSelected) {
+        } else if (!specificExamValue || specificExamValue.trim() === "") {
             form.setError("educationQualification.competitiveExams.specificExam", { type: "manual", message: "Please select or specify an exam." });
             isValid = false;
         } else {
-            // If "Other..." is selected in dropdown, specificExam is the typed text.
-            // This text must not be empty if "Other_" was the selected dropdown value.
-             if (watchedSpecificExamFromDropdown?.startsWith("Other_") && specificExamSelected && form.getValues("educationQualification.competitiveExams.specificExam") === watchedSpecificExamFromDropdown) {
+            // If an "Other_" type was chosen from the dropdown, the text input (which is the same field) should have been filled.
+            // The value `specificExamValue` already reflects the typed text or the dropdown choice.
+            // If it was a dropdown choice not starting with "Other_", it's valid.
+            // If it started with "Other_" from the dropdown, its value *is* that "Other_...", and it means the user hasn't typed anything new.
+            // So, if `specificExamValue` is one of the "Other_" template values, it means the user hasn't specified.
+            const isOtherTemplateValue = COMPETITIVE_EXAM_TYPES_CENTRAL.some(e => e.value === specificExamValue && e.value.startsWith("Other_")) ||
+                                         COMPETITIVE_EXAM_TYPES_STATE.some(e => e.value === specificExamValue && e.value.startsWith("Other_")) ||
+                                         PROFESSIONAL_CERTIFICATION_EXAMS.some(e => e.value === specificExamValue && e.value.startsWith("Other_"));
+            
+            if (isOtherTemplateValue && specificExamValue.endsWith("(Specify below)")) { // More robust check if label was used as value initially
+                 form.setError("educationQualification.competitiveExams.specificExam", { type: "manual", message: "Please specify the exam name." });
+                 isValid = false;
+            } else if (specificExamValue.startsWith("Other_") && specificExamValue === watchedSpecificExamFromDropdown) { // Check if it's still the placeholder "Other_" value
                 form.setError("educationQualification.competitiveExams.specificExam", { type: "manual", message: "Please specify the exam name." });
                 isValid = false;
-             } else {
+            } else {
                 form.clearErrors("educationQualification.competitiveExams.specificExam");
                 isValid = true;
-             }
+            }
         }
-        // Re-trigger to show error messages if any field is still invalid
         if (isValid) {
             isValid = await form.trigger(["educationQualification.competitiveExams.examType", "educationQualification.competitiveExams.specificExam"]);
         }
+
       } else if (watchedEducationCategory === "university") {
-        isValid = await form.trigger(["educationQualification.universityExams.universityName", "educationQualification.universityExams.course", "educationQualification.universityExams.currentYear"]) &&
-                  !!form.getValues("educationQualification.universityExams.universityName") &&
-                  !!form.getValues("educationQualification.universityExams.course") &&
-                  !!form.getValues("educationQualification.universityExams.currentYear");
+        const uniNameSelected = !!form.getValues("educationQualification.universityExams.universityName");
+        const courseSelected = !!form.getValues("educationQualification.universityExams.course");
+        const yearSelected = !!form.getValues("educationQualification.universityExams.currentYear");
+        if(!uniNameSelected) form.setError("educationQualification.universityExams.universityName", {type: "manual", message: "University name is required."});
+        if(!courseSelected) form.setError("educationQualification.universityExams.course", {type: "manual", message: "Course/Major is required."});
+        if(!yearSelected) form.setError("educationQualification.universityExams.currentYear", {type: "manual", message: "Current year is required."});
+        isValid = uniNameSelected && courseSelected && yearSelected && (await form.trigger(["educationQualification.universityExams.universityName", "educationQualification.universityExams.course", "educationQualification.universityExams.currentYear"]));
       }
     }
 
@@ -191,7 +204,10 @@ export function OnboardingForm() {
       if (currentIndex < onboardingSteps.length - 1) {
         if (currentStep === "educationCategory" && form.getValues("educationCategory") === "other") {
            setCurrentStep("review"); 
-        } else {
+        } else if (currentStep === "educationCategory" && form.getValues("educationCategory") !== "other") {
+           setCurrentStep("educationDetails"); // Go to details if not "other"
+        }
+        else {
           setCurrentStep(onboardingSteps[currentIndex + 1].id);
         }
       }
@@ -202,7 +218,10 @@ export function OnboardingForm() {
     const currentIndex = onboardingSteps.findIndex(step => step.id === currentStep);
      if (currentStep === "review" && form.getValues("educationCategory") === "other") {
         setCurrentStep("educationCategory"); 
-    } else if (currentIndex > 0) {
+    } else if (currentStep === "educationDetails") { // If on details, go back to category
+        setCurrentStep("educationCategory");
+    }
+    else if (currentIndex > 0) {
       setCurrentStep(onboardingSteps[currentIndex - 1].id);
     }
   };
@@ -225,41 +244,48 @@ export function OnboardingForm() {
 
   const currentStepDetails = onboardingSteps.find(s => s.id === currentStep);
 
-  const showSpecificExamTextInput =
-    watchedEducationCategory === "competitive" &&
-    (watchedSpecificExamFromDropdown?.startsWith("Other_") || 
-     watchedCompetitiveExamType === "Other" ||
-     (watchedSpecificExamFromDropdown && (
-        watchedSpecificExamFromDropdown.includes("(Specify Name)") ||
-        watchedSpecificExamFromDropdown.includes("(Specify State & Exam)") ||
-        watchedSpecificExamFromDropdown.includes("(Specify State)")
-     ))
-    );
+  const showSpecificExamTextInput = useMemo(() => {
+    if (watchedEducationCategory !== "competitive" || !watchedCompetitiveExamType) {
+        return false;
+    }
+    if (watchedCompetitiveExamType === "Other") return true;
+
+    const selectedExamFromDropdown = form.getValues("educationQualification.competitiveExams.specificExam");
+    return selectedExamFromDropdown?.startsWith("Other_") || 
+           (selectedExamFromDropdown && (
+             selectedExamFromDropdown.includes("(Specify Name)") ||
+             selectedExamFromDropdown.includes("(Specify State & Exam)") ||
+             selectedExamFromDropdown.includes("(Specify State)")
+           ));
+  }, [watchedEducationCategory, watchedCompetitiveExamType, form.watch("educationQualification.competitiveExams.specificExam")]);
+
 
 
   const getSpecificExamInputLabel = () => {
-    if (watchedSpecificExamFromDropdown?.startsWith("Other_Specialized_Domain_Exam")) return "Specify Specialized Domain Exam Name";
-    if (watchedSpecificExamFromDropdown?.startsWith("Other_Central_Board")) return "Specify Other Central Board Name";
-    if (watchedSpecificExamFromDropdown?.startsWith("Other_Central_Exam")) return "Specify Other Central Exam Name";
-    if (watchedSpecificExamFromDropdown?.startsWith("Other_Banking_Central")) return "Specify Other Central Banking Exam Name";
-    if (watchedSpecificExamFromDropdown?.startsWith("Other_SSC_Exam")) return "Specify Other SSC Exam Name";
-    if (watchedSpecificExamFromDropdown?.startsWith("Other_State_Exam")) return "Specify Other State Exam Name";
-    if (watchedSpecificExamFromDropdown?.startsWith("Other_Banking_State")) return "Specify Other State Banking Exam Name";
-    if (watchedSpecificExamFromDropdown?.startsWith("Other_Professional_Cert")) return "Specify Other Professional Certification";
-    if (watchedSpecificExamFromDropdown?.includes("(Specify Name)")) return `Specify ${watchedSpecificExamFromDropdown.replace(" (Specify Name)","")} Name`;
-    if (watchedSpecificExamFromDropdown?.includes("(Specify State & Exam)")) return `Specify State & Exam for ${watchedSpecificExamFromDropdown.replace(" (Specify State & Exam)","")}`;
-    if (watchedSpecificExamFromDropdown?.includes("(Specify State)")) return `Specify State for ${watchedSpecificExamFromDropdown.replace(" (Specify State)","")}`;
+    const specificExamVal = form.getValues("educationQualification.competitiveExams.specificExam");
+    if (specificExamVal?.startsWith("Other_Specialized_Domain_Exam")) return "Specify Specialized Domain Exam Name";
+    if (specificExamVal?.startsWith("Other_Central_Board")) return "Specify Other Central Board Name";
+    if (specificExamVal?.startsWith("Other_Central_Exam")) return "Specify Other Central Exam Name";
+    if (specificExamVal?.startsWith("Other_Banking_Central")) return "Specify Other Central Banking Exam Name";
+    if (specificExamVal?.startsWith("Other_SSC_Exam")) return "Specify Other SSC Exam Name";
+    if (specificExamVal?.startsWith("Other_State_Exam")) return "Specify Other State Exam Name";
+    if (specificExamVal?.startsWith("Other_Banking_State")) return "Specify Other State Banking Exam Name";
+    if (specificExamVal?.startsWith("Other_Professional_Cert")) return "Specify Other Professional Certification";
+    if (specificExamVal?.includes("(Specify Name)")) return `Specify ${specificExamVal.replace(" (Specify Name)","")} Name`;
+    if (specificExamVal?.includes("(Specify State & Exam)")) return `Specify State & Exam for ${specificExamVal.replace(" (Specify State & Exam)","")}`;
+    if (specificExamVal?.includes("(Specify State)")) return `Specify State for ${specificExamVal.replace(" (Specify State)","")}`;
     if (watchedCompetitiveExamType === "Other") return "Specify Exam Name / Job Posting";
     return "Specify Exam Name / Details";
   }
 
   const getSpecificExamInputPlaceholder = () => {
-    if (watchedSpecificExamFromDropdown?.startsWith("Other_Specialized_Domain_Exam")) return "E.g., National Arts Talent Search";
-    if (watchedSpecificExamFromDropdown?.startsWith("Other_Central_Board")) return "E.g., My Custom Central Board";
-    if (watchedSpecificExamFromDropdown?.startsWith("Other_SSC_Exam")) return "E.g., SSC Selection Post";
-    if (watchedSpecificExamFromDropdown?.includes("(Specify Name)")) return `E.g., My State Civil Services`;
-    if (watchedSpecificExamFromDropdown?.includes("(Specify State & Exam)")) return `E.g., Maharashtra - MPSC Rajyaseva`;
-    if (watchedSpecificExamFromDropdown?.includes("(Specify State)")) return `E.g., Tamil Nadu TET`;
+    const specificExamVal = form.getValues("educationQualification.competitiveExams.specificExam");
+    if (specificExamVal?.startsWith("Other_Specialized_Domain_Exam")) return "E.g., National Arts Talent Search";
+    if (specificExamVal?.startsWith("Other_Central_Board")) return "E.g., My Custom Central Board";
+    if (specificExamVal?.startsWith("Other_SSC_Exam")) return "E.g., SSC Selection Post";
+    if (specificExamVal?.includes("(Specify Name)")) return `E.g., My State Civil Services`;
+    if (specificExamVal?.includes("(Specify State & Exam)")) return `E.g., Maharashtra - MPSC Rajyaseva`;
+    if (specificExamVal?.includes("(Specify State)")) return `E.g., Tamil Nadu TET`;
     if (watchedCompetitiveExamType === "Other") return "E.g., Local Scholarship Test or Specific Job Title";
     return "Name of the 'Other' exam or specific post details";
   }
@@ -459,8 +485,9 @@ export function OnboardingForm() {
                           <FormLabel>Board Name</FormLabel>
                            <Select onValueChange={(value) => {
                              field.onChange(value);
-                             if (value === "Other_Central_Board") { 
-                               form.setValue("educationQualification.boardExams.board", "Other_Central_Board"); 
+                             if (value === "Other_Central_Board" || value === "State Board") { 
+                               // Keep 'Other_Central_Board' or 'State Board' as the value to trigger text input
+                               form.setValue("educationQualification.boardExams.board", value); 
                              }
                            }} value={field.value} defaultValue={field.value}>
                             <FormControl>
@@ -473,20 +500,17 @@ export function OnboardingForm() {
                                 <SelectItem value="State Board">State Board (Specify your state's board)</SelectItem>
                             </SelectContent>
                           </Select>
-                          {field.value === "Other_Central_Board" && (
+                          {(field.value === "Other_Central_Board" || field.value === "State Board") && (
                             <Input 
                                 className="mt-2"
-                                placeholder="Specify other central board name" 
-                                onChange={(e) => form.setValue("educationQualification.boardExams.board", e.target.value)}
-                                defaultValue={form.getValues("educationQualification.boardExams.board") !== "Other_Central_Board" ? form.getValues("educationQualification.boardExams.board") : ""}
-                            />
-                          )}
-                           {field.value === "State Board" && (
-                            <Input 
-                                className="mt-2"
-                                placeholder="E.g., Tamil Nadu State Board, Maharashtra State Board" 
-                                onChange={(e) => form.setValue("educationQualification.boardExams.board", e.target.value)}
-                                defaultValue={form.getValues("educationQualification.boardExams.board") !== "State Board" ? form.getValues("educationQualification.boardExams.board") : ""}
+                                placeholder={field.value === "Other_Central_Board" ? "Specify other central board name" : "E.g., Tamil Nadu State Board"}
+                                // This controlled input reflects any user typed text for the "Other" board.
+                                // It's not directly field.value because field.value remains "Other_Central_Board" or "State Board".
+                                // We need a way to store the typed text. For simplicity, we modify the field.value itself upon blur or submit if it was "Other_".
+                                // A better way would be a separate state or form field for the "other" text.
+                                // For now, we'll rely on the main field.value being updated if needed.
+                                onChange={(e) => field.onChange(e.target.value)} // This will overwrite "Other_Central_Board"
+                                defaultValue={form.getValues("educationQualification.boardExams.board") !== "Other_Central_Board" && form.getValues("educationQualification.boardExams.board") !== "State Board" ? form.getValues("educationQualification.boardExams.board") : ""}
                             />
                           )}
                           <FormMessage />
@@ -546,19 +570,21 @@ export function OnboardingForm() {
                     {(watchedCompetitiveExamType === "Central" || watchedCompetitiveExamType === "State" || watchedCompetitiveExamType === "ProfessionalCertifications") && (
                        <FormField
                         control={form.control}
-                        name="educationQualification.competitiveExams.specificExam"
+                        name="educationQualification.competitiveExams.specificExam" // This field will hold the specific exam (either dropdown value or typed text)
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Specific Exam / Certification</FormLabel>
                              <Select 
                                 onValueChange={(value) => {
+                                  // When a dropdown item is selected, update the form field.
+                                  // If it's an "Other..." type, this value serves as a trigger for the text input.
+                                  // The actual text input will then overwrite this if the user types.
                                   field.onChange(value); 
                                   if (value && !value.startsWith("Other_") && !value.includes("(Specify")) {
-                                    // If a specific, non-"Other" exam is chosen from dropdown, clear text input part
-                                    // This is tricky because specificExam is a single field. We rely on showSpecificExamTextInput
+                                     form.clearErrors("educationQualification.competitiveExams.specificExam");
                                   }
                                 }} 
-                                value={field.value} 
+                                value={field.value} // This binds to the form state for specificExam
                                 defaultValue={field.value}
                              >
                               <FormControl>
@@ -570,7 +596,7 @@ export function OnboardingForm() {
                                 {getCombinedCompetitiveExamList().map(e => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
                               </SelectContent>
                             </Select>
-                             {(watchedSpecificExamFromDropdown?.startsWith("Other_") || (watchedSpecificExamFromDropdown && (watchedSpecificExamFromDropdown.includes("(Specify Name)") || watchedSpecificExamFromDropdown.includes("(Specify State & Exam)") || watchedSpecificExamFromDropdown.includes("(Specify State)")))) && 
+                             {(field.value?.startsWith("Other_") || (field.value && (field.value.includes("(Specify Name)") || field.value.includes("(Specify State & Exam)") || field.value.includes("(Specify State)")))) && 
                               <FormDescription className="mt-1">Please specify the exam/certification name/details in the text field below.</FormDescription>}
                             <FormMessage />
                           </FormItem>
@@ -580,11 +606,13 @@ export function OnboardingForm() {
                     {showSpecificExamTextInput && (
                         <FormField
                           control={form.control}
-                          name="educationQualification.competitiveExams.specificExam"
+                          name="educationQualification.competitiveExams.specificExam" // This is the SAME field used by the select above
                            render={({ field: { onChange, value, ...restField } }) => {
-                              const displayValue = (watchedSpecificExamFromDropdown?.startsWith("Other_") || (watchedSpecificExamFromDropdown && (watchedSpecificExamFromDropdown.includes("(Specify Name)") || watchedSpecificExamFromDropdown.includes("(Specify State & Exam)") || watchedSpecificExamFromDropdown.includes("(Specify State)")))) && value === watchedSpecificExamFromDropdown
-                                                 ? "" 
-                                                 : value;
+                              // If the current `value` is one of the "Other_" placeholders, display an empty input for the user to type.
+                              // Otherwise, display the `value` (which might be a specific exam from dropdown or already typed text).
+                              const isPlaceholderValue = value?.startsWith("Other_") || (value && (value.includes("(Specify Name)") || value.includes("(Specify State & Exam)") || value.includes("(Specify State)")));
+                              const displayValue = isPlaceholderValue ? "" : value;
+                              
                               return (
                                 <FormItem>
                                   <FormLabel>
@@ -595,7 +623,7 @@ export function OnboardingForm() {
                                       placeholder={getSpecificExamInputPlaceholder()}
                                       value={displayValue || ""}
                                       onChange={(e) => {
-                                        onChange(e.target.value); 
+                                        onChange(e.target.value); // User typing directly updates the field
                                       }}
                                       {...restField} 
                                     />
@@ -692,7 +720,7 @@ export function OnboardingForm() {
                   
                   {watchedEducationCategory === "board" && form.getValues("educationQualification.boardExams") && (
                     <div className="pl-4 mt-1 border-l-2 border-primary/50">
-                      <p><strong>Board:</strong> {form.getValues("educationQualification.boardExams.board")?.startsWith("Other_") ? `Other: ${form.getValues("educationQualification.boardExams.board")}` : form.getValues("educationQualification.boardExams.board") || 'N/A'}</p>
+                      <p><strong>Board:</strong> {form.getValues("educationQualification.boardExams.board")?.startsWith("Other_") || form.getValues("educationQualification.boardExams.board") === "State Board" ? `Specified: ${form.getValues("educationQualification.boardExams.board")}` : form.getValues("educationQualification.boardExams.board") || 'N/A'}</p>
                       <p><strong>Standard:</strong> {BOARD_STANDARDS.find(s => s.value === form.getValues("educationQualification.boardExams.standard"))?.label || 'N/A'}</p>
                     </div>
                   )}
@@ -700,9 +728,10 @@ export function OnboardingForm() {
                      <div className="pl-4 mt-1 border-l-2 border-primary/50">
                       <p><strong>Exam Category:</strong> {form.getValues("educationQualification.competitiveExams.examType") || 'N/A'}</p>
                       <p><strong>Specific Exam/Certification:</strong> {
+                        // Try to find label from combined list first
                         getCombinedCompetitiveExamList().find(e => e.value === form.getValues("educationQualification.competitiveExams.specificExam"))?.label ||
-                        form.getValues("educationQualification.competitiveExams.specificExam") || 'N/A'
-                      }</p>
+                        form.getValues("educationQualification.competitiveExams.specificExam") || 'N/A' // Fallback to raw value
+                      }</p> 
                     </div>
                   )}
                   {watchedEducationCategory === "university" && form.getValues("educationQualification.universityExams") && (
@@ -713,6 +742,9 @@ export function OnboardingForm() {
                       <p><strong>Year:</strong> {UNIVERSITY_YEARS.find(y => y.value === form.getValues("educationQualification.universityExams.currentYear"))?.label || 'N/A'}</p>
                     </div>
                   )}
+                   {form.getValues("professionalCertification") && ( // Kept for legacy data, though competitiveExams handles it now
+                     <p><strong>Professional Certification (Legacy):</strong> {form.getValues("professionalCertification") === "Other_Professional_Cert" ? `Other: ${form.getValues("professionalCertification")}` : form.getValues("professionalCertification")}</p>
+                   )}
                 </div>
                 <p className="text-xs text-muted-foreground pt-3 border-t">Please review your details carefully. You can go back to make changes.</p>
               </div>

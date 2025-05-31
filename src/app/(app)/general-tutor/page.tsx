@@ -100,17 +100,16 @@ export default function GeneralTutorPage() {
           <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
         </Button>
       </div>
-      
       <div className="flex-grow flex flex-col min-h-0 max-w-4xl w-full mx-auto">
         {chatKey && currentConversationId && ( // Ensure key and ID are set
-          <DynamicChatInterface
+          (<DynamicChatInterface
             key={chatKey} 
             userProfile={profile}
             topic="AI Learning Assistant Chat" // Specific topic for AI to recognize this mode
             conversationId={currentConversationId}
             initialSystemMessage={initialMainChatMessage}
             placeholderText="Ask anything or upload an image..."
-          />
+          />)
         )}
       </div>
     </div>

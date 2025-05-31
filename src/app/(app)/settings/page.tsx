@@ -88,7 +88,14 @@ export default function SettingsPage() {
 
   const handleLogout = () => {
     setProfile(null); 
-    localStorage.clear(); 
+    // Clear relevant parts of localStorage to ensure a clean slate for onboarding
+    localStorage.removeItem('userProfile');
+    // Optionally, clear other related items like chat history, tasks, notes if stored locally
+    // localStorage.removeItem('chatHistory'); 
+    // localStorage.removeItem('userTasks');
+    // localStorage.removeItem('userNotes');
+    // If needed, clear everything: localStorage.clear(); 
+    
     router.push('/onboarding');
     toast({
       title: "Logged Out",
@@ -100,22 +107,21 @@ export default function SettingsPage() {
 
   return (
     <div className="pb-8 pt-0">
-       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center mt-0">
-          <div className="mb-4 sm:mb-0 text-center sm:text-left">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-              <SettingsIcon className="mr-3 h-7 w-7 sm:h-8 sm:w-8" /> User Settings
-            </h1>
-            <p className="text-lg text-muted-foreground mt-1">
-              Manage your profile and app preferences.
-            </p>
-          </div>
-          <Button variant="outline" asChild className="shadow-sm">
-            <Link href="/onboarding">
-              <Edit3 className="mr-2 h-4 w-4"/> Update Profile
-            </Link>
-          </Button>
-      </div>
-
+      <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center mt-0">
+         <div className="mb-4 sm:mb-0 text-center sm:text-left">
+           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
+             <SettingsIcon className="mr-3 h-7 w-7 sm:h-8 sm:w-8" /> User Settings
+           </h1>
+           <p className="text-lg text-muted-foreground mt-1">
+             Manage your profile and app preferences.
+           </p>
+         </div>
+         <Button variant="outline" asChild className="shadow-sm">
+           <Link href="/onboarding">
+             <Edit3 className="mr-2 h-4 w-4"/> Update Profile
+           </Link>
+         </Button>
+     </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1 shadow-xl bg-card/90 backdrop-blur-sm">
             <CardHeader className="items-center text-center border-b pb-4">
@@ -217,9 +223,9 @@ export default function SettingsPage() {
             </Card>
         </div>
       </div>
-       <p className="text-sm text-muted-foreground text-center pt-6 mt-8 border-t border-border/50">
-            Profile information is used to personalize your learning experience. To update these details, please go through the onboarding process again via the "Update Profile" button above.
-      </p>
+      <p className="text-sm text-muted-foreground text-center pt-6 mt-8 border-t border-border/50">
+           Profile information is used to personalize your learning experience. To update these details, please go through the onboarding process again via the "Update Profile" button above.
+     </p>
     </div>
   );
 }

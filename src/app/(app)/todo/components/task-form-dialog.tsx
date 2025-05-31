@@ -193,7 +193,7 @@ export function TaskFormDialog({ open, onOpenChange, onSubmitForm, taskData }: T
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "PPP") // Format date for display
+                            (format(field.value, "PPP")) // Format date for display
                           ) : (
                             <span>Pick a date</span>
                           )}
