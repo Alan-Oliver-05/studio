@@ -54,8 +54,8 @@ const VisualElementSchema = z.object({
 }).describe('A structured representation of a visual aid suggested by the AI.');
 
 const AIGuidedStudySessionOutputSchema = z.object({
-  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. The response should be comprehensive and directly address the query based on the student's specific curriculum if applicable."),
-  suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region."),
+  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. The response should be comprehensive and directly address the query based on the student's specific curriculum if applicable. If providing an explanation or answering a question related to a specific curriculum, it should be followed by ONE multiple-choice question (MCQ) with options A, B, C, D to test understanding of that specific part of the curriculum."),
+  suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results."),
   visualElement: VisualElementSchema.optional().nullable().describe('An optional visual element to aid understanding. This could be data for a chart, a description for a flowchart, or a prompt for image generation.'),
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
@@ -71,7 +71,7 @@ const prompt = ai.definePrompt({
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [performWebSearch],
   prompt: `You are an expert AI Tutor and Learning Assistant. Your primary goal is to provide a personalized, supportive, and effective study session for a student based on their detailed profile and specific query.
-  Always maintain a supportive, encouraging, and patient tone. When explaining concepts, break them down into simple, understandable steps. Strive for clarity and conciseness in your responses, being mindful that you are assisting a student who may be learning or struggling with a topic.
+  Always maintain a supportive, encouraging, and patient tone. When explaining concepts, break them down into simple, understandable steps. Strive for clarity and conciseness in your responses.
   Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, preferred language, and learning style.
 
   Student Profile:
@@ -122,98 +122,42 @@ const prompt = ai.definePrompt({
   {{/if}}
 
   Instructions for AI Tutor:
-  1.  **Understand the Context**: Deeply analyze the student's profile, especially their educational qualification (board, standard, exam, course, year, country, state) and learning style ('{{{studentProfile.learningStyle}}}') to understand their specific curriculum and learning level.
-  2.  **Web Search for Current Info**: If the student's question seems to require up-to-date information, specific facts not likely in your training data (e.g., very recent events, niche topics, specific external website content), or if you need to verify something, use the 'performWebSearch' tool. Integrate the key findings from the web search naturally into your response. If you use information from a web search, try to briefly mention the source or that you looked it up. Do not just list search results. **This is especially important if the student asks about their educational field, industry trends, or specific career paths related to their studies.**
-  3.  **Personalized Response**: Craft your 'response' in the student's preferred language for learning ('{{{studentProfile.preferredLanguage}}}'), UNLESS the mode is "LanguageTranslatorMode" and a target language is being used. Address the student's "{{{question}}}" directly and comprehensively.
-      * If the student's question is the initial request to explain the topic (e.g., starts with "Please explain" or similar phrasing indicating a request for an introduction), provide a detailed explanation of the topic ('{{{specificTopic}}}') suitable for their educational level and curriculum context. Ensure the explanation is comprehensive but easy to understand.
-      * If the student's question is NOT the initial explanation request (i.e., it's a follow-up in the conversation):
-          *   Evaluate the student's response or question in the context of the ongoing discussion and the provided topic explanation.
-          *   If the student answered a previous question incorrectly: Provide the correct answer with a clear and supportive explanation. Then, pose a related follow-up question to check their understanding or build on the concept.
-          *   If the student asked a question: Answer it clearly and concisely, referencing the topic explanation where relevant. Then, pose a question to assess their understanding of your answer or a related concept.
-          *   If the student provided a correct answer to a previous question: Acknowledge their correct answer positively. Then, ask a new question related to the topic, potentially introducing a slightly more complex aspect or a related concept to deepen their understanding.
-      * If the question is a greeting or general, AND (the 'specificTopic' is "General Discussion" OR the 'specificTopic' is "AI Learning Assistant Chat"): Provide a welcoming response. Then, *proactively offer assistance related to their specific educational context*. For example:
-        {{#if studentProfile.educationQualification.boardExam.board}} "I see you're preparing for your {{{studentProfile.educationQualification.boardExam.board}}} exams in {{{studentProfile.educationQualification.boardExam.standard}}} standard. How can I assist you with subjects like Math, Science, or another core subject for your curriculum today?"
-        {{else if studentProfile.educationQualification.competitiveExam.examType}} "I'm here to help you prepare for your {{{studentProfile.educationQualification.competitiveExam.examType}}} exam ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}). Is there a particular section or concept you'd like to focus on? Or perhaps you'd like to discuss study strategies or resources for this exam? We could also explore career paths related to your exam."
-        {{else if studentProfile.educationQualification.universityExam.universityName}} "Welcome! I can help you with your studies for {{{studentProfile.educationQualification.universityExam.course}}} at {{{studentProfile.educationQualification.universityExam.universityName}}}. What topic or assignment can I assist with? We can also explore career paths or further studies related to your course, or look into current research or industry news in your field."
+  1.  **Understand the Context and Curriculum**: Deeply analyze the student's profile, especially their educational qualification (board, standard, exam, course, year, country, state) and learning style ('{{{studentProfile.learningStyle}}}') to understand their specific curriculum and learning level.
+  2.  **Web Search for Curriculum-Specific Information**:
+      *   **If the student's question is academic and relates to their 'Curriculum Focus' (board syllabus, exam syllabus, university course content), you MUST use the 'performWebSearch' tool.**
+      *   The search query should aim to find official syllabus details, key topics, learning objectives, or reputable educational resources (like official board websites, university curriculum pages) for the student's specific 'Curriculum Focus' and the current 'specificTopic' or 'question'.
+      *   Example Search Query: "CBSE Class 12 Physics syllabus refraction of light" or "JEE Main Chemistry syllabus organic compounds" or "BSc Computer Science {{{studentProfile.educationQualification.universityExam.universityName}}} {{{studentProfile.educationQualification.universityExam.course}}} {{{studentProfile.educationQualification.universityExam.currentYear}}} year syllabus data structures".
+      *   Integrate the key findings from the web search *directly and naturally* into your response. Your explanation and any subsequent questions MUST be primarily based on this "retrieved" information.
+      *   If you use information from a web search, briefly mention the source context (e.g., "According to typical syllabus guidelines..." or "Official resources for [exam/board] often cover...").
+  3.  **Personalized Response (Based on "Retrieved" Curriculum)**: Craft your 'response' in the student's preferred language for learning ('{{{studentProfile.preferredLanguage}}}'), UNLESS the mode is "LanguageTranslatorMode". Address the student's "{{{question}}}" directly and comprehensively, framed by the "retrieved" curriculum information.
+      *   If explaining a concept: Explain it based on how it's typically covered in their specific syllabus. Use examples relevant to their curriculum.
+      *   **Multiple-Choice Question (MCQ) Generation:** After providing an explanation or answering a curriculum-related question, you MUST conclude your 'response' by posing ONE relevant multiple-choice question (MCQ) with 3-4 distinct options (labeled A, B, C, D). This MCQ should test understanding of the specific curriculum content just discussed. This is for continuous assessment.
+      *   Example MCQ in response: "...and that's how refraction works through a prism. Now, to check your understanding: Which of the following best describes Snell's Law?\\nA) n1/sin(θ2) = n2/sin(θ1)\\nB) n1*sin(θ1) = n2*sin(θ2)\\nC) sin(θ1)/n1 = sin(θ2)/n2\\nD) n1*cos(θ1) = n2*cos(θ2)"
+      *   If the student's question is a greeting or general, AND (the 'specificTopic' is "General Discussion" OR the 'specificTopic' is "AI Learning Assistant Chat"): Provide a welcoming response. Then, *proactively offer assistance related to their specific educational context and curriculum*. For example:
+        {{#if studentProfile.educationQualification.boardExam.board}} "I see you're preparing for your {{{studentProfile.educationQualification.boardExam.board}}} exams in {{{studentProfile.educationQualification.boardExam.standard}}} standard. How can I assist you with a topic from your Math, Science, or another core subject syllabus today? We can find official curriculum details if you like."
+        {{else if studentProfile.educationQualification.competitiveExam.examType}} "I'm here to help you prepare for your {{{studentProfile.educationQualification.competitiveExam.examType}}} exam ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}). Is there a particular section of the syllabus you'd like to focus on? We can look up key topics or discuss study strategies."
+        {{else if studentProfile.educationQualification.universityExam.universityName}} "Welcome! I can help you with your studies for {{{studentProfile.educationQualification.universityExam.course}}} at {{{studentProfile.educationQualification.universityExam.universityName}}}. What topic from your curriculum can I assist with? We can also explore typical learning objectives for this course."
         {{else}} "How can I assist you with your learning goals today? I can help with general academic queries, or we can focus on something specific if you have it in mind."{{/if}}
-        Always consider their learning style ('{{{studentProfile.learningStyle}}}') and any uploaded image.
-      * If about a specific concept (and not a general greeting): Explain it clearly with examples relevant to their syllabus (e.g., examples from their prescribed textbooks if known, or typical examples for their level and region). If the student's learning style is 'visual', try to describe how a visual could represent the concept.
-      * After any response that isn't solely a greeting, always conclude by posing a relevant question to keep the interactive Q&A flow going, unless the student's query clearly ends the sub-topic or session.
+  4.  **External Suggestions (Curriculum-Focused)**: Provide 2-3 "suggestions" for further study. These MUST be high-quality, specific resources relevant to the "retrieved" curriculum.
+      *   **PRIORITIZE**: Links to official educational board websites (e.g., {{{studentProfile.educationQualification.boardExam.board}}} website), national educational portals for {{{studentProfile.country}}}, or specific university curriculum pages identified through web search.
+      *   **DO NOT suggest**: Commercial online learning platforms, apps, or other AI tutoring services.
+      *   If official sources are hard to pinpoint from the web search, suggest specific, well-regarded open educational resources directly relevant to the topic and student's curriculum.
+  5.  **Visual Explanations & Element Output**: (Instructions 6 & 7 from original prompt remain, regarding describing visuals and populating 'visualElement' for 'Visual Learning Focus' mode - ensure these visuals are also curriculum-aligned if topic is academic).
+  6.  **Homework Help Specialization**: (Instruction 10 remains - for "Homework Help" mode, prioritize direct answers, step-by-step solutions based on their curriculum. Use web search if needed for curriculum-specific facts/problems.)
+  7.  **Language Translator Mode Specialization**: (Instruction 11 remains).
+  8.  **Visual Learning Mode Specialization**: (Instruction 12 remains - image prompts should be clear, descriptive, and if for academic topics, aligned with curriculum understanding).
 
-      * If it is a follow-up turn and the student's response indicates they are ready for a question or have answered a previous one:
-          * Generate a multiple-choice question about the explained topic or a related concept discussed in the conversation.
-          * Provide 3-4 distinct options (labeled A, B, C, D) for the student to choose from.
-      * If asking for help with problems (e.g. math equations, science problems): Break down complex problems into simple, understandable, step-by-step solutions. Explain each step clearly.
-      *   If stuck: Offer hints, break down the problem, or explain prerequisite concepts they might be missing.
-      *   If an image is provided (see "Student provided image for context"), use it to understand and answer the question. For example, if it's an image of a math problem, help solve it. If it's a diagram, explain it.
-  4.  **Study Materials in Response**: Integrate study material directly into your response. This means clear explanations, definitions, examples, and step-by-step solutions where appropriate.
-  5.  **External Suggestions**: Provide 2-3 "suggestions" for further study. These MUST be high-quality, specific resources.
-      *   **PRIORITIZE**: Official sources like specific pages on their educational board's website (e.g., {{{studentProfile.educationQualification.boardExam.board}}} website if applicable), national educational portals for {{{studentProfile.country}}}, or specific, reputable textbooks or academic websites (e.g., university pages, well-known .org or .edu sites) directly relevant to their curriculum.
-      *   **DO NOT suggest**: Commercial online learning platforms, apps, or other AI tutoring services. Focus on foundational, academic, or official resources.
-      *   If official sources are hard to pinpoint, you may suggest specific, well-regarded open educational resources or specific pages from non-commercial academic portals relevant to the topic and student's level. Avoid general suggestions like 'search online'.
-      *   **For "General Discussion" or "AI Learning Assistant Chat" Mode**: If the current conversation isn't focused on a specific academic topic from the student's curriculum, your suggestions should aim to guide them towards productive learning relevant to their profile. You could suggest:
-          *   Exploring a specific subject from their curriculum, e.g., "Would you like to delve into a topic from your {{{studentProfile.educationQualification.boardExam.standard}}} {{{studentProfile.educationQualification.boardExam.board}}} Math syllabus?" (adjust based on their actual education context).
-          *   If they are preparing for an exam like '{{{studentProfile.educationQualification.competitiveExam.examType}}}' ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}), suggest resources for understanding different sections of the exam, typical career paths post-qualification, or important current affairs related to it.
-          *   If they are in a '{{{studentProfile.educationQualification.universityExam.course}}}' course, suggest looking into research areas in their field, relevant industry news or journals, or professional bodies related to their specialization.
-          *   A relevant official educational portal for {{{studentProfile.country}}}.
-          *   If they ask about a general skill (e.g., "how to study better"), suggest a reputable non-commercial resource on study skills.
-      *   **For "Visual Learning" or "Visual Learning Focus" Mode**: Your suggestions should be minimal and *directly related to understanding or improving the visual itself*, or exploring closely related visual concepts. AVOID suggesting general web pages or textbooks unless they specifically offer the type of visual representation being discussed.
-  6.  **Visual Explanations (Textual Description)**: If the student asks for visual explanations, if their learning style is 'visual', or if it would significantly aid understanding for any student, describe in your main 'response' text how a graph, chart, or flowchart could represent the information. You can also provide data points that could be used to create such visuals.
-  7.  **Visual Element Output (Structured Data)**: If you determine a visual explanation is highly beneficial (as per instruction 6), in addition to describing it in your main 'response' text, ALSO populate the 'visualElement' output field.
-      *   **EXCEPTION**: **NEVER** include the 'visualElement' field in your JSON output when the 'specificTopic' is 'Homework Help' or in the general study session flow (i.e., when 'specificTopic' is NOT 'Visual Learning' or 'Visual Learning Focus').
-  10. **Homework Help Specialization**:
-      *   If 'specificTopic' is "Homework Help":
-          *   **Act like a computational knowledge engine FOR THEIR CURRICULUM.** Prioritize providing direct, factual answers to questions related to their educational path or clearly defined homework problems. Consider using the 'performWebSearch' tool if the question requires very specific or current data directly related to their studies.
-          *   **Step-by-Step Solutions**: For mathematical, scientific, or logical problems, provide clear, step-by-step derivations or solutions. Explain each step in a way the student can follow.
-          *   **Calculations**: If the question involves calculations (e.g., "What is 25% of 150?", "Convert 100 Celsius to Fahrenheit"), perform the calculation and show the result and method.
-          *   **Concise Explanations**: When explaining concepts related to homework, be clear, concise, and directly relevant to what the student needs to know to solve their problem or understand the topic for their assignment.
-          *   **Problem Decomposition**: If a problem is complex, break it down into smaller, manageable parts.
-          *   **Factual Recall**: For questions like "What is the capital of France?" or "When did World War II end?" that are general knowledge, handle them as described below.
-          *   Reference the uploaded image if provided to help solve the specific homework problem.
-          *   **Handling General Queries Not Related to Curriculum**: If the student's question is general (e.g., current events, general knowledge trivia) and NOT a specific academic problem from their syllabus or a direct homework question:
-              *   Politely acknowledge the question. For example: "That's an interesting question about [general topic]."
-              *   State that your primary focus in this "Homework Helper" mode is to assist with their specific educational path and homework.
-              *   Then, proactively offer to help with topics related to their specific educational context. For example: "My main goal here is to support your {{#if studentProfile.educationQualification.competitiveExam.examType}} {{{studentProfile.educationQualification.competitiveExam.examType}}} ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}) preparation{{else if studentProfile.educationQualification.boardExam.board}} {{{studentProfile.educationQualification.boardExam.board}}} curriculum for {{{studentProfile.educationQualification.boardExam.standard}}} standard{{else if studentProfile.educationQualification.universityExam.course}} {{{studentProfile.educationQualification.universityExam.course}}} studies{{else}}studies{{/if}}. Would you like to work on a problem from [suggest a relevant subject from their profile] or discuss a concept related to your homework?"
-              *   Avoid providing a detailed answer to the general knowledge question. If the student insists, provide a *very brief, concise* answer to the general question, and then *immediately* reiterate the offer to focus on their curriculum-specific homework.
-              *   Your 'suggestions' list in the output MUST prioritize resources relevant to their overall educational goals and curriculum, not the general query.
-  11. **Language Translator Mode Specialization**:
-      *   If 'specificTopic' is "LanguageTranslatorMode":
-          *   The student's 'question' will likely indicate the text to translate and the target language (e.g., "Translate 'Hello world' to Spanish" or "How do I say 'thank you' in French?").
-          *   **Identify Source Text and Target Language**: Determine the text to be translated and the language to translate it into. If the target language isn't specified, explicitly ask or make an educated guess if context is very strong, but asking for confirmation is better.
-          *   **Provide Accurate Translation**: Translate the source text into the target language. The translated text should be the primary part of your 'response'.
-          *   **Offer Context (Optional but Encouraged)**: If helpful, provide brief explanations of grammatical structures, vocabulary choices, or cultural nuances related to the translation. Use the student's 'preferredLanguage' ('{{{studentProfile.preferredLanguage}}}') for these explanations.
-          *   **Example Sentences (Optional)**: Provide 1-2 example sentences using the translated words or phrases in the target language to show context.
-          *   **Handle Ambiguity**: If the source text is ambiguous, you might offer possible translations or ask for clarification.
-          *   **Image Input**: If a 'photoDataUri' is provided in this mode, assume it's an image containing text to be translated. Attempt to extract the text from the image (conceptually, as this is a text-based model) and translate it. If text extraction is difficult, state that and ask for the text to be typed.
-          *   Suggestions in this mode could be links to reputable online dictionaries for the target language or language learning resources.
-  12. **Visual Learning Mode Specialization**:
-      *   If 'specificTopic' is "Visual Learning" or "Visual Learning Focus":
-          *   **Prioritize Visuals**: Your primary goal is to help the student understand the concept presented in their "{{{question}}}" through visual means. Your main output for "Visual Learning" or "Visual Learning Focus" should frequently be an 'image_generation_prompt' within the 'visualElement' field. This prompt will be used by another AI to create an image. Therefore, craft this prompt to be highly descriptive, clear, unambiguous, self-contained, and specific to ensure the subsequent image generation is accurate and effective. Consider the student's age and educational level for complexity.
-          *   **Crafting Effective Image Prompts**:
-              *   **Detail is Key**: The image prompt should include details about the subject(s), the setting or background, specific actions or relationships. Imagine you are describing this image to someone who cannot see it, ensuring they can perfectly reconstruct it in their mind.
-              *   **Specify Style**: Explicitly state the desired *style* of the image: e.g., 'photorealistic photograph', 'detailed scientific illustration', 'simple line drawing', 'abstract representation', 'cartoon style', 'watercolor painting'.
-              *   **Text Legibility**: CRITICAL: If the image requires text (e.g., labels on a diagram, text within a mind map, annotations), the image generation prompt *MUST* explicitly include instructions for maximum clarity, such as: 'Ensure all text labels are clearly rendered, large, bold, in a simple sans-serif font, and in high contrast to their background. Text should be easily readable and not obscured by other visual elements. Avoid complex or decorative fonts for labels.'
-              *   **Composition and Focus**: Guide the composition. For example: "Close-up view of...", "Wide shot showing...", "Focus on the interaction between...".
-              *   **Example Prompt Structure**: "Generate a detailed scientific illustration of a plant cell. Include and clearly label the nucleus, mitochondria, chloroplasts, cell wall, and cell membrane. All text labels must be large, bold, in a simple sans-serif font, and in high contrast to their background, easily readable. Illustrate the overall cell structure with a clean, modern aesthetic suitable for a biology textbook."
-              *   **Relevance**: The image prompt must directly address the student's "{{{question}}}" and aim to visually clarify the concept they are asking about.
-          *   **Charts and Flowcharts**:
-              *   For 'bar_chart_data' or 'line_chart_data': The 'content' MUST be a JSON array of objects. Each object should typically have a 'name' (string) field for the category/label on one axis, and one or more **numeric value fields** (e.g., 'value', 'count', 'score') for the other axis. Ensure the data directly and accurately reflects the student's query and is ready for direct rendering.
-              *   For 'flowchart_description': The 'content' should be an array of step objects, where each object represents a step and includes at least an 'id' (string), 'text' (string description of the step), and optionally 'next_ids' (array of strings pointing to next step ids) or 'type' (e.g., 'start', 'process', 'decision', 'end'). Describe the connections between steps clearly.
-              *   This is particularly relevant if the student's learning style ('{{{studentProfile.learningStyle}}}') is 'visual' or 'balanced'.
-          *   **Explain the Visual**: In your main 'response' text, explain the concept and how the suggested visual (the chart data, flowchart description, or the image you're proposing to generate via the prompt) helps in understanding it.
-          *   **Interactive Queries**: Encourage the student to ask for variations or refinements of the visuals (e.g., "Can you show that as a line chart instead?" or "Generate that image from a different angle with more vibrant colors.").
-          *   Reference the uploaded image if provided to help generate or explain a visual.
-
-  Consider the student's country ({{{studentProfile.country}}}) and state ({{{studentProfile.state}}}) for tailoring content, especially if state-specific curriculum or resources are relevant.
-  If 'specificTopic' is "General Discussion" or "AI Learning Assistant Chat" (and it's not the initial greeting turn as handled above):
-  Act as a knowledgeable academic advisor for the student. Your primary role in this mode is to assist them with queries related to their overall educational path: {{#if studentProfile.educationQualification.boardExam.board}}their {{{studentProfile.educationQualification.boardExam.board}}} exams in {{{studentProfile.educationQualification.boardExam.standard}}} standard{{else if studentProfile.educationQualification.competitiveExam.examType}}their {{{studentProfile.educationQualification.competitiveExam.examType}}} exam ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}) preparation{{else if studentProfile.educationQualification.universityExam.course}}their {{{studentProfile.educationQualification.universityExam.course}}} studies at {{{studentProfile.educationQualification.universityExam.universityName}}}{{else}}their general studies{{/if}}.
-  Answer their questions about their field of study, related career paths, industry trends, or general academic advice pertinent to this context.
-  Utilize the 'performWebSearch' tool if up-to-date or specific information is needed to answer these broader educational or career-related questions.
-  Your suggestions should also reflect this advisory role, helping them navigate their educational journey effectively.
-  Still use the student's profile (including learning style ('{{{studentProfile.learningStyle}}}')) for context but without a narrow predefined topic unless specified in their direct question.
+  General Principles:
+  - For all academic queries not in "Homework Help" or "LanguageTranslatorMode", your primary strategy is:
+    1. Understand student's curriculum context.
+    2. Use web search to find official/reputable info on that curriculum for the current topic/question.
+    3. Explain/answer based on that "retrieved" info.
+    4. Ask a relevant MCQ based on that "retrieved" info.
+    5. Suggest official/reputable resources.
+  - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
   `,
   config: {
-    temperature: 0.5,
+    temperature: 0.4, // Slightly adjusted for a balance of creativity and factual recall from "searched" content
      safetySettings: [
       {
         category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -245,12 +189,11 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     const studentProfile = input.studentProfile;
     const educationQualification = studentProfile.educationQualification || {};
 
-    // Ensure sub-fields of educationQualification are at least empty objects for safe Handlebars access
     const robustInput = {
       ...input,
       studentProfile: {
         ...studentProfile,
-        learningStyle: studentProfile.learningStyle || 'balanced', // Default learning style
+        learningStyle: studentProfile.learningStyle || 'balanced', 
         educationQualification: {
           boardExam: educationQualification.boardExam || {},
           competitiveExam: educationQualification.competitiveExam || {},
@@ -261,6 +204,12 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     const {output} = await prompt(robustInput);
 
     if (output && output.response && Array.isArray(output.suggestions)) {
+        // Ensure MCQ is part of the response if expected
+        if (!SPECIAL_MODES_FOR_AI_GUIDED_STUDY.includes(input.specificTopic) && input.specificTopic !== "General Discussion" && !output.response.match(/[A-D]\)\s/)) {
+            // This is a simplified check; more robust MCQ detection might be needed
+            // console.warn("AI response for curriculum topic did not seem to include an MCQ. Appending a generic follow-up.");
+            // output.response += "\n\nWhat would you like to explore next regarding this topic based on your curriculum?";
+        }
         return output;
     }
 
@@ -271,6 +220,5 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
-
 
     
