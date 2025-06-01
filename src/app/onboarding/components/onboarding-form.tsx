@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -492,10 +491,10 @@ export function OnboardingForm() {
                            }} value={field.value} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select Board (e.g., CBSE)" />
+                                <SelectValue placeholder="Select Board"/>
                               </SelectTrigger>
                             </FormControl>
-                            <SelectContent>
+                          <SelectContent side="top">
                                 {CENTRAL_BOARDS.map(b => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}
                                 <SelectItem value="State Board">State Board (Specify your state's board)</SelectItem>
                             </SelectContent>
@@ -504,14 +503,8 @@ export function OnboardingForm() {
                             <Input 
                                 className="mt-2"
                                 placeholder={field.value === "Other_Central_Board" ? "Specify other central board name" : "E.g., Tamil Nadu State Board"}
-                                // This controlled input reflects any user typed text for the "Other" board.
-                                // It's not directly field.value because field.value remains "Other_Central_Board" or "State Board".
-                                // We need a way to store the typed text. For simplicity, we modify the field.value itself upon blur or submit if it was "Other_".
-                                // A better way would be a separate state or form field for the "other" text.
-                                // For now, we'll rely on the main field.value being updated if needed.
                                 onChange={(e) => field.onChange(e.target.value)} // This will overwrite "Other_Central_Board"
-                                defaultValue={form.getValues("educationQualification.boardExams.board") !== "Other_Central_Board" && form.getValues("educationQualification.boardExams.board") !== "State Board" ? form.getValues("educationQualification.boardExams.board") : ""}
-                            />
+                            value={field.value === "Other_Central_Board" || field.value === "State Board" ? "" : field.value}                            />
                           )}
                           <FormMessage />
                         </FormItem>
@@ -778,5 +771,3 @@ export function OnboardingForm() {
     </Card>
   );
 }
-
-    

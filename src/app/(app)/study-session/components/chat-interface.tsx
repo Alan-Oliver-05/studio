@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from "react";
@@ -183,8 +182,8 @@ export function ChatInterface({
             const aiQuestionsInThisStage = existingConversation.messages.filter(m => m.sender === 'ai' && m.aiNextStage === lastAiMessage.aiNextStage && !m.aiIsStageComplete).length;
             setQuestionsAskedInClientStage(aiQuestionsInThisStage);
           }
-          if (lastAiMessage.aiNextStage === 'completed' && lastAiMessage.aiIsStageComplete) {
-            setIsTopicSessionCompleted(true);
+            if (lastAiMessage.aiNextStage === 'completed' && lastAiMessage.aiIsStageComplete) {
+                setIsTopicSessionCompleted(true);
           } else {
             setIsTopicSessionCompleted(false);
           }
@@ -201,9 +200,9 @@ export function ChatInterface({
       setMessages([firstAIMessage]);
       addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
       if(isInteractiveQAMode){ 
-         setCurrentClientStage(initialQAStage); 
-         setQuestionsAskedInClientStage(initialQuestionsInStage);
-         setIsTopicSessionCompleted(false);
+        setCurrentClientStage(initialQAStage); 
+        setQuestionsAskedInClientStage(initialQuestionsInStage);
+        setIsTopicSessionCompleted(false);
       }
     } else { 
         setMessages([]);
@@ -425,7 +424,7 @@ export function ChatInterface({
   if (!userProfile) {
     return <div className="flex items-center justify-center h-full text-muted-foreground p-8 text-center">Please complete the onboarding process to use the chat features.</div>;
   }
-  
+
   const getStageDisplayName = (stage: QAS_Stage): string => {
     switch(stage) {
         case 'initial_material': return 'Initial Material Review';

@@ -131,7 +131,7 @@ const prompt = ai.definePrompt({
       *   If you use information from a web search, briefly mention the source context (e.g., "According to typical syllabus guidelines..." or "Official resources for [exam/board] often cover...").
   3.  **Personalized Response (Based on "Retrieved" Curriculum)**: Craft your 'response' in the student's preferred language for learning ('{{{studentProfile.preferredLanguage}}}'), UNLESS the mode is "LanguageTranslatorMode". Address the student's "{{{question}}}" directly and comprehensively, framed by the "retrieved" curriculum information.
       *   If explaining a concept: Explain it based on how it's typically covered in their specific syllabus. Use examples relevant to their curriculum.
-      *   **Multiple-Choice Question (MCQ) Generation:** After providing an explanation or answering a curriculum-related question, you MUST conclude your 'response' by posing ONE relevant multiple-choice question (MCQ) with 3-4 distinct options (labeled A, B, C, D). This MCQ should test understanding of the specific curriculum content just discussed. This is for continuous assessment.
+      *   **Multiple-Choice Question (MCQ) Generation:** After providing an explanation or answering a curriculum-related question (unless in Homework Help, LanguageTranslatorMode, or Visual Learning Focus), you MUST conclude your 'response' by posing ONE relevant multiple-choice question (MCQ) with 3-4 distinct options (labeled A, B, C, D). This MCQ should test understanding of the specific curriculum content just discussed. This is for continuous assessment.
       *   Example MCQ in response: "...and that's how refraction works through a prism. Now, to check your understanding: Which of the following best describes Snell's Law?\\nA) n1/sin(θ2) = n2/sin(θ1)\\nB) n1*sin(θ1) = n2*sin(θ2)\\nC) sin(θ1)/n1 = sin(θ2)/n2\\nD) n1*cos(θ1) = n2*cos(θ2)"
       *   If the student's question is a greeting or general, AND (the 'specificTopic' is "General Discussion" OR the 'specificTopic' is "AI Learning Assistant Chat"): Provide a welcoming response. Then, *proactively offer assistance related to their specific educational context and curriculum*. For example:
         {{#if studentProfile.educationQualification.boardExam.board}} "I see you're preparing for your {{{studentProfile.educationQualification.boardExam.board}}} exams in {{{studentProfile.educationQualification.boardExam.standard}}} standard. How can I assist you with a topic from your Math, Science, or another core subject syllabus today? We can find official curriculum details if you like."
@@ -142,13 +142,31 @@ const prompt = ai.definePrompt({
       *   **PRIORITIZE**: Links to official educational board websites (e.g., {{{studentProfile.educationQualification.boardExam.board}}} website), national educational portals for {{{studentProfile.country}}}, or specific university curriculum pages identified through web search.
       *   **DO NOT suggest**: Commercial online learning platforms, apps, or other AI tutoring services.
       *   If official sources are hard to pinpoint from the web search, suggest specific, well-regarded open educational resources directly relevant to the topic and student's curriculum.
-  5.  **Visual Explanations & Element Output**: (Instructions 6 & 7 from original prompt remain, regarding describing visuals and populating 'visualElement' for 'Visual Learning Focus' mode - ensure these visuals are also curriculum-aligned if topic is academic).
-  6.  **Homework Help Specialization**: (Instruction 10 remains - for "Homework Help" mode, prioritize direct answers, step-by-step solutions based on their curriculum. Use web search if needed for curriculum-specific facts/problems.)
-  7.  **Language Translator Mode Specialization**: (Instruction 11 remains).
-  8.  **Visual Learning Mode Specialization**: (Instruction 12 remains - image prompts should be clear, descriptive, and if for academic topics, aligned with curriculum understanding).
+  5.  **Visual Explanations & Element Output**:
+      *   If the 'specificTopic' is "Visual Learning Focus" OR 'studentProfile.learningStyle' is 'visual' and the question is suitable, consider if a visual aid would significantly enhance understanding.
+      *   If so, describe the visual aid in your text response (e.g., "Imagine a bar chart showing...").
+      *   Then, populate the 'visualElement' output field:
+          *   For bar/line charts: 'visualElement.type' = 'bar_chart_data' or 'line_chart_data'. 'visualElement.content' = array of objects (e.g., \`[{ name: "Category A", value: 10 }, { name: "Category B", value: 20 }]\`). 'visualElement.caption' = "Comparison of X and Y".
+          *   For flowcharts: 'visualElement.type' = 'flowchart_description'. 'visualElement.content' = a structured description (e.g., \`[{step: 1, action: "Start"}, {step: 2, action: "Process A", next: 3}, {step:3, action: "End"}]\` or a clear textual description of steps and connections). 'visualElement.caption' = "Process Flow of Z".
+          *   For image generation: 'visualElement.type' = 'image_generation_prompt'. 'visualElement.content' = a clear, descriptive prompt for an image generation model. 'visualElement.caption' = "Illustration of [concept]".
+      *   Ensure any data or prompts in 'visualElement' are curriculum-aligned if the topic is academic.
+  6.  **Homework Help Specialization**: If 'specificTopic' is "Homework Help":
+      *   Prioritize direct answers and step-by-step solutions. If the question is factual (e.g., "What is the capital of France?"), provide the answer. If it's a problem (e.g., a math equation), provide the solution steps and the final answer.
+      *   Use 'performWebSearch' if needed for specific facts or problem types relevant to the student's curriculum.
+      *   Maintain a helpful, guiding tone. Do not generate an MCQ in this mode.
+  7.  **Language Translator Mode Specialization**: If 'specificTopic' is "LanguageTranslatorMode":
+      *   Focus on direct translation of the 'question' text.
+      *   Determine target language based on student's 'preferredLanguage' and the language of the input query. If input is in 'preferredLanguage', translate to a common global language (like English) or ask student for target. If input is NOT in 'preferredLanguage', translate it TO 'preferredLanguage'.
+      *   'response' should primarily contain the translated text. Optionally, add a brief note about context if needed (e.g., "Translated from French to English:").
+      *   'suggestions' can include links to online dictionaries or language learning resources for the involved languages. Do not generate an MCQ in this mode.
+  8.  **Visual Learning Mode Specialization**: If 'specificTopic' is "Visual Learning Focus":
+      *   The student's primary request is likely for a visual. Prioritize generating a 'visualElement' as per Instruction 5.
+      *   Your 'response' text should describe the visual, explain how it helps understand the concept, and answer any explicit questions.
+      *   Image generation prompts in 'visualElement.content' should be detailed and designed to produce helpful educational images. If the student asks for text to be rendered in an image (e.g. labels), explicitly include instructions for the image generation model to render text clearly and legibly. For example: "Generate an image of the water cycle. Ensure all labels for stages like 'evaporation', 'condensation', 'precipitation' are clearly rendered and legible. Text should be bold and easy to read."
+      *   Do not generate an MCQ in this mode unless specifically asked to quiz on the visual concept.
 
   General Principles:
-  - For all academic queries not in "Homework Help" or "LanguageTranslatorMode", your primary strategy is:
+  - For all academic queries not in "Homework Help", "LanguageTranslatorMode", or "Visual Learning Focus":
     1. Understand student's curriculum context.
     2. Use web search to find official/reputable info on that curriculum for the current topic/question.
     3. Explain/answer based on that "retrieved" info.
@@ -157,7 +175,7 @@ const prompt = ai.definePrompt({
   - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
   `,
   config: {
-    temperature: 0.4, // Slightly adjusted for a balance of creativity and factual recall from "searched" content
+    temperature: 0.4, 
      safetySettings: [
       {
         category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -204,11 +222,13 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     const {output} = await prompt(robustInput);
 
     if (output && output.response && Array.isArray(output.suggestions)) {
-        // Ensure MCQ is part of the response if expected
-        if (!SPECIAL_MODES_FOR_AI_GUIDED_STUDY.includes(input.specificTopic) && input.specificTopic !== "General Discussion" && !output.response.match(/[A-D]\)\s/)) {
-            // This is a simplified check; more robust MCQ detection might be needed
-            // console.warn("AI response for curriculum topic did not seem to include an MCQ. Appending a generic follow-up.");
-            // output.response += "\n\nWhat would you like to explore next regarding this topic based on your curriculum?";
+        const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "Visual Learning Focus", "General Discussion", "AI Learning Assistant Chat"];
+        const shouldHaveMCQ = !nonMCQModes.includes(input.specificTopic) && 
+                               (input.subject || input.lesson); // And it's an academic context
+
+        if (shouldHaveMCQ && !output.response.match(/\b([A-D])\)\s/i) && !output.response.match(/\b[A-D]\.\s/i)) {
+            // console.warn("AI response for curriculum topic did not seem to include an MCQ. Appending a generic follow-up, but AI should have included it.");
+            // output.response += "\n\nWhat would you like to explore next regarding this topic based on your curriculum? Or I can ask you a question to check your understanding.";
         }
         return output;
     }
@@ -220,5 +240,5 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
-
     
+
