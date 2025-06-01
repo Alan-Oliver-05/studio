@@ -5,13 +5,24 @@ import { useState, useEffect } from "react";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut, BookOpen, ListChecks, PenSquare, Brain, PieChartIcon, User as UserIcon, Palette } from "lucide-react"; // Added Palette
+import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut, BookOpen, ListChecks, PenSquare, Brain, PieChartIcon, User as UserIcon, Palette, Trash2 } from "lucide-react"; // Added Palette & Trash2
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, LEARNING_STYLES } from "@/lib/constants"; // Added LEARNING_STYLES
+import { deleteAllConversations } from "@/lib/chat-storage"; // Import deleteAllConversations
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +53,7 @@ export default function SettingsPage() {
   const [remindHomeworkHelper, setRemindHomeworkHelper] = useState(true);
   const [remindGeneralTutor, setRemindGeneralTutor] = useState(true);
   const [remindVisualLearning, setRemindVisualLearning] = useState(true);
+  const [showClearHistoryDialog, setShowClearHistoryDialog] = useState(false);
 
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
@@ -213,19 +225,49 @@ export default function SettingsPage() {
                     <Button variant="outline" onClick={handlePasswordReset} className="w-full sm:w-auto">
                         <KeyRound className="mr-2 h-4 w-4"/> Reset Password
                     </Button>
+                     <Button variant="destructive" onClick={() => setShowClearHistoryDialog(true)} className="w-full sm:w-auto">
+                        <Trash2 className="mr-2 h-4 w-4"/> Clear All Chat History
+                    </Button>
                     <Button variant="destructive" onClick={handleLogout} className="w-full sm:w-auto">
-                        <LogOut className="mr-2 h-4 w-4"/> Logout & Clear Data
+                        <LogOut className="mr-2 h-4 w-4"/> Logout & Clear All Data
                     </Button>
                 </CardContent>
                 <CardFooter>
-                     <p className="text-xs text-muted-foreground">Logging out will clear all your locally stored data, including profile, chat history, tasks, and notes.</p>
+                     <p className="text-xs text-muted-foreground">Logging out will clear all your locally stored data, including profile, chat history, tasks, and notes. Clearing chat history only removes conversation data.</p>
                 </CardFooter>
             </Card>
         </div>
       </div>
+      <AlertDialog open={showClearHistoryDialog} onOpenChange={setShowClearHistoryDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete ALL your chat conversations from this device.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                deleteAllConversations();
+                toast({
+                  title: "Chat History Cleared",
+                  description: "All your chat conversations have been deleted.",
+                });
+                setShowClearHistoryDialog(false);
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete All Chat History
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <p className="text-sm text-muted-foreground text-center pt-6 mt-8 border-t border-border/50">
            Profile information is used to personalize your learning experience. To update these details, please go through the onboarding process again via the "Update Profile" button above.
      </p>
     </div>
   );
 }
+

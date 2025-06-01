@@ -101,6 +101,16 @@ export const deleteConversation = (id: string): void => {
   }
 };
 
+export const deleteAllConversations = (): void => {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(CONVERSATIONS_KEY);
+    console.log("All chat history cleared from localStorage.");
+  } catch (error) {
+    console.error("Error clearing all conversations from localStorage", error);
+  }
+};
+
 export const updateConversationCustomTitle = (id: string, customTitle: string): void => {
   if (typeof window === "undefined") return;
   let conversations = getConversations(); 
@@ -116,3 +126,4 @@ export const updateConversationCustomTitle = (id: string, customTitle: string): 
     console.warn(`Conversation with ID ${id} not found for renaming.`);
   }
 };
+
