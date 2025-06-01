@@ -51,24 +51,26 @@ const settingsItem = { href: "/settings", icon: Settings, label: "Settings" };
 export function SidebarNav() {
   const pathname = usePathname();
   const { profile } = useUserProfile(); 
-  const { state: sidebarState, isMobile } = useSidebar(); 
+  const { state: sidebarState, isMobile, setOpenMobile } = useSidebar(); 
 
   const isNavItemActive = (itemHref: string) => {
     if (itemHref === "/dashboard") return pathname === itemHref || pathname === "/";
-    // For language-learning, highlight if path starts with /language-learning (covers modes in query params)
     if (itemHref === "/language-learning") return pathname.startsWith("/language-learning"); 
     return pathname.startsWith(itemHref);
   };
   
-  // Determine if labels should be shown
-  // On mobile, labels are always shown when the sheet is open.
-  // On desktop, labels are shown only when the sidebar is expanded.
   const showLabels = isMobile || sidebarState === "expanded";
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <Sidebar className="border-r border-sidebar-border shadow-md" collapsible="icon">
       <SidebarHeader className="p-3 flex items-center justify-between">
-        <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
+        <Link href="/dashboard" onClick={handleLinkClick} className="flex items-center gap-2 overflow-hidden">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-7 w-7 text-primary flex-shrink-0" />
             {showLabels && (
@@ -91,10 +93,10 @@ export function SidebarNav() {
                 <SidebarMenuButton
                   asChild
                   isActive={isActive}
-                  tooltip={!showLabels ? item.label : undefined} // Show tooltip only when labels are hidden (icon-only mode)
+                  tooltip={!showLabels ? item.label : undefined}
                   className="justify-start group"
                 >
-                  <Link href={item.href}>
+                  <Link href={item.href} onClick={handleLinkClick}>
                     <div className="flex items-center gap-2">
                       <IconComponent 
                         className={cn(
@@ -124,10 +126,10 @@ export function SidebarNav() {
             <SidebarMenuButton
               asChild
               isActive={pathname === settingsItem.href}
-              tooltip={!showLabels ? settingsItem.label : undefined} // Show tooltip only when labels are hidden
+              tooltip={!showLabels ? settingsItem.label : undefined} 
               className="justify-start group"
             >
-              <Link href={settingsItem.href}>
+              <Link href={settingsItem.href} onClick={handleLinkClick}>
                 <div className="flex items-center gap-2">
                   <Settings 
                     className={cn(
@@ -147,7 +149,7 @@ export function SidebarNav() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           
-          {profile && showLabels && ( // Only show profile details if labels are shown
+          {profile && showLabels && (
             <SidebarMenuItem className="mt-2">
               <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 border border-border/50">
                 <Avatar className="h-8 w-8">
