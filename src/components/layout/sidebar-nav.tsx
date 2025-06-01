@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -59,7 +60,10 @@ export function SidebarNav() {
     return pathname.startsWith(itemHref);
   };
   
-  const sidebarOpen = !isMobile && sidebarState === "expanded";
+  // Determine if labels should be shown
+  // On mobile, labels are always shown when the sheet is open.
+  // On desktop, labels are shown only when the sidebar is expanded.
+  const showLabels = isMobile || sidebarState === "expanded";
 
   return (
     <Sidebar className="border-r border-sidebar-border shadow-md" collapsible="icon">
@@ -67,7 +71,7 @@ export function SidebarNav() {
         <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-7 w-7 text-primary flex-shrink-0" />
-            {sidebarOpen && (
+            {showLabels && (
               <span className="text-xl font-bold text-gradient-primary truncate">
                 EduAI Tutor
               </span>
@@ -87,7 +91,7 @@ export function SidebarNav() {
                 <SidebarMenuButton
                   asChild
                   isActive={isActive}
-                  tooltip={sidebarOpen ? undefined : item.label}
+                  tooltip={!showLabels ? item.label : undefined} // Show tooltip only when labels are hidden (icon-only mode)
                   className="justify-start group"
                 >
                   <Link href={item.href}>
@@ -100,7 +104,7 @@ export function SidebarNav() {
                             : "text-sidebar-foreground/70 group-hover:text-sidebar-accent-foreground"
                         )} 
                       />
-                      {sidebarOpen && (
+                      {showLabels && (
                         <span className={cn("transition-opacity", isActive && "font-semibold")}>
                           {item.label}
                         </span>
@@ -120,7 +124,7 @@ export function SidebarNav() {
             <SidebarMenuButton
               asChild
               isActive={pathname === settingsItem.href}
-              tooltip={sidebarOpen ? undefined : settingsItem.label}
+              tooltip={!showLabels ? settingsItem.label : undefined} // Show tooltip only when labels are hidden
               className="justify-start group"
             >
               <Link href={settingsItem.href}>
@@ -133,7 +137,7 @@ export function SidebarNav() {
                         : "text-sidebar-foreground/70 group-hover:text-sidebar-accent-foreground"
                     )} 
                   />
-                  {sidebarOpen && (
+                  {showLabels && (
                     <span className={cn("transition-opacity", pathname === settingsItem.href && "font-semibold")}>
                       {settingsItem.label}
                     </span>
@@ -143,7 +147,7 @@ export function SidebarNav() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           
-          {profile && sidebarOpen && (
+          {profile && showLabels && ( // Only show profile details if labels are shown
             <SidebarMenuItem className="mt-2">
               <div className="flex items-center gap-2 p-2 rounded-md bg-muted/30 border border-border/50">
                 <Avatar className="h-8 w-8">
