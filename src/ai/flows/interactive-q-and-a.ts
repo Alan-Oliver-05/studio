@@ -47,13 +47,13 @@ const InteractiveQAndAInputSchema = z.object({
   conversationHistory: z.string().optional().nullable().describe('A brief history of the current Q&A session to maintain context. Focus on the last few turns.'),
   currentStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed']).default('initial_material').optional()
     .describe("The current stage of the Q&A session for this topic. Client ensures this is accurate."),
-  questionsAskedInStage: z.number().default(0).optional()
+  questionsAskedInStage: z.number().default(0).optional() // User has answered this many questions in *this* current stage
     .describe("Number of questions the user has ALREADY ANSWERED for the currentStage. If 0, AI is asking the first question of this stage."),
 });
 export type InteractiveQAndAInput = z.infer<typeof InteractiveQAndAInputSchema>;
 
 const InteractiveQAndAOutputSchema = z.object({
-  question: z.string().describe('The next question posed by the AI tutor, or a concluding remark if stage is "completed". If a multiple-choice question, include options A, B, C, D.'),
+  question: z.string().describe('The next question posed by the AI tutor, or a concluding remark if stage is "completed". If a multiple-choice question, it MUST include options (e.g., A, B, C, D).'),
   feedback: z.string().optional().describe('Concise and encouraging feedback on the student\'s answer (if provided). Should be positive for correct answers or explanatory for incorrect ones. For new stages, it can be an introduction. This field MUST always be populated with a non-empty string unless the stage is "completed" and no final feedback is generated.'),
   isCorrect: z.boolean().optional().describe('Indicates if the student\'s last answer was correct. Null if no answer was provided or not applicable.'),
   suggestions: z.array(z.string()).optional().describe("A list of 1-2 specific suggestions for further study within the current topic/stage, such as related sub-topics or concepts the student might ask about next within the current topic."),
@@ -70,7 +70,7 @@ export async function interactiveQAndA(input: InteractiveQAndAInput): Promise<In
 
 const prompt = ai.definePrompt({
   name: 'interactiveQAndAPrompt',
-  input: {schema: InteractiveQAndAInputSchema}, 
+  input: {schema: InteractiveQAndAInputSchema},
   output: {schema: InteractiveQAndAOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are a Focused Topic AI Tutor implementing a multi-stage Q&A strategy.
@@ -105,8 +105,10 @@ const prompt = ai.definePrompt({
       *   Set 'isCorrect' to null.
       *   'feedback' field MUST contain a brief stage introduction for '{{{topic}}}' relevant to '{{{currentStage}}}'. (e.g., "Let's start with foundational questions on '{{{topic}}}'.") Ensure feedback is NOT null/empty.
 
-  3.  **Question Style**: Ask ONE multiple-choice question (MCQ) at a time, relevant to '{{{currentStage}}}' objective for '{{{topic}}}'.
-      *   'question' field MUST include the MCQ and 3-4 distinct options (A, B, C, D). Example: "Which is a primary color?\\nA) Green\\nB) Orange\\nC) Blue\\nD) Purple"
+  3.  **Question Style**: Your primary task for the 'question' field is to generate a Multiple-Choice Question (MCQ).
+      *   Each question you generate in the 'question' field, UNLESS the entire topic is 'completed' AND it's a final concluding remark, MUST be a multiple-choice question (MCQ).
+      *   This MCQ MUST include 3-4 distinct options, clearly labeled (e.g., A, B, C, D or 1., 2., 3., 4.). Example: "What is the capital of France?\\nA) London\\nB) Paris\\nC) Berlin\\nD) Rome"
+      *   The MCQ must be relevant to the '{{{currentStage}}}' objective for '{{{topic}}}'. Adherence to this MCQ format with options is CRITICAL for all active learning stages.
 
   4.  **Conciseness & Focus**: Maintain concise, focused interaction.
 
@@ -125,26 +127,26 @@ const prompt = ai.definePrompt({
 
   {{#if isInitialMaterialStage}}
   **Current Stage: Initial Material Review (Target: 3 questions total). User has answered {{questionsAskedInStage}} questions in this stage. Objective: Test foundational understanding of '{{{topic}}}'.**
-  *   If {{questionsAskedInStage}} < 3: Ask the next foundational MCQ about '{{{topic}}}'. Set 'nextStage' to 'initial_material' and 'isStageComplete' to false.
-  *   If {{questionsAskedInStage}} >= 3: 'initial_material' stage is complete. Your 'feedback' is for the student's 3rd answer. Your 'question' MUST be the *first* MCQ for 'deeper_material' stage. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to true.
+  *   If {{questionsAskedInStage}} < 3: Ask the next foundational MCQ about '{{{topic}}}', formatted with options A, B, C, D. Set 'nextStage' to 'initial_material' and 'isStageComplete' to false.
+  *   If {{questionsAskedInStage}} >= 3: 'initial_material' stage is complete. Your 'feedback' is for the student's 3rd answer. Your 'question' MUST be the *first* MCQ for 'deeper_material' stage, formatted with options A, B, C, D. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to true.
   {{/if}}
 
   {{#if isDeeperMaterialStage}}
   **Current Stage: Deeper Material Analysis (Target: 2 questions total). User has answered {{questionsAskedInStage}} questions in this stage. Objective: Ask analytical MCQs about '{{{topic}}}'.**
-  *   If {{questionsAskedInStage}} < 2: Ask the next analytical MCQ about '{{{topic}}}'. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to false.
-  *   If {{questionsAskedInStage}} >= 2: 'deeper_material' stage is complete. Your 'feedback' is for the student's 2nd answer. Your 'question' MUST be the *first* MCQ for 'out_of_syllabus' stage. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to true.
+  *   If {{questionsAskedInStage}} < 2: Ask the next analytical MCQ about '{{{topic}}}', formatted with options A, B, C, D. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to false.
+  *   If {{questionsAskedInStage}} >= 2: 'deeper_material' stage is complete. Your 'feedback' is for the student's 2nd answer. Your 'question' MUST be the *first* MCQ for 'out_of_syllabus' stage, formatted with options A, B, C, D. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to true.
   {{/if}}
 
   {{#if isOutOfSyllabusStage}}
   **Current Stage: Beyond the Syllabus (Target: 1 question total). User has answered {{questionsAskedInStage}} questions in this stage. Objective: Ask 1 MCQ connecting '{{{topic}}}' to broader concepts.**
-  *   If {{questionsAskedInStage}} < 1: Ask the 1st "beyond syllabus" MCQ. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to false.
-  *   If {{questionsAskedInStage}} >= 1: 'out_of_syllabus' stage is complete. Your 'feedback' is for the student's 1st answer. Your 'question' MUST be a concluding remark for '{{{topic}}}' (e.g., "We've covered the key aspects of {{{topic}}}. Well done!"). Set 'nextStage' to 'completed' and 'isStageComplete' to true.
+  *   If {{questionsAskedInStage}} < 1: Ask the 1st "beyond syllabus" MCQ, formatted with options A, B, C, D. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to false.
+  *   If {{questionsAskedInStage}} >= 1: 'out_of_syllabus' stage is complete. Your 'feedback' is for the student's 1st answer. Your 'question' MUST be a concluding remark for '{{{topic}}}' (e.g., "We've covered the key aspects of {{{topic}}}. Well done!"). This concluding remark for 'question' is ONLY for this specific case when transitioning to 'completed', it MUST NOT be an MCQ. Set 'nextStage' to 'completed' and 'isStageComplete' to true.
   {{/if}}
 
   {{#if isCompletedStage}}
   **Topic Completed**
-  *   If 'studentAnswer' was provided (meaning user answered the last 'out_of_syllabus' question): Provide 'feedback' for that answer. 'question' should be your concluding remark: "We've covered the key aspects of {{{topic}}}. Well done! You can select a new topic or use the 'New Q&A on This Topic' button to review it again."
-  *   If NO 'studentAnswer' (this state normally reached after above): 'feedback' is "Great job completing this topic session!". 'question' same concluding remark.
+  *   If 'studentAnswer' was provided (meaning user answered the last 'out_of_syllabus' question): Provide 'feedback' for that answer. Your 'question' MUST be your concluding remark: "We've covered the key aspects of {{{topic}}}. Well done! You can select a new topic or use the 'New Q&A on This Topic' button to review it again." This MUST NOT be an MCQ.
+  *   If NO 'studentAnswer' (this state normally reached after above): 'feedback' is "Great job completing this topic session!". 'question' MUST be the same concluding remark as above, NOT an MCQ.
   *   Always set 'nextStage' to 'completed' and 'isStageComplete' to true. 'suggestions' empty.
   {{/if}}
   `,
@@ -193,7 +195,7 @@ const interactiveQAndAFlow = ai.defineFlow(
 
     if (output && output.question && output.nextStage !== undefined && output.isStageComplete !== undefined) {
         let feedbackString = (output.feedback && output.feedback.trim() !== "") ? output.feedback.trim() : undefined;
-        
+
         if (!feedbackString && !(stageEnhancedInput.isCompletedStage && output.nextStage === 'completed')) {
             if (!inputUnsafe.studentAnswer) { // If no student answer, it's start of a stage/session
                  switch(stageEnhancedInput.currentStage) {
@@ -211,7 +213,7 @@ const interactiveQAndAFlow = ai.defineFlow(
         return {
             question: output.question,
             feedback: feedbackString,
-            isCorrect: output.isCorrect, // Keep as is, can be undefined
+            isCorrect: output.isCorrect,
             suggestions: output.suggestions || [],
             nextStage: output.nextStage,
             isStageComplete: output.isStageComplete,
@@ -231,4 +233,8 @@ const interactiveQAndAFlow = ai.defineFlow(
     };
   }
 );
+
+
+    
+      
     
