@@ -116,9 +116,16 @@ export default function StudySessionPage() {
     try {
       const qAndAInput: InteractiveQAndAInput = {
         studentProfile: {
-          ...profileData,
-          age: Number(profileData.age), 
-          educationQualification: profileData.educationQualification || {}, 
+          name: profileData.name,
+          age: Number(profileData.age),
+          country: profileData.country,
+          preferredLanguage: profileData.preferredLanguage,
+          learningStyle: profileData.learningStyle,
+          educationQualification: profileData.educationQualification ? {
+            boardExam: profileData.educationQualification.boardExams,
+            competitiveExam: profileData.educationQualification.competitiveExams,
+            universityExam: profileData.educationQualification.universityExams,
+          } : undefined,
         },
         subject: subjName,
         lesson: less.name,
@@ -142,7 +149,6 @@ export default function StudySessionPage() {
         };
         addMessageToConversation(convoId, top.name, aiMessage, profileData, subjName, less.name);
         
-        // Set initial stage/counter for ChatInterface based on AI's first response
         setInitialQAStageForChat(result.nextStage || initialStage);
         setInitialQuestionsInStageForChat( (result.isStageComplete && result.nextStage !== initialStage) ? 0 : (result.nextStage === initialStage ? 1: 0)); 
 
@@ -156,9 +162,8 @@ export default function StudySessionPage() {
     } catch (e) {
       console.error("Failed to fetch initial Q&A question:", e);
       toast({ title: "Error Starting Q&A", description: "Failed to get the first question from AI. You can try asking first in the chat.", variant: "destructive" });
-      // Fallback to chat mode anyway, user can initiate.
-      setInitialQAStageForChat(initialStage); // Keep initial stage
-      setInitialQuestionsInStageForChat(initialQuestionsAsked); // Keep initial counter
+      setInitialQAStageForChat(initialStage); 
+      setInitialQuestionsInStageForChat(initialQuestionsAsked);
       setCurrentStep("chat"); 
     }
   }, [toast]);
@@ -180,17 +185,15 @@ export default function StudySessionPage() {
           const lastAiMsg = [...conversation.messages].reverse().find(m => m.sender === 'ai');
           if (lastAiMsg?.aiNextStage) {
             setInitialQAStageForChat(lastAiMsg.aiNextStage);
-            // If stage was completed and changed, new stage starts with 0 questions.
-            // Otherwise, count questions for the current stage.
             const currentStageFromLastMsg = lastAiMsg.aiNextStage;
             let questionsInRestoredStage = 0;
-            if (lastAiMsg.aiIsStageComplete && currentStageFromLastMsg !== (lastAiMsg as any).previousStageInternal) {
+            if (lastAiMsg.aiIsStageComplete && currentStageFromLastMsg !== (lastAiMsg as any).previousStageInternal) { // previousStageInternal is not a real prop, this logic was potentially flawed
                 questionsInRestoredStage = 0;
             } else {
                 questionsInRestoredStage = conversation.messages.filter(
                     m => m.sender === 'ai' && 
                          m.aiNextStage === currentStageFromLastMsg && 
-                         !m.aiIsStageComplete // Only count questions that didn't complete the stage
+                         !m.aiIsStageComplete 
                 ).length;
             }
             setInitialQuestionsInStageForChat(questionsInRestoredStage);
@@ -201,18 +204,15 @@ export default function StudySessionPage() {
           setCurrentStep("chat");
           return;
         } else {
-          // Invalid session or session for a different kind of interaction, clear URL and start fresh
           router.replace(`/study-session/${encodeURIComponent(subjectName)}`, { scroll: false });
         }
       }
 
-      // If no valid session ID, or if it was cleared, fetch lessons
       setCurrentStep("loading");
       fetchLessonsForSubject(profile, subjectName).then(fetchedLessons => {
         if (fetchedLessons.length > 0) {
           setCurrentStep("selectLesson");
         }
-        // Error handling is inside fetchLessonsForSubject
       });
 
     } else if (!profileLoading && !profile) {
@@ -220,7 +220,7 @@ export default function StudySessionPage() {
         setErrorMessage("User profile not found. Please complete onboarding to start a study session.");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, profileLoading, subjectName, searchParams, router]); // Removed startInteractiveQASession, fetchLessonsForSubject as they are stable
+  }, [profile, profileLoading, subjectName, searchParams, router]);
 
 
   const handleSelectLesson = async (lesson: Lesson) => {
@@ -231,7 +231,6 @@ export default function StudySessionPage() {
            if (fetchedTopics.length > 0) {
                setCurrentStep("selectTopic");
            }
-           // Error handling inside fetchTopicsForLesson
        });
     }
   };
@@ -244,9 +243,7 @@ export default function StudySessionPage() {
     const newConvoId = `studies-interactiveqa-${profileIdentifier}-${subjectName.replace(/\s+/g, '_')}-${selectedLesson.name.replace(/\s+/g, '_')}-${topic.name.replace(/\s+/g, '_')}-${Date.now()}`.toLowerCase();
 
     setCurrentConversationId(newConvoId);
-    setChatKey(newConvoId); // Critical: This ensures ChatInterface re-mounts with new initial state
-    // We now call startInteractiveQASession which will fetch the first question
-    // and then set the step to "chat". ChatInterface will get initialStage/initialCounter from this page's state.
+    setChatKey(newConvoId); 
     startInteractiveQASession(profile, subjectName, selectedLesson, topic, newConvoId, 'initial_material', 0);
   };
 
@@ -272,29 +269,23 @@ export default function StudySessionPage() {
     const newConvoId = `studies-interactiveqa-${profileIdentifier}-${subjectName.replace(/\s+/g, '_')}-${selectedLesson.name.replace(/\s+/g, '_')}-${selectedTopic.name.replace(/\s+/g, '_')}-${Date.now()}`.toLowerCase();
     setCurrentConversationId(newConvoId);
     setChatKey(newConvoId); 
-    // Start a completely fresh Q&A session for this topic
     startInteractiveQASession(profile, subjectName, selectedLesson, selectedTopic, newConvoId, 'initial_material', 0);
   };
 
   const handleBackToTopics = () => {
     setSelectedTopic(null);
-    setCurrentConversationId(null); // Clear conversation ID
-    setChatKey(`topics-${selectedLesson?.name.replace(/\s+/g, '_') || Date.now()}`); // New key for re-mount
+    setCurrentConversationId(null); 
+    setChatKey(`topics-${selectedLesson?.name.replace(/\s+/g, '_') || Date.now()}`); 
     setCurrentStep("selectTopic");
-    // Lessons should still be loaded, topics for selectedLesson should be re-fetched or were already fetched.
-    // If topics are not present for selectedLesson, fetchTopicsForLesson would need to be called.
-    // Assuming topics are still in state `topics` if `selectedLesson` is valid.
   };
 
   const handleBackToLessons = () => {
     setSelectedLesson(null);
     setSelectedTopic(null);
-    setTopics([]); // Clear topics as lesson is changing
-    setCurrentConversationId(null); // Clear conversation ID
-    setChatKey(`lessons-${subjectName.replace(/\s+/g, '_') || Date.now()}`); // New key
+    setTopics([]); 
+    setCurrentConversationId(null); 
+    setChatKey(`lessons-${subjectName.replace(/\s+/g, '_') || Date.now()}`); 
     setCurrentStep("selectLesson");
-    // Lessons should re-fetch or be re-displayed if already in state `lessons`.
-    // If lessons are not present, fetchLessonsForSubject would need to be called.
   };
 
 
@@ -432,13 +423,13 @@ export default function StudySessionPage() {
                  <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
                     { chatKey && currentConversationId && (
                         <DynamicChatInterface
-                        key={chatKey} // This key is crucial for re-mounting with new initial stage/counter
+                        key={chatKey} 
                         userProfile={profile}
-                        topic={selectedTopic.name} // The specific topic for the Q&A
+                        topic={selectedTopic.name} 
                         conversationId={currentConversationId}
                         placeholderText={`Your answer or question about ${selectedTopic.name}...`}
                         context={{ subject: subjectName, lesson: selectedLesson.name }}
-                        enableImageUpload={false} // Q&A is text-based
+                        enableImageUpload={false} 
                         initialQAStage={initialQAStageForChat}
                         initialQuestionsInStage={initialQuestionsInStageForChat}
                         />
