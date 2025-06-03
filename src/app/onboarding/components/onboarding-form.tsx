@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,7 +28,7 @@ import type { UserProfile, EducationCategory, LearningStyle } from "@/types";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
-import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, BOARD_STANDARDS, UNIVERSITY_YEARS, CENTRAL_BOARDS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE, LEARNING_STYLES, PROFESSIONAL_CERTIFICATION_EXAMS } from "@/lib/constants";
+import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, BOARD_STANDARDS, UNIVERSITY_YEARS, CENTRAL_BOARDS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE, LEARNING_STYLES, PROFESSIONAL_CERTIFICATION_EXAMS, PROFESSIONAL_CERTIFICATION_STAGES } from "@/lib/constants";
 import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 
 const onboardingSteps = [
@@ -73,7 +74,8 @@ const EducationDetailsSchema = z.object({
     }).optional(),
     competitiveExams: z.object({
       examType: z.string().optional(), 
-      specificExam: z.string().optional(), 
+      specificExam: z.string().optional(),
+      stage: z.string().optional(), // Added stage field
     }).optional(),
     universityExams: z.object({
       universityName: z.string().optional(),
@@ -82,7 +84,7 @@ const EducationDetailsSchema = z.object({
       currentYear: z.string().optional(),
     }).optional(),
   }).optional(),
-  professionalCertification: z.string().optional(), // For the separate certification field if needed
+  professionalCertification: z.string().optional(), 
 });
 const FormSchema = PersonalDetailsSchema.merge(LocationLanguageSchema).merge(LearningStyleSchema).merge(EducationCategorySchema).merge(EducationDetailsSchema);
 const defaultValues: UserProfile = {
@@ -96,7 +98,7 @@ const defaultValues: UserProfile = {
   educationCategory: EDUCATION_CATEGORIES[0]?.value as EducationCategory,
   educationQualification: {
     boardExams: { board: "", standard: "" },
-    competitiveExams: { examType: "", specificExam: "" },
+    competitiveExams: { examType: "", specificExam: "", stage: "" }, // Added stage
     universityExams: { universityName: "", collegeName: "", course: "", currentYear: "" },
   },
 };
@@ -105,6 +107,7 @@ export function OnboardingForm() {
   const { setProfile, profile: existingProfile } = useUserProfile();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<StepId>("personal");
+  const [currentExamStages, setCurrentExamStages] = useState<{ value: string; label: string }[]>([]);
 
   const form = useForm<UserProfile>({
     resolver: zodResolver(FormSchema),
@@ -115,7 +118,7 @@ export function OnboardingForm() {
       educationCategory: existingProfile.educationCategory || EDUCATION_CATEGORIES[0]?.value as EducationCategory,
       educationQualification: { 
         boardExams: existingProfile.educationQualification?.boardExams || { board: "", standard: "" },
-        competitiveExams: existingProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "" },
+        competitiveExams: existingProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "" }, // Added stage
         universityExams: existingProfile.educationQualification?.universityExams || { universityName: "", collegeName: "", course: "", currentYear: "" },
       }
  } : defaultValues,
@@ -125,7 +128,21 @@ export function OnboardingForm() {
 
   const watchedEducationCategory = form.watch("educationCategory");
   const watchedCompetitiveExamType = form.watch("educationQualification.competitiveExams.examType");
-  const watchedSpecificExamFromDropdown = form.watch("educationQualification.competitiveExams.specificExam"); // This tracks the value from the dropdown
+  const watchedSpecificExam = form.watch("educationQualification.competitiveExams.specificExam");
+
+
+  useEffect(() => {
+    if (watchedEducationCategory === "competitive" && watchedCompetitiveExamType === "ProfessionalCertifications" && watchedSpecificExam) {
+      const stages = PROFESSIONAL_CERTIFICATION_STAGES[watchedSpecificExam] || [];
+      setCurrentExamStages(stages);
+      if (stages.length === 0) { // If new exam has no stages, clear previous selection
+        form.setValue("educationQualification.competitiveExams.stage", undefined);
+      }
+    } else {
+      setCurrentExamStages([]);
+      form.setValue("educationQualification.competitiveExams.stage", undefined); // Clear stage if not applicable
+    }
+  }, [watchedEducationCategory, watchedCompetitiveExamType, watchedSpecificExam, form]);
 
 
   const progressValue = useMemo(() => {
@@ -162,24 +179,27 @@ export function OnboardingForm() {
             form.setError("educationQualification.competitiveExams.specificExam", { type: "manual", message: "Please select or specify an exam." });
             isValid = false;
         } else {
-            // If an "Other_" type was chosen from the dropdown, the text input (which is the same field) should have been filled.
-            // The value `specificExamValue` already reflects the typed text or the dropdown choice.
-            // If it was a dropdown choice not starting with "Other_", it's valid.
-            // If it started with "Other_" from the dropdown, its value *is* that "Other_...", and it means the user hasn't typed anything new.
-            // So, if `specificExamValue` is one of the "Other_" template values, it means the user hasn't specified.
-            const isOtherTemplateValue = COMPETITIVE_EXAM_TYPES_CENTRAL.some(e => e.value === specificExamValue && e.value.startsWith("Other_")) ||
-                                         COMPETITIVE_EXAM_TYPES_STATE.some(e => e.value === specificExamValue && e.value.startsWith("Other_")) ||
+            const isOtherTemplateValue = getCombinedCompetitiveExamList().some(e => e.value === specificExamValue && e.value.startsWith("Other_")) ||
                                          PROFESSIONAL_CERTIFICATION_EXAMS.some(e => e.value === specificExamValue && e.value.startsWith("Other_"));
             
-            if (isOtherTemplateValue && specificExamValue.endsWith("(Specify below)")) { // More robust check if label was used as value initially
+            if (isOtherTemplateValue && specificExamValue.endsWith("(Specify below)")) { 
                  form.setError("educationQualification.competitiveExams.specificExam", { type: "manual", message: "Please specify the exam name." });
                  isValid = false;
-            } else if (specificExamValue.startsWith("Other_") && specificExamValue === watchedSpecificExamFromDropdown) { // Check if it's still the placeholder "Other_" value
+            } else if (specificExamValue.startsWith("Other_") && specificExamValue === watchedSpecificExam) { 
                 form.setError("educationQualification.competitiveExams.specificExam", { type: "manual", message: "Please specify the exam name." });
                 isValid = false;
             } else {
                 form.clearErrors("educationQualification.competitiveExams.specificExam");
                 isValid = true;
+            }
+        }
+        if (isValid && watchedCompetitiveExamType === "ProfessionalCertifications" && currentExamStages.length > 0) {
+            const selectedStage = form.getValues("educationQualification.competitiveExams.stage");
+            if (!selectedStage) {
+                form.setError("educationQualification.competitiveExams.stage", { type: "manual", message: "Please select a stage for this certification." });
+                isValid = false;
+            } else {
+                 isValid = await form.trigger(["educationQualification.competitiveExams.stage"]);
             }
         }
         if (isValid) {
@@ -204,7 +224,7 @@ export function OnboardingForm() {
         if (currentStep === "educationCategory" && form.getValues("educationCategory") === "other") {
            setCurrentStep("review"); 
         } else if (currentStep === "educationCategory" && form.getValues("educationCategory") !== "other") {
-           setCurrentStep("educationDetails"); // Go to details if not "other"
+           setCurrentStep("educationDetails"); 
         }
         else {
           setCurrentStep(onboardingSteps[currentIndex + 1].id);
@@ -217,7 +237,7 @@ export function OnboardingForm() {
     const currentIndex = onboardingSteps.findIndex(step => step.id === currentStep);
      if (currentStep === "review" && form.getValues("educationCategory") === "other") {
         setCurrentStep("educationCategory"); 
-    } else if (currentStep === "educationDetails") { // If on details, go back to category
+    } else if (currentStep === "educationDetails") { 
         setCurrentStep("educationCategory");
     }
     else if (currentIndex > 0) {
@@ -230,7 +250,7 @@ export function OnboardingForm() {
       ...data,
       age: Number(data.age), 
       id: existingProfile?.id || `user-${Date.now()}`, 
-      learningStyle: data.learningStyle || 'balanced', // Default if empty
+      learningStyle: data.learningStyle || 'balanced', 
       educationQualification: {
         boardExams: data.educationCategory === "board" ? data.educationQualification?.boardExams : undefined,
         competitiveExams: data.educationCategory === "competitive" ? data.educationQualification?.competitiveExams : undefined,
@@ -249,12 +269,12 @@ export function OnboardingForm() {
     }
     if (watchedCompetitiveExamType === "Other") return true;
 
-    const selectedExamFromDropdown = form.getValues("educationQualification.competitiveExams.specificExam");
-    return selectedExamFromDropdown?.startsWith("Other_") || 
-           (selectedExamFromDropdown && (
-             selectedExamFromDropdown.includes("(Specify Name)") ||
-             selectedExamFromDropdown.includes("(Specify State & Exam)") ||
-             selectedExamFromDropdown.includes("(Specify State)")
+    const selectedSpecificExam = form.getValues("educationQualification.competitiveExams.specificExam");
+    return selectedSpecificExam?.startsWith("Other_") || 
+           (selectedSpecificExam && (
+             selectedSpecificExam.includes("(Specify Name)") ||
+             selectedSpecificExam.includes("(Specify State & Exam)") ||
+             selectedSpecificExam.includes("(Specify State)")
            ));
   }, [watchedEducationCategory, watchedCompetitiveExamType, form.watch("educationQualification.competitiveExams.specificExam")]);
 
@@ -485,7 +505,6 @@ export function OnboardingForm() {
                            <Select onValueChange={(value) => {
                              field.onChange(value);
                              if (value === "Other_Central_Board" || value === "State Board") { 
-                               // Keep 'Other_Central_Board' or 'State Board' as the value to trigger text input
                                form.setValue("educationQualification.boardExams.board", value); 
                              }
                            }} value={field.value} defaultValue={field.value}>
@@ -503,7 +522,7 @@ export function OnboardingForm() {
                             <Input 
                                 className="mt-2"
                                 placeholder={field.value === "Other_Central_Board" ? "Specify other central board name" : "E.g., Tamil Nadu State Board"}
-                                onChange={(e) => field.onChange(e.target.value)} // This will overwrite "Other_Central_Board"
+                                onChange={(e) => field.onChange(e.target.value)} 
                             value={field.value === "Other_Central_Board" || field.value === "State Board" ? "" : field.value}                            />
                           )}
                           <FormMessage />
@@ -543,6 +562,7 @@ export function OnboardingForm() {
                           <Select onValueChange={(value) => {
                               field.onChange(value);
                               form.setValue("educationQualification.competitiveExams.specificExam", ""); 
+                              form.setValue("educationQualification.competitiveExams.stage", ""); // Reset stage
                             }} value={field.value} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
@@ -563,21 +583,19 @@ export function OnboardingForm() {
                     {(watchedCompetitiveExamType === "Central" || watchedCompetitiveExamType === "State" || watchedCompetitiveExamType === "ProfessionalCertifications") && (
                        <FormField
                         control={form.control}
-                        name="educationQualification.competitiveExams.specificExam" // This field will hold the specific exam (either dropdown value or typed text)
+                        name="educationQualification.competitiveExams.specificExam" 
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Specific Exam / Certification</FormLabel>
                              <Select 
                                 onValueChange={(value) => {
-                                  // When a dropdown item is selected, update the form field.
-                                  // If it's an "Other..." type, this value serves as a trigger for the text input.
-                                  // The actual text input will then overwrite this if the user types.
                                   field.onChange(value); 
+                                  form.setValue("educationQualification.competitiveExams.stage", ""); // Reset stage when exam changes
                                   if (value && !value.startsWith("Other_") && !value.includes("(Specify")) {
                                      form.clearErrors("educationQualification.competitiveExams.specificExam");
                                   }
                                 }} 
-                                value={field.value} // This binds to the form state for specificExam
+                                value={field.value} 
                                 defaultValue={field.value}
                              >
                               <FormControl>
@@ -599,10 +617,8 @@ export function OnboardingForm() {
                     {showSpecificExamTextInput && (
                         <FormField
                           control={form.control}
-                          name="educationQualification.competitiveExams.specificExam" // This is the SAME field used by the select above
+                          name="educationQualification.competitiveExams.specificExam" 
                            render={({ field: { onChange, value, ...restField } }) => {
-                              // If the current `value` is one of the "Other_" placeholders, display an empty input for the user to type.
-                              // Otherwise, display the `value` (which might be a specific exam from dropdown or already typed text).
                               const isPlaceholderValue = value?.startsWith("Other_") || (value && (value.includes("(Specify Name)") || value.includes("(Specify State & Exam)") || value.includes("(Specify State)")));
                               const displayValue = isPlaceholderValue ? "" : value;
                               
@@ -616,7 +632,7 @@ export function OnboardingForm() {
                                       placeholder={getSpecificExamInputPlaceholder()}
                                       value={displayValue || ""}
                                       onChange={(e) => {
-                                        onChange(e.target.value); // User typing directly updates the field
+                                        onChange(e.target.value); 
                                       }}
                                       {...restField} 
                                     />
@@ -626,6 +642,28 @@ export function OnboardingForm() {
                               );
                            }}
                         />
+                    )}
+                    {watchedEducationCategory === "competitive" && watchedCompetitiveExamType === "ProfessionalCertifications" && currentExamStages.length > 0 && (
+                      <FormField
+                        control={form.control}
+                        name="educationQualification.competitiveExams.stage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Current Stage</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select Stage" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {currentExamStages.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     )}
                   </>
                 )}
@@ -721,10 +759,15 @@ export function OnboardingForm() {
                      <div className="pl-4 mt-1 border-l-2 border-primary/50">
                       <p><strong>Exam Category:</strong> {form.getValues("educationQualification.competitiveExams.examType") || 'N/A'}</p>
                       <p><strong>Specific Exam/Certification:</strong> {
-                        // Try to find label from combined list first
                         getCombinedCompetitiveExamList().find(e => e.value === form.getValues("educationQualification.competitiveExams.specificExam"))?.label ||
-                        form.getValues("educationQualification.competitiveExams.specificExam") || 'N/A' // Fallback to raw value
+                        form.getValues("educationQualification.competitiveExams.specificExam") || 'N/A' 
                       }</p> 
+                      {form.getValues("educationQualification.competitiveExams.examType") === "ProfessionalCertifications" && form.getValues("educationQualification.competitiveExams.stage") && (
+                         <p><strong>Stage:</strong> {
+                            (PROFESSIONAL_CERTIFICATION_STAGES[form.getValues("educationQualification.competitiveExams.specificExam") || ""] || [])
+                            .find(s => s.value === form.getValues("educationQualification.competitiveExams.stage"))?.label || 'N/A'
+                         }</p>
+                      )}
                     </div>
                   )}
                   {watchedEducationCategory === "university" && form.getValues("educationQualification.universityExams") && (
@@ -735,7 +778,7 @@ export function OnboardingForm() {
                       <p><strong>Year:</strong> {UNIVERSITY_YEARS.find(y => y.value === form.getValues("educationQualification.universityExams.currentYear"))?.label || 'N/A'}</p>
                     </div>
                   )}
-                   {form.getValues("professionalCertification") && ( // Kept for legacy data, though competitiveExams handles it now
+                   {form.getValues("professionalCertification") && ( 
                      <p><strong>Professional Certification (Legacy):</strong> {form.getValues("professionalCertification") === "Other_Professional_Cert" ? `Other: ${form.getValues("professionalCertification")}` : form.getValues("professionalCertification")}</p>
                    )}
                 </div>

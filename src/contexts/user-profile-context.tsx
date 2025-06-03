@@ -25,13 +25,15 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
       const storedProfile = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (storedProfile) {
         const parsedProfile = JSON.parse(storedProfile) as UserProfile;
-        // Ensure nested educationQualification objects exist to prevent errors
+        
         parsedProfile.educationQualification = {
           boardExams: parsedProfile.educationQualification?.boardExams || {},
-          competitiveExams: parsedProfile.educationQualification?.competitiveExams || {},
+          competitiveExams: parsedProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: ""}, // Ensure stage exists
           universityExams: parsedProfile.educationQualification?.universityExams || {},
         };
-        // Ensure learningStyle exists
+        if (parsedProfile.educationQualification.competitiveExams && !('stage' in parsedProfile.educationQualification.competitiveExams)) {
+            parsedProfile.educationQualification.competitiveExams.stage = ""; // Add stage if missing from old profiles
+        }
         parsedProfile.learningStyle = parsedProfile.learningStyle || 'balanced';
         setProfileState(parsedProfile);
       }
@@ -44,16 +46,18 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
 
   const setProfile = useCallback((newProfile: UserProfile | null) => {
     if (newProfile) {
-      // Ensure nested educationQualification objects exist before saving
       const profileToSave: UserProfile = {
         ...newProfile,
-        learningStyle: newProfile.learningStyle || 'balanced', // Ensure learning style has a default
+        learningStyle: newProfile.learningStyle || 'balanced', 
         educationQualification: {
           boardExams: newProfile.educationQualification?.boardExams || {},
-          competitiveExams: newProfile.educationQualification?.competitiveExams || {},
+          competitiveExams: newProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "" }, // Ensure stage
           universityExams: newProfile.educationQualification?.universityExams || {},
         },
       };
+      if (profileToSave.educationQualification.competitiveExams && !('stage' in profileToSave.educationQualification.competitiveExams)) {
+        profileToSave.educationQualification.competitiveExams.stage = ""; // Add stage if missing
+      }
       setProfileState(profileToSave);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(profileToSave));
     } else {
@@ -70,9 +74,12 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
       
       updatedProfileData.educationQualification = {
         boardExams: updatedProfileData.educationQualification?.boardExams || {},
-        competitiveExams: updatedProfileData.educationQualification?.competitiveExams || {},
+        competitiveExams: updatedProfileData.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "" },
         universityExams: updatedProfileData.educationQualification?.universityExams || {},
       };
+      if (updatedProfileData.educationQualification.competitiveExams && !('stage' in updatedProfileData.educationQualification.competitiveExams)) {
+        updatedProfileData.educationQualification.competitiveExams.stage = ""; 
+      }
       updatedProfileData.learningStyle = updatedProfileData.learningStyle || 'balanced';
 
       const updatedProfile = updatedProfileData as UserProfile;

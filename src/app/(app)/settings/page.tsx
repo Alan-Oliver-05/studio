@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut, BookOpen, ListChecks, PenSquare, Brain, PieChartIcon, User as UserIcon, Palette, Trash2 } from "lucide-react"; // Added Palette & Trash2
+import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut, BookOpen, ListChecks, PenSquare, Brain, PieChartIcon, User as UserIcon, Palette, Trash2, Star } from "lucide-react"; // Added Star
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -21,8 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, LEARNING_STYLES } from "@/lib/constants"; // Added LEARNING_STYLES
-import { deleteAllConversations } from "@/lib/chat-storage"; // Import deleteAllConversations
+import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, LEARNING_STYLES, PROFESSIONAL_CERTIFICATION_STAGES, PROFESSIONAL_CERTIFICATION_EXAMS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE } from "@/lib/constants"; 
+import { deleteAllConversations } from "@/lib/chat-storage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
@@ -90,6 +90,20 @@ export default function SettingsPage() {
   const languageLabel = LANGUAGES.find(lang => lang.value === profile.preferredLanguage)?.label || profile.preferredLanguage;
   const learningStyleLabel = LEARNING_STYLES.find(ls => ls.value === profile.learningStyle)?.label || "Balanced";
 
+  const competitiveExam = profile.educationQualification?.competitiveExams;
+  let specificExamLabel = competitiveExam?.specificExam || "N/A";
+  if (competitiveExam?.examType === "ProfessionalCertifications") {
+    specificExamLabel = PROFESSIONAL_CERTIFICATION_EXAMS.find(e => e.value === competitiveExam?.specificExam)?.label || competitiveExam?.specificExam || "N/A";
+  } else if (competitiveExam?.examType === "Central") {
+    specificExamLabel = COMPETITIVE_EXAM_TYPES_CENTRAL.find(e => e.value === competitiveExam?.specificExam)?.label || competitiveExam?.specificExam || "N/A";
+  } else if (competitiveExam?.examType === "State") {
+    specificExamLabel = COMPETITIVE_EXAM_TYPES_STATE.find(e => e.value === competitiveExam?.specificExam)?.label || competitiveExam?.specificExam || "N/A";
+  }
+
+  const stageLabel = competitiveExam?.stage && competitiveExam?.specificExam && PROFESSIONAL_CERTIFICATION_STAGES[competitiveExam.specificExam]
+    ? PROFESSIONAL_CERTIFICATION_STAGES[competitiveExam.specificExam].find(s => s.value === competitiveExam.stage)?.label || competitiveExam.stage
+    : "N/A";
+
 
   const handlePasswordReset = () => {
     toast({
@@ -100,13 +114,10 @@ export default function SettingsPage() {
 
   const handleLogout = () => {
     setProfile(null); 
-    // Clear relevant parts of localStorage to ensure a clean slate for onboarding
     localStorage.removeItem('userProfile');
-    // Optionally, clear other related items like chat history, tasks, notes if stored locally
-    // localStorage.removeItem('chatHistory'); 
-    // localStorage.removeItem('userTasks');
-    // localStorage.removeItem('userNotes');
-    // If needed, clear everything: localStorage.clear(); 
+    localStorage.removeItem('eduai-conversations'); 
+    localStorage.removeItem('eduai-tasks');
+    localStorage.removeItem('eduai-notes');
     
     router.push('/onboarding');
     toast({
@@ -162,11 +173,14 @@ export default function SettingsPage() {
                   <DetailItem label="Standard" value={profile.educationQualification.boardExams.standard} />
                 </div>
                 )}
-                {profile.educationCategory === "competitive" && profile.educationQualification.competitiveExams && (
+                {profile.educationCategory === "competitive" && competitiveExam && (
                  <div className="pl-7 space-y-1 text-xs">
-                    <DetailItem label="Exam Category" value={profile.educationQualification.competitiveExams.examType} />
-                    <DetailItem label="Specific Exam/Job" value={profile.educationQualification.competitiveExams.specificExam} />
-                </div>
+                    <DetailItem label="Exam Category" value={competitiveExam.examType} />
+                    <DetailItem label="Specific Exam/Job" value={specificExamLabel} />
+                    {competitiveExam.examType === "ProfessionalCertifications" && competitiveExam.stage && (
+                      <DetailItem label="Current Stage" value={stageLabel} icon={<Star className="h-3.5 w-3.5 text-yellow-400"/>} />
+                    )}
+                 </div>
                 )}
                 {profile.educationCategory === "university" && profile.educationQualification.universityExams && (
                  <div className="pl-7 space-y-1 text-xs">
@@ -270,4 +284,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

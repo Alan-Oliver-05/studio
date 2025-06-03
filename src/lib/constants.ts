@@ -141,16 +141,59 @@ export const COMPETITIVE_EXAM_TYPES_STATE = [
 ];
 
 export const PROFESSIONAL_CERTIFICATION_EXAMS = [
-  { value: "CA", label: "CA (Chartered Accountant)" },
-  { value: "CMA", label: "CMA (Cost and Management Accountant)" },
-  { value: "CFA_Institute_CFA", label: "CFA (Chartered Financial Analyst)" }, // Corrected value
   { value: "CS", label: "CS (Company Secretary)" },
   { value: "CPA", label: "CPA (Certified Public Accountant)" },
-  { value: "CFA", label: "CFA (Chartered Financial Analyst)" },
+  { value: "CFA_Institute_CFA", label: "CFA (Chartered Financial Analyst - CFA Institute)" }, // Made distinct from a generic CFA
   { value: "ACCA", label: "ACCA (Association of Chartered Certified Accountants)" },
   { value: "FRM", label: "FRM (Financial Risk Manager)" },
+  { value: "CA", label: "CA (Chartered Accountant - e.g., ICAI India)" }, // Added CA
+  { value: "CMA", label: "CMA (Cost and Management Accountant - e.g., ICMAI India)" }, // Added CMA
   { value: "Other_Professional_Cert", label: "Other Professional Certification (Specify below)" },
 ];
+
+export const PROFESSIONAL_CERTIFICATION_STAGES: Record<string, {value: string, label: string}[]> = {
+  "CS": [
+    { value: "foundation", label: "Foundation Programme" },
+    { value: "executive", label: "Executive Programme" },
+    { value: "professional", label: "Professional Programme" },
+  ],
+  "CPA": [
+    { value: "education_req", label: "Educational Requirements" },
+    { value: "exam_aud", label: "CPA Exam: Auditing and Attestation (AUD)" },
+    { value: "exam_far", label: "CPA Exam: Financial Accounting and Reporting (FAR)" },
+    { value: "exam_reg", label: "CPA Exam: Regulation (REG)" },
+    { value: "exam_bec", label: "CPA Exam: Business Environment and Concepts (BEC)" },
+    { value: "experience_req", label: "Experience Requirement" },
+  ],
+  "CFA_Institute_CFA": [ // Matches the value in PROFESSIONAL_CERTIFICATION_EXAMS
+    { value: "level_1", label: "Level I" },
+    { value: "level_2", label: "Level II" },
+    { value: "level_3", label: "Level III" },
+  ],
+  "ACCA": [
+    { value: "applied_knowledge", label: "Applied Knowledge" },
+    { value: "applied_skills", label: "Applied Skills" },
+    { value: "strategic_professional", label: "Strategic Professional" },
+  ],
+  "FRM": [
+    { value: "part_1", label: "Part I" },
+    { value: "part_2", label: "Part II" },
+  ],
+  "CA": [ // Example stages for CA (ICAI India)
+    { value: "foundation_ca", label: "Foundation Course" },
+    { value: "intermediate_ca", label: "Intermediate Course" },
+    { value: "final_ca", label: "Final Course" },
+    { value: "articleship_ca", label: "Articleship Training" },
+  ],
+  "CMA": [ // Example stages for CMA (ICMAI India)
+    { value: "foundation_cma", label: "Foundation Course" },
+    { value: "intermediate_cma", label: "Intermediate Course" },
+    { value: "final_cma", label: "Final Course" },
+    { value: "practical_training_cma", label: "Practical Training" },
+  ]
+  // No stages for "Other_Professional_Cert" by default, user specifies name.
+};
+
 
 export const TASK_CATEGORIES = [
     { value: "Assignment", label: "Assignment" },
@@ -170,6 +213,3 @@ export const TASK_PRIORITIES: { value: TaskPriority, label: string }[] = [
     { value: "Medium", label: "Medium" },
     { value: "High", label: "High" },
 ];
-
-
-    
