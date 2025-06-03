@@ -30,7 +30,7 @@ const InteractiveQAndAInputSchema = z.object({
         examType: z.string().optional().describe('The type of competitive exam (e.g., JEE, NEET, UPSC).'),
         specificExam: z.string().optional().describe('The specific competitive exam or job position (e.g., JEE Main, UPSC CSE).'),
         stage: z.string().optional().describe('The current stage within a professional certification, if applicable.'),
-        examDate: z.string().optional().describe("The student's upcoming exam date (YYYY-MM-DD format)."), // Added examDate here
+        examDate: z.string().optional().describe("The student's upcoming exam date (YYYY-MM-DD format)."),
       }).optional(),
       universityExam: z.object({
         universityName: z.string().optional().describe('The name of the university.'),
@@ -47,7 +47,7 @@ const InteractiveQAndAInputSchema = z.object({
   conversationHistory: z.string().optional().nullable().describe('A brief history of the current Q&A session to maintain context. Focus on the last few turns.'),
   currentStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed']).default('initial_material').optional()
     .describe("The current stage of the Q&A session for this topic. Client ensures this is accurate."),
-  questionsAskedInStage: z.number().default(0).optional() // This field represents how many questions the user has ALREADY ANSWERED for the currentStage.
+  questionsAskedInStage: z.number().default(0).optional()
     .describe("Number of questions the user has ALREADY ANSWERED for the currentStage. If 0, AI is asking the first question of this stage."),
 });
 export type InteractiveQAndAInput = z.infer<typeof InteractiveQAndAInputSchema>;
@@ -124,19 +124,19 @@ const prompt = ai.definePrompt({
   (You are currently in '{{{currentStage}}}'. User has answered {{questionsAskedInStage}} questions for this stage.)
 
   {{#if isInitialMaterialStage}}
-  **Current Stage: Initial Material Review (Target: 3 questions total). Objective: Test foundational understanding of '{{{topic}}}'.**
-  *   If {{questionsAskedInStage}} < 3: Ask the ({{math questionsAskedInStage '+' 1}})rd foundational MCQ about '{{{topic}}}'. Set 'nextStage' to 'initial_material' and 'isStageComplete' to false.
+  **Current Stage: Initial Material Review (Target: 3 questions total). User has answered {{questionsAskedInStage}} questions in this stage. Objective: Test foundational understanding of '{{{topic}}}'.**
+  *   If {{questionsAskedInStage}} < 3: Ask the next foundational MCQ about '{{{topic}}}'. Set 'nextStage' to 'initial_material' and 'isStageComplete' to false.
   *   If {{questionsAskedInStage}} >= 3: 'initial_material' stage is complete. Your 'feedback' is for the student's 3rd answer. Your 'question' MUST be the *first* MCQ for 'deeper_material' stage. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to true.
   {{/if}}
 
   {{#if isDeeperMaterialStage}}
-  **Current Stage: Deeper Material Analysis (Target: 2 questions total). Objective: Ask analytical MCQs about '{{{topic}}}'.**
-  *   If {{questionsAskedInStage}} < 2: Ask the ({{math questionsAskedInStage '+' 1}})rd analytical MCQ about '{{{topic}}}'. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to false.
+  **Current Stage: Deeper Material Analysis (Target: 2 questions total). User has answered {{questionsAskedInStage}} questions in this stage. Objective: Ask analytical MCQs about '{{{topic}}}'.**
+  *   If {{questionsAskedInStage}} < 2: Ask the next analytical MCQ about '{{{topic}}}'. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to false.
   *   If {{questionsAskedInStage}} >= 2: 'deeper_material' stage is complete. Your 'feedback' is for the student's 2nd answer. Your 'question' MUST be the *first* MCQ for 'out_of_syllabus' stage. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to true.
   {{/if}}
 
   {{#if isOutOfSyllabusStage}}
-  **Current Stage: Beyond the Syllabus (Target: 1 question total). Objective: Ask 1 MCQ connecting '{{{topic}}}' to broader concepts.**
+  **Current Stage: Beyond the Syllabus (Target: 1 question total). User has answered {{questionsAskedInStage}} questions in this stage. Objective: Ask 1 MCQ connecting '{{{topic}}}' to broader concepts.**
   *   If {{questionsAskedInStage}} < 1: Ask the 1st "beyond syllabus" MCQ. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to false.
   *   If {{questionsAskedInStage}} >= 1: 'out_of_syllabus' stage is complete. Your 'feedback' is for the student's 1st answer. Your 'question' MUST be a concluding remark for '{{{topic}}}' (e.g., "We've covered the key aspects of {{{topic}}}. Well done!"). Set 'nextStage' to 'completed' and 'isStageComplete' to true.
   {{/if}}
@@ -231,6 +231,4 @@ const interactiveQAndAFlow = ai.defineFlow(
     };
   }
 );
-
     
-
