@@ -66,9 +66,19 @@ export async function aiGuidedStudySession(input: AIGuidedStudySessionInput): Pr
   return aiGuidedStudySessionFlow(input);
 }
 
+// Define the input schema for the prompt that includes boolean flags
+const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
+    isAiLearningAssistantChat: z.boolean().optional(),
+    isHomeworkHelp: z.boolean().optional(),
+    isLanguageTranslatorMode: z.boolean().optional(),
+    isVisualLearningFocus: z.boolean().optional(),
+    isCurriculumSpecificMode: z.boolean().optional(),
+});
+
+
 const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
-  input: {schema: AIGuidedStudySessionInputSchema},
+  input: {schema: PromptInputSchema}, // Use the extended schema
   output: {schema: AIGuidedStudySessionOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [performWebSearch],
@@ -127,7 +137,7 @@ const prompt = ai.definePrompt({
 
   Instructions for AI Tutor:
 
-  {{#if (eq specificTopic "AI Learning Assistant Chat")}}
+  {{#if isAiLearningAssistantChat}}
   # AI Tutor Agent System & Act Prompts
 
   ## Core System Prompt
@@ -281,21 +291,21 @@ const prompt = ai.definePrompt({
     {{else if studentProfile.educationQualification.universityExam.universityName}} "Hello {{{studentProfile.name}}}! Welcome! I can help you with your studies for {{{studentProfile.educationQualification.universityExam.course}}} at {{{studentProfile.educationQualification.universityExam.universityName}}}. What topic from your curriculum can I assist with? We can also explore typical learning objectives for this course."
     {{else}} "Hello {{{studentProfile.name}}}! How can I assist you with your learning goals today? I can help with general academic queries, or we can focus on something specific if you have it in mind."{{/if}}
   Do not generate an MCQ unless it naturally fits the conversational flow or the student requests a quiz. Your main role here is conversational tutoring and explanation.
-  If an image is uploaded (refer to the 'Student provided image for context' section earlier in this prompt), analyze it and incorporate it into your response as per the "Image-Based Materials" instructions.
+  If an image is uploaded (refer to the image context mentioned earlier in this prompt), analyze it and incorporate it into your response as per the "Image-Based Materials" instructions.
   Provide 'suggestions' for further study only if it feels natural in the conversation, not after every turn.
   The 'visualElement' output field is generally not used in this mode, unless the student specifically asks for data that could be a chart and you want to provide the raw data.
 
-  {{else if (eq specificTopic "Homework Help")}}
+  {{else if isHomeworkHelp}}
   You are an AI Tutor specializing in Homework Help.
   Prioritize direct answers and step-by-step solutions for the student's question: "{{{question}}}".
   If the question is factual (e.g., "What is the capital of France?"), provide the answer.
   If it's a problem (e.g., a math equation), provide the solution steps and the final answer.
   Refer to the student's educational context: {{#with studentProfile.educationQualification}}{{#if boardExam.board}}Board: {{{boardExam.board}}}, Standard: {{{boardExam.standard}}}{{/if}}{{#if competitiveExam.examType}}Exam: {{{competitiveExam.specificExam}}} ({{{competitiveExam.examType}}}){{#if competitiveExam.examDate}}, Date: {{{competitiveExam.examDate}}}{{/if}}{{/if}}{{#if universityExam.universityName}}University: {{{universityExam.universityName}}}, Course: {{{universityExam.course}}}{{/if}}{{/with}}.
-  If an image is provided (refer to the image context mentioned earlier in the prompt), use it as the primary source for the homework problem.
+  If an image is provided (refer to the image context mentioned earlier in this prompt), use it as the primary source for the homework problem.
   Use 'performWebSearch' tool if needed for specific facts, formulas, or problem types relevant to the student's curriculum and question. Search query should be targeted.
   Maintain a helpful, guiding tone. Do not generate an MCQ. 'suggestions' can be related problem types or concepts. 'visualElement' is unlikely unless explicitly requested.
 
-  {{else if (eq specificTopic "LanguageTranslatorMode")}}
+  {{else if isLanguageTranslatorMode}}
   You are an AI Language Translator.
   Focus on direct translation of the 'question' text: "{{{question}}}".
   The student's preferred language is '{{{studentProfile.preferredLanguage}}}'.
@@ -305,7 +315,7 @@ const prompt = ai.definePrompt({
   'response' should primarily contain the translated text. Optionally, add a brief note about context if needed (e.g., "Translated from French to English:").
   'suggestions' can include links to online dictionaries or language learning resources for the involved languages. Do not generate an MCQ.
 
-  {{else if (eq specificTopic "Visual Learning Focus")}}
+  {{else if isVisualLearningFocus}}
   You are an AI Visual Learning Assistant. The student's query is: "{{{question}}}".
   The student's primary request is likely for a visual aid or an explanation that benefits from one. Prioritize generating a 'visualElement' output.
   If the student asks for an image, your 'response' text should acknowledge the request and confirm you are generating an image prompt. Then, in the 'visualElement' output:
@@ -327,8 +337,7 @@ const prompt = ai.definePrompt({
   Do not generate an MCQ in this mode unless specifically asked to quiz on the visual concept.
   If an image is uploaded by the student (refer to the 'Student provided image for context' section earlier in this prompt), analyze it. If they ask to "explain this image", provide a detailed explanation in the 'response' field. If they ask to "create something similar to this image but about X", use the uploaded image for style/content inspiration for your 'image_generation_prompt'.
 
-  {{else}}
-  {{! This is the default mode for specific subject/lesson/topic study, NOT general chat }}
+  {{else}} {{! This is the default mode for specific subject/lesson/topic study, NOT general chat }}
   1.  **Understand the Context and Curriculum**: Deeply analyze the student's profile, especially their educational qualification (board: {{{studentProfile.educationQualification.boardExam.board}}}, standard: {{{studentProfile.educationQualification.boardExam.standard}}}, exam: {{{studentProfile.educationQualification.competitiveExam.specificExam}}}, course: {{{studentProfile.educationQualification.universityExam.course}}}, year: {{{studentProfile.educationQualification.universityExam.currentYear}}}, country: {{{studentProfile.country}}}, state: {{{studentProfile.state}}}, exam date: {{{studentProfile.educationQualification.competitiveExam.examDate}}}) and learning style ('{{{studentProfile.learningStyle}}}') to understand their specific curriculum and learning level.
   2.  **Web Search for Curriculum-Specific Information**:
       *   **If the student's question is academic and relates to their 'Curriculum Focus' (board syllabus, exam syllabus, university course content for the given subject/lesson/topic), you MUST use the 'performWebSearch' tool.**
@@ -392,14 +401,15 @@ const prompt = ai.definePrompt({
 const aiGuidedStudySessionFlow = ai.defineFlow(
   {
     name: 'aiGuidedStudySessionFlow',
-    inputSchema: AIGuidedStudySessionInputSchema,
+    inputSchema: AIGuidedStudySessionInputSchema, // The flow itself accepts the original schema
     outputSchema: AIGuidedStudySessionOutputSchema,
   },
-  async input => {
+  async (input: AIGuidedStudySessionInput) => { // Ensure input type matches the flow's inputSchema
     const studentProfile = input.studentProfile;
     const educationQualification = studentProfile.educationQualification || {};
 
-    const robustInput = {
+    // Prepare the extended input for the prompt
+    const promptInput = {
       ...input,
       studentProfile: {
         ...studentProfile,
@@ -410,8 +420,15 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
           universityExam: educationQualification.universityExam || {},
         },
       },
+      // Add boolean flags for Handlebars
+      isAiLearningAssistantChat: input.specificTopic === "AI Learning Assistant Chat" || input.specificTopic === "General Discussion",
+      isHomeworkHelp: input.specificTopic === "Homework Help",
+      isLanguageTranslatorMode: input.specificTopic === "LanguageTranslatorMode",
+      isVisualLearningFocus: input.specificTopic === "Visual Learning Focus",
+      isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help", "LanguageTranslatorMode", "Visual Learning Focus"].includes(input.specificTopic),
     };
-    const {output} = await prompt(robustInput);
+    
+    const {output} = await prompt(promptInput); // Pass the extended input to the prompt
 
     if (output && output.response && Array.isArray(output.suggestions)) {
         const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "Visual Learning Focus", "AI Learning Assistant Chat", "General Discussion"]; 
@@ -425,13 +442,15 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
         return output;
     }
 
-    console.warn("AI output was malformed or missing. Input was:", JSON.stringify(robustInput));
+    console.warn("AI output was malformed or missing. Input was:", JSON.stringify(promptInput));
     return {
         response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else? Please ensure your question is clear and any uploaded image is relevant.",
         suggestions: []
     };
   }
 );
+    
+
     
 
     
