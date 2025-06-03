@@ -29,14 +29,18 @@ import { useUserProfile } from "@/contexts/user-profile-context";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
 import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, BOARD_STANDARDS, UNIVERSITY_YEARS, CENTRAL_BOARDS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE, LEARNING_STYLES, PROFESSIONAL_CERTIFICATION_EXAMS, PROFESSIONAL_CERTIFICATION_STAGES } from "@/lib/constants";
-import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format, parseISO, isValid } from "date-fns";
 
 const onboardingSteps = [
   { id: "personal", title: "Personal Details" },
   { id: "location", title: "Location & Language" },
   { id: "learningStyle", title: "Learning Style" },
   { id: "educationCategory", title: "Education Focus" },
-  { id: "educationDetails", title: "Education Details" }, // Added this step explicitly
+  { id: "educationDetails", title: "Education Details" },
   { id: "review", title: "Review & Complete" },
 ] as const;
 
@@ -75,7 +79,8 @@ const EducationDetailsSchema = z.object({
     competitiveExams: z.object({
       examType: z.string().optional(), 
       specificExam: z.string().optional(),
-      stage: z.string().optional(), // Added stage field
+      stage: z.string().optional(),
+      examDate: z.date().optional().nullable(), // Added examDate
     }).optional(),
     universityExams: z.object({
       universityName: z.string().optional(),
@@ -98,7 +103,7 @@ const defaultValues: UserProfile = {
   educationCategory: EDUCATION_CATEGORIES[0]?.value as EducationCategory,
   educationQualification: {
     boardExams: { board: "", standard: "" },
-    competitiveExams: { examType: "", specificExam: "", stage: "" }, // Added stage
+    competitiveExams: { examType: "", specificExam: "", stage: "", examDate: undefined }, // Added examDate
     universityExams: { universityName: "", collegeName: "", course: "", currentYear: "" },
   },
 };
@@ -118,7 +123,12 @@ export function OnboardingForm() {
       educationCategory: existingProfile.educationCategory || EDUCATION_CATEGORIES[0]?.value as EducationCategory,
       educationQualification: { 
         boardExams: existingProfile.educationQualification?.boardExams || { board: "", standard: "" },
-        competitiveExams: existingProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "" }, // Added stage
+        competitiveExams: {
+           ...(existingProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "" }),
+           examDate: existingProfile.educationQualification?.competitiveExams?.examDate && isValid(parseISO(existingProfile.educationQualification.competitiveExams.examDate)) 
+                     ? parseISO(existingProfile.educationQualification.competitiveExams.examDate) 
+                     : undefined,
+        },
         universityExams: existingProfile.educationQualification?.universityExams || { universityName: "", collegeName: "", course: "", currentYear: "" },
       }
  } : defaultValues,
@@ -135,12 +145,12 @@ export function OnboardingForm() {
     if (watchedEducationCategory === "competitive" && watchedCompetitiveExamType === "ProfessionalCertifications" && watchedSpecificExam) {
       const stages = PROFESSIONAL_CERTIFICATION_STAGES[watchedSpecificExam] || [];
       setCurrentExamStages(stages);
-      if (stages.length === 0) { // If new exam has no stages, clear previous selection
+      if (stages.length === 0) { 
         form.setValue("educationQualification.competitiveExams.stage", undefined);
       }
     } else {
       setCurrentExamStages([]);
-      form.setValue("educationQualification.competitiveExams.stage", undefined); // Clear stage if not applicable
+      form.setValue("educationQualification.competitiveExams.stage", undefined); 
     }
   }, [watchedEducationCategory, watchedCompetitiveExamType, watchedSpecificExam, form]);
 
@@ -202,7 +212,7 @@ export function OnboardingForm() {
                  isValid = await form.trigger(["educationQualification.competitiveExams.stage"]);
             }
         }
-        if (isValid) {
+        if (isValid) { // examDate is optional, so no specific validation trigger needed here unless it was required
             isValid = await form.trigger(["educationQualification.competitiveExams.examType", "educationQualification.competitiveExams.specificExam"]);
         }
 
@@ -246,6 +256,15 @@ export function OnboardingForm() {
   };
 
   function onSubmit(data: UserProfile) {
+    const competitiveExamData = data.educationCategory === "competitive" 
+        ? {
+            ...data.educationQualification?.competitiveExams,
+            examDate: data.educationQualification?.competitiveExams?.examDate 
+                        ? format(data.educationQualification.competitiveExams.examDate, "yyyy-MM-dd") 
+                        : undefined,
+          }
+        : undefined;
+
     const finalProfile: UserProfile = {
       ...data,
       age: Number(data.age), 
@@ -253,7 +272,7 @@ export function OnboardingForm() {
       learningStyle: data.learningStyle || 'balanced', 
       educationQualification: {
         boardExams: data.educationCategory === "board" ? data.educationQualification?.boardExams : undefined,
-        competitiveExams: data.educationCategory === "competitive" ? data.educationQualification?.competitiveExams : undefined,
+        competitiveExams: competitiveExamData,
         universityExams: data.educationCategory === "university" ? data.educationQualification?.universityExams : undefined,
       }
     };
@@ -562,7 +581,8 @@ export function OnboardingForm() {
                           <Select onValueChange={(value) => {
                               field.onChange(value);
                               form.setValue("educationQualification.competitiveExams.specificExam", ""); 
-                              form.setValue("educationQualification.competitiveExams.stage", ""); // Reset stage
+                              form.setValue("educationQualification.competitiveExams.stage", ""); 
+                              form.setValue("educationQualification.competitiveExams.examDate", undefined);
                             }} value={field.value} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
@@ -590,7 +610,7 @@ export function OnboardingForm() {
                              <Select 
                                 onValueChange={(value) => {
                                   field.onChange(value); 
-                                  form.setValue("educationQualification.competitiveExams.stage", ""); // Reset stage when exam changes
+                                  form.setValue("educationQualification.competitiveExams.stage", ""); 
                                   if (value && !value.startsWith("Other_") && !value.includes("(Specify")) {
                                      form.clearErrors("educationQualification.competitiveExams.specificExam");
                                   }
@@ -660,6 +680,48 @@ export function OnboardingForm() {
                                 {currentExamStages.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                               </SelectContent>
                             </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+                    {watchedEducationCategory === "competitive" && (
+                      <FormField
+                        control={form.control}
+                        name="educationQualification.competitiveExams.examDate"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Exam Date (Optional)</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal justify-start",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "PPP")
+                                    ) : (
+                                      <span>Pick exam date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value || undefined}
+                                  onSelect={field.onChange}
+                                  // disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} // Allow past dates for records
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormDescription>Let the AI know your exam timeline for personalized support.</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -767,6 +829,9 @@ export function OnboardingForm() {
                             (PROFESSIONAL_CERTIFICATION_STAGES[form.getValues("educationQualification.competitiveExams.specificExam") || ""] || [])
                             .find(s => s.value === form.getValues("educationQualification.competitiveExams.stage"))?.label || 'N/A'
                          }</p>
+                      )}
+                      {form.getValues("educationQualification.competitiveExams.examDate") && (
+                         <p><strong>Exam Date:</strong> {format(form.getValues("educationQualification.competitiveExams.examDate") as Date, "PPP")}</p>
                       )}
                     </div>
                   )}

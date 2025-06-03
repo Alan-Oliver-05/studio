@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut, BookOpen, ListChecks, PenSquare, Brain, PieChartIcon, User as UserIcon, Palette, Trash2, Star } from "lucide-react"; // Added Star
+import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut, BookOpen, ListChecks, PenSquare, Brain, PieChartIcon, User as UserIcon, Palette, Trash2, Star, CalendarDays } from "lucide-react"; 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -26,16 +26,28 @@ import { deleteAllConversations } from "@/lib/chat-storage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { format, parseISO, isValid } from "date-fns";
 
 
-const DetailItem = ({ label, value, icon }: { label: string; value: string | number | undefined | null; icon?: React.ReactNode }) => {
+const DetailItem = ({ label, value, icon }: { label: string; value: string | number | Date | undefined | null; icon?: React.ReactNode }) => {
   if (value === undefined || value === null || String(value).trim() === "") return null;
+  
+  let displayValue = String(value);
+  if (value instanceof Date && isValid(value)) {
+    displayValue = format(value, "PPP");
+  } else if (typeof value === 'string' && label.toLowerCase().includes("date")) {
+     try {
+        const parsedDate = parseISO(value);
+        if(isValid(parsedDate)) displayValue = format(parsedDate, "PPP");
+     } catch (e) { /* keep original string if parsing fails */ }
+  }
+
   return (
     <div className="flex items-start py-3 border-b border-border/30 last:border-b-0">
       {icon && <span className="mr-3 mt-0.5 text-muted-foreground flex-shrink-0">{icon}</span>}
       <div className="flex-grow">
         <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-        <dd className="text-sm text-foreground">{String(value)}</dd>
+        <dd className="text-sm text-foreground">{displayValue}</dd>
       </div>
     </div>
   );
@@ -103,6 +115,8 @@ export default function SettingsPage() {
   const stageLabel = competitiveExam?.stage && competitiveExam?.specificExam && PROFESSIONAL_CERTIFICATION_STAGES[competitiveExam.specificExam]
     ? PROFESSIONAL_CERTIFICATION_STAGES[competitiveExam.specificExam].find(s => s.value === competitiveExam.stage)?.label || competitiveExam.stage
     : "N/A";
+
+  const examDateString = competitiveExam?.examDate;
 
 
   const handlePasswordReset = () => {
@@ -180,6 +194,7 @@ export default function SettingsPage() {
                     {competitiveExam.examType === "ProfessionalCertifications" && competitiveExam.stage && (
                       <DetailItem label="Current Stage" value={stageLabel} icon={<Star className="h-3.5 w-3.5 text-yellow-400"/>} />
                     )}
+                    {examDateString && <DetailItem label="Exam Date" value={examDateString} icon={<CalendarDays className="h-3.5 w-3.5"/>} />}
                  </div>
                 )}
                 {profile.educationCategory === "university" && profile.educationQualification.universityExams && (

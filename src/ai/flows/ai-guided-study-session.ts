@@ -30,6 +30,8 @@ const AIGuidedStudySessionInputSchema = z.object({
       competitiveExam: z.object({
         examType: z.string().optional().describe('The type of competitive exam (e.g., JEE, NEET, UPSC).'),
         specificExam: z.string().optional().describe('The specific competitive exam or job position (e.g., JEE Main, UPSC CSE).'),
+        stage: z.string().optional().describe("The student's current stage within the competitive exam or professional certification, if applicable."),
+        examDate: z.string().optional().describe("The student's upcoming exam date for the competitive exam, if provided (YYYY-MM-DD format)."),
       }).optional(),
       universityExam: z.object({
         universityName: z.string().optional().describe('The name of the university.'),
@@ -95,6 +97,8 @@ const prompt = ai.definePrompt({
     Preparing for: Competitive Exam
     Exam Type: {{{competitiveExam.examType}}}
     {{#if competitiveExam.specificExam}}Specific Exam: {{{competitiveExam.specificExam}}}{{/if}}
+    {{#if competitiveExam.stage}}Current Stage: {{{competitiveExam.stage}}}{{/if}}
+    {{#if competitiveExam.examDate}}Upcoming Exam Date: {{{competitiveExam.examDate}}}{{/if}}
     Curriculum Focus: Material relevant to the syllabus of {{#if competitiveExam.specificExam}}{{{competitiveExam.specificExam}}} ({{/if}}{{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}}){{/if}} in {{{studentProfile.country}}}.
     {{/if}}
     {{#if universityExam.universityName}}
@@ -122,7 +126,7 @@ const prompt = ai.definePrompt({
   {{/if}}
 
   Instructions for AI Tutor:
-  1.  **Understand the Context and Curriculum**: Deeply analyze the student's profile, especially their educational qualification (board, standard, exam, course, year, country, state) and learning style ('{{{studentProfile.learningStyle}}}') to understand their specific curriculum and learning level.
+  1.  **Understand the Context and Curriculum**: Deeply analyze the student's profile, especially their educational qualification (board, standard, exam, course, year, country, state, exam date) and learning style ('{{{studentProfile.learningStyle}}}') to understand their specific curriculum and learning level.
   2.  **Web Search for Curriculum-Specific Information**:
       *   **If the student's question is academic and relates to their 'Curriculum Focus' (board syllabus, exam syllabus, university course content), you MUST use the 'performWebSearch' tool.**
       *   The search query should aim to find official syllabus details, key topics, learning objectives, or reputable educational resources (like official board websites, university curriculum pages) for the student's specific 'Curriculum Focus' and the current 'specificTopic' or 'question'.
@@ -135,9 +139,12 @@ const prompt = ai.definePrompt({
       *   Example MCQ in response: "...and that's how refraction works through a prism. Now, to check your understanding: Which of the following best describes Snell's Law?\\nA) n1/sin(θ2) = n2/sin(θ1)\\nB) n1*sin(θ1) = n2*sin(θ2)\\nC) sin(θ1)/n1 = sin(θ2)/n2\\nD) n1*cos(θ1) = n2*cos(θ2)"
       *   If the student's question is a greeting or general, AND (the 'specificTopic' is "General Discussion" OR the 'specificTopic' is "AI Learning Assistant Chat"): Provide a welcoming response. Then, *proactively offer assistance related to their specific educational context and curriculum*. For example:
         {{#if studentProfile.educationQualification.boardExam.board}} "I see you're preparing for your {{{studentProfile.educationQualification.boardExam.board}}} exams in {{{studentProfile.educationQualification.boardExam.standard}}} standard. How can I assist you with a topic from your Math, Science, or another core subject syllabus today? We can find official curriculum details if you like."
-        {{else if studentProfile.educationQualification.competitiveExam.examType}} "I'm here to help you prepare for your {{{studentProfile.educationQualification.competitiveExam.examType}}} exam ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}). Is there a particular section of the syllabus you'd like to focus on? We can look up key topics or discuss study strategies."
+        {{else if studentProfile.educationQualification.competitiveExam.examType}} "I'm here to help you prepare for your {{{studentProfile.educationQualification.competitiveExam.examType}}} exam ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}).{{#if studentProfile.educationQualification.competitiveExam.examDate}} I see your exam is on {{{studentProfile.educationQualification.competitiveExam.examDate}}}. Let's make sure you're well-prepared!{{/if}} Is there a particular section of the syllabus you'd like to focus on? We can look up key topics or discuss study strategies."
         {{else if studentProfile.educationQualification.universityExam.universityName}} "Welcome! I can help you with your studies for {{{studentProfile.educationQualification.universityExam.course}}} at {{{studentProfile.educationQualification.universityExam.universityName}}}. What topic from your curriculum can I assist with? We can also explore typical learning objectives for this course."
         {{else}} "How can I assist you with your learning goals today? I can help with general academic queries, or we can focus on something specific if you have it in mind."{{/if}}
+      {{#if studentProfile.educationQualification.competitiveExam.examDate}}
+      *   **Motivational Nudge (if exam date is present and relevant to query):** If the query is about study strategy, a specific topic, or if the student expresses concern, and an exam date ({{{studentProfile.educationQualification.competitiveExam.examDate}}}) is known for a competitive exam, you can include a brief, positive motivational phrase like, "Keep up the great work for your exam on {{{studentProfile.educationQualification.competitiveExam.examDate}}}!" or "Focusing on this will be very helpful for your upcoming exam on {{{studentProfile.educationQualification.competitiveExam.examDate}}}." Ensure it's natural and not repetitive.
+      {{/if}}
   4.  **External Suggestions (Curriculum-Focused)**: Provide 2-3 "suggestions" for further study. These MUST be high-quality, specific resources relevant to the "retrieved" curriculum.
       *   **PRIORITIZE**: Links to official educational board websites (e.g., {{{studentProfile.educationQualification.boardExam.board}}} website), national educational portals for {{{studentProfile.country}}}, or specific university curriculum pages identified through web search.
       *   **DO NOT suggest**: Commercial online learning platforms, apps, or other AI tutoring services.
@@ -167,9 +174,9 @@ const prompt = ai.definePrompt({
 
   General Principles:
   - For all academic queries not in "Homework Help", "LanguageTranslatorMode", or "Visual Learning Focus":
-    1. Understand student's curriculum context.
+    1. Understand student's curriculum context (including exam date if available).
     2. Use web search to find official/reputable info on that curriculum for the current topic/question.
-    3. Explain/answer based on that "retrieved" info.
+    3. Explain/answer based on that "retrieved" info, incorporating motivational nudge if exam date is present and relevant.
     4. Ask a relevant MCQ based on that "retrieved" info.
     5. Suggest official/reputable resources.
   - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
@@ -214,7 +221,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
         learningStyle: studentProfile.learningStyle || 'balanced', 
         educationQualification: {
           boardExam: educationQualification.boardExam || {},
-          competitiveExam: educationQualification.competitiveExam || {},
+          competitiveExam: educationQualification.competitiveExam || { examType: undefined, specificExam: undefined, stage: undefined, examDate: undefined },
           universityExam: educationQualification.universityExam || {},
         },
       },
@@ -241,4 +248,3 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
   }
 );
     
-

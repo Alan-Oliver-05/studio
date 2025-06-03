@@ -9,6 +9,7 @@ export interface CompetitiveExamInfo {
   examType?: string; // e.g. Central Govt, State Govt, ProfessionalCertifications, Other
   specificExam?: string; // e.g. JEE, NEET, UPSC CSE, CA, CMA, Custom Exam Name
   stage?: string; // Added for professional certification stages
+  examDate?: string; // Added for exam due date, stored as YYYY-MM-DD
 }
 
 export interface UniversityExamInfo {
@@ -121,7 +122,7 @@ export interface InteractiveQAndAInput {
     learningStyle?: LearningStyle;
     educationQualification?: {
       boardExam?: { board?: string; standard?: string };
-      competitiveExam?: { examType?: string; specificExam?: string; stage?: string };
+      competitiveExam?: { examType?: string; specificExam?: string; stage?: string; examDate?: string; }; // Added examDate
       universityExam?: { universityName?: string; course?: string; currentYear?: string };
     };
   };

@@ -4,6 +4,7 @@
 import type { UserProfile, LearningStyle } from "@/types"; // Added LearningStyle
 import type { ReactNode } from "react";
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { format, parseISO, isValid } from "date-fns";
 
 interface UserProfileContextType {
   profile: UserProfile | null;
@@ -28,11 +29,26 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
         
         parsedProfile.educationQualification = {
           boardExams: parsedProfile.educationQualification?.boardExams || {},
-          competitiveExams: parsedProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: ""}, // Ensure stage exists
+          competitiveExams: parsedProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "", examDate: undefined}, 
           universityExams: parsedProfile.educationQualification?.universityExams || {},
         };
-        if (parsedProfile.educationQualification.competitiveExams && !('stage' in parsedProfile.educationQualification.competitiveExams)) {
-            parsedProfile.educationQualification.competitiveExams.stage = ""; // Add stage if missing from old profiles
+        if (parsedProfile.educationQualification.competitiveExams) {
+            if (!('stage' in parsedProfile.educationQualification.competitiveExams)) {
+                parsedProfile.educationQualification.competitiveExams.stage = ""; 
+            }
+            // Ensure examDate is handled correctly if it was stored as Date object previously
+            // For new profiles, it will be string or undefined. For old, could be Date.
+             if (parsedProfile.educationQualification.competitiveExams.examDate && 
+                !(typeof parsedProfile.educationQualification.competitiveExams.examDate === 'string' && 
+                  isValid(parseISO(parsedProfile.educationQualification.competitiveExams.examDate)))
+             ) {
+                 // If it's not a valid ISO string, try to format if it's a date object, else clear
+                try {
+                    parsedProfile.educationQualification.competitiveExams.examDate = format(new Date(parsedProfile.educationQualification.competitiveExams.examDate), "yyyy-MM-dd");
+                } catch {
+                    parsedProfile.educationQualification.competitiveExams.examDate = undefined;
+                }
+            }
         }
         parsedProfile.learningStyle = parsedProfile.learningStyle || 'balanced';
         setProfileState(parsedProfile);
@@ -51,12 +67,18 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
         learningStyle: newProfile.learningStyle || 'balanced', 
         educationQualification: {
           boardExams: newProfile.educationQualification?.boardExams || {},
-          competitiveExams: newProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "" }, // Ensure stage
+          competitiveExams: newProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "", examDate: undefined },
           universityExams: newProfile.educationQualification?.universityExams || {},
         },
       };
-      if (profileToSave.educationQualification.competitiveExams && !('stage' in profileToSave.educationQualification.competitiveExams)) {
-        profileToSave.educationQualification.competitiveExams.stage = ""; // Add stage if missing
+      if (profileToSave.educationQualification.competitiveExams) {
+        if (!('stage' in profileToSave.educationQualification.competitiveExams)) {
+          profileToSave.educationQualification.competitiveExams.stage = ""; 
+        }
+         // Ensure examDate is stored as YYYY-MM-DD string if present
+        if (profileToSave.educationQualification.competitiveExams.examDate && profileToSave.educationQualification.competitiveExams.examDate instanceof Date) {
+            profileToSave.educationQualification.competitiveExams.examDate = format(profileToSave.educationQualification.competitiveExams.examDate, "yyyy-MM-dd");
+        }
       }
       setProfileState(profileToSave);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(profileToSave));
@@ -70,15 +92,20 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
     setProfileState(prevProfile => {
       if (!prevProfile) return null; 
       
-      const updatedProfileData = { ...prevProfile, ...updates };
+      let updatedProfileData = { ...prevProfile, ...updates };
       
       updatedProfileData.educationQualification = {
         boardExams: updatedProfileData.educationQualification?.boardExams || {},
-        competitiveExams: updatedProfileData.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "" },
+        competitiveExams: updatedProfileData.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "", examDate: undefined },
         universityExams: updatedProfileData.educationQualification?.universityExams || {},
       };
-      if (updatedProfileData.educationQualification.competitiveExams && !('stage' in updatedProfileData.educationQualification.competitiveExams)) {
-        updatedProfileData.educationQualification.competitiveExams.stage = ""; 
+      if (updatedProfileData.educationQualification.competitiveExams) {
+        if (!('stage' in updatedProfileData.educationQualification.competitiveExams)) {
+          updatedProfileData.educationQualification.competitiveExams.stage = ""; 
+        }
+        if (updatedProfileData.educationQualification.competitiveExams.examDate && updatedProfileData.educationQualification.competitiveExams.examDate instanceof Date) {
+            updatedProfileData.educationQualification.competitiveExams.examDate = format(updatedProfileData.educationQualification.competitiveExams.examDate, "yyyy-MM-dd");
+        }
       }
       updatedProfileData.learningStyle = updatedProfileData.learningStyle || 'balanced';
 
