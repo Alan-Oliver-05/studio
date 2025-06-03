@@ -80,7 +80,7 @@ const EducationDetailsSchema = z.object({
       examType: z.string().optional(), 
       specificExam: z.string().optional(),
       stage: z.string().optional(),
-      examDate: z.date().optional().nullable(), // Added examDate
+      examDate: z.date().optional().nullable(),
     }).optional(),
     universityExams: z.object({
       universityName: z.string().optional(),
@@ -103,7 +103,7 @@ const defaultValues: UserProfile = {
   educationCategory: EDUCATION_CATEGORIES[0]?.value as EducationCategory,
   educationQualification: {
     boardExams: { board: "", standard: "" },
-    competitiveExams: { examType: "", specificExam: "", stage: "", examDate: undefined }, // Added examDate
+    competitiveExams: { examType: "", specificExam: "", stage: "", examDate: undefined },
     universityExams: { universityName: "", collegeName: "", course: "", currentYear: "" },
   },
 };
@@ -173,11 +173,39 @@ export function OnboardingForm() {
     } else if (currentStep === "educationDetails") {
       isValid = true; 
       if (watchedEducationCategory === "board") {
-        const boardSelected = !!form.getValues("educationQualification.boardExams.board");
+        const boardFieldValue = form.getValues("educationQualification.boardExams.board");
         const standardSelected = !!form.getValues("educationQualification.boardExams.standard");
-        if (!boardSelected) form.setError("educationQualification.boardExams.board", { type: "manual", message: "Please select or specify a board." });
-        if (!standardSelected) form.setError("educationQualification.boardExams.standard", { type: "manual", message: "Please select a standard." });
-        isValid = boardSelected && standardSelected && (await form.trigger(["educationQualification.boardExams.board", "educationQualification.boardExams.standard"]));
+        
+        // Board validation: either a predefined one or custom text is entered
+        const isBoardSelectedOrSpecified = boardFieldValue && boardFieldValue.trim() !== "" && 
+                                           !(boardFieldValue === "State Board" || boardFieldValue === "Other_Central_Board"); // check if it's not one of the placeholder "specify" options
+
+        if (!isBoardSelectedOrSpecified && (form.getValues("educationQualification.boardExams.board") === "State Board" || form.getValues("educationQualification.boardExams.board") === "Other_Central_Board")) {
+           // This case means "State Board" or "Other" was selected but no text was typed in the input
+           // We need to check if the text input (which directly writes to field.value) is empty IF those were selected.
+           // The current setup makes field.value "" when "State Board" is chosen to make input blank.
+           // So we need to check if it's *still* "" and one of those selected.
+           // This is implicitly handled if actual board name is required to be non-empty.
+           // For now, rely on the boardFieldValue being non-empty and not a placeholder itself if placeholder was chosen.
+        }
+
+
+        if (!boardFieldValue || boardFieldValue.trim() === "" || boardFieldValue === "State Board" || boardFieldValue === "Other_Central_Board") {
+            form.setError("educationQualification.boardExams.board", { type: "manual", message: "Please select or specify a board name." });
+            isValid = false;
+        } else {
+            form.clearErrors("educationQualification.boardExams.board");
+        }
+        
+        if (!standardSelected) {
+            form.setError("educationQualification.boardExams.standard", { type: "manual", message: "Please select a standard." });
+            isValid = false;
+        } else {
+            form.clearErrors("educationQualification.boardExams.standard");
+        }
+        
+        if(isValid) isValid = await form.trigger(["educationQualification.boardExams.board", "educationQualification.boardExams.standard"]);
+
       } else if (watchedEducationCategory === "competitive") {
         const examTypeSelected = !!form.getValues("educationQualification.competitiveExams.examType");
         const specificExamValue = form.getValues("educationQualification.competitiveExams.specificExam");
@@ -212,7 +240,7 @@ export function OnboardingForm() {
                  isValid = await form.trigger(["educationQualification.competitiveExams.stage"]);
             }
         }
-        if (isValid) { // examDate is optional, so no specific validation trigger needed here unless it was required
+        if (isValid) { 
             isValid = await form.trigger(["educationQualification.competitiveExams.examType", "educationQualification.competitiveExams.specificExam"]);
         }
 
@@ -518,35 +546,71 @@ export function OnboardingForm() {
                     <FormField
                       control={form.control}
                       name="educationQualification.boardExams.board"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Board Name</FormLabel>
-                           <Select onValueChange={(value) => {
-                             field.onChange(value);
-                             if (value === "Other_Central_Board" || value === "State Board") { 
-                               form.setValue("educationQualification.boardExams.board", value); 
-                             }
-                           }} value={field.value} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Board"/>
-                              </SelectTrigger>
-                            </FormControl>
-                          <SelectContent side="top">
+                      render={({ field }) => {
+                        // Local state to manage which category is selected in the dropdown
+                        // This helps decide whether to show the text input for "Other"
+                        const [selectedBoardCategory, setSelectedBoardCategory] = useState(() => {
+                            const initialFieldValue = field.value;
+                            if (!initialFieldValue) return ""; // No initial value
+                            // Check if it's one of the predefined non-other options
+                            if (CENTRAL_BOARDS.some(b => b.value === initialFieldValue && b.value !== "Other_Central_Board")) {
+                                return initialFieldValue;
+                            }
+                            // If it's "Other_Central_Board" or "State Board" placeholder, or custom text,
+                            // set category to the placeholder that enables the input.
+                            // Heuristic: if it's not predefined, it's likely a State Board or specified Other Central.
+                            // Default to "State Board" if it's custom text, or the placeholder itself.
+                            if (initialFieldValue === "Other_Central_Board") return "Other_Central_Board";
+                            if (initialFieldValue && !CENTRAL_BOARDS.some(b => b.value === initialFieldValue)) return "State Board"; // Assume custom is state board
+                            return initialFieldValue || ""; // Fallback to current field value or empty
+                        });
+                        
+                        const showSpecifyInput = selectedBoardCategory === "Other_Central_Board" || selectedBoardCategory === "State Board";
+
+                        return (
+                          <FormItem>
+                            <FormLabel>Board Name</FormLabel>
+                            <Select
+                              onValueChange={(value) => {
+                                setSelectedBoardCategory(value);
+                                if (value === "Other_Central_Board" || value === "State Board") {
+                                  field.onChange(""); // Clear actual board name to prompt typing
+                                } else {
+                                  field.onChange(value); // Set actual board name
+                                }
+                              }}
+                              value={selectedBoardCategory} // Select's value is the category
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select Board">
+                                    {/* Display logic for trigger */}
+                                    {showSpecifyInput && field.value /* if typed value exists */
+                                      ? field.value
+                                      : CENTRAL_BOARDS.find(b => b.value === selectedBoardCategory)?.label || 
+                                        (selectedBoardCategory === "State Board" ? "State Board (Specify your state's board)" : selectedBoardCategory) || 
+                                        "Select Board"
+                                    }
+                                  </SelectValue>
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent side="top">
                                 {CENTRAL_BOARDS.map(b => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}
                                 <SelectItem value="State Board">State Board (Specify your state's board)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {(field.value === "Other_Central_Board" || field.value === "State Board") && (
-                            <Input 
+                              </SelectContent>
+                            </Select>
+                            {showSpecifyInput && (
+                              <Input
                                 className="mt-2"
-                                placeholder={field.value === "Other_Central_Board" ? "Specify other central board name" : "E.g., Tamil Nadu State Board"}
-                                onChange={(e) => field.onChange(e.target.value)} 
-                            value={field.value === "Other_Central_Board" || field.value === "State Board" ? "" : field.value}                            />
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                                placeholder={selectedBoardCategory === "Other_Central_Board" ? "Specify other central board name" : "E.g., Tamil Nadu State Board"}
+                                value={field.value} // Input field directly uses and updates the main form value
+                                onChange={field.onChange}
+                              />
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        );
+                      }}
                     />
                     <FormField
                       control={form.control}
@@ -716,7 +780,6 @@ export function OnboardingForm() {
                                   mode="single"
                                   selected={field.value || undefined}
                                   onSelect={field.onChange}
-                                  // disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} // Allow past dates for records
                                   initialFocus
                                 />
                               </PopoverContent>
@@ -813,7 +876,7 @@ export function OnboardingForm() {
                   
                   {watchedEducationCategory === "board" && form.getValues("educationQualification.boardExams") && (
                     <div className="pl-4 mt-1 border-l-2 border-primary/50">
-                      <p><strong>Board:</strong> {form.getValues("educationQualification.boardExams.board")?.startsWith("Other_") || form.getValues("educationQualification.boardExams.board") === "State Board" ? `Specified: ${form.getValues("educationQualification.boardExams.board")}` : form.getValues("educationQualification.boardExams.board") || 'N/A'}</p>
+                      <p><strong>Board:</strong> {form.getValues("educationQualification.boardExams.board") || 'N/A'}</p>
                       <p><strong>Standard:</strong> {BOARD_STANDARDS.find(s => s.value === form.getValues("educationQualification.boardExams.standard"))?.label || 'N/A'}</p>
                     </div>
                   )}
