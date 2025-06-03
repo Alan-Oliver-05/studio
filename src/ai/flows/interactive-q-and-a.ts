@@ -12,7 +12,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import type { QAS_Stage } from '@/types'; // Ensure QAS_Stage is imported if defined in types.ts
+import type { QAS_Stage, LearningStyle } from '@/types'; // Ensure QAS_Stage is imported if defined in types.ts
 
 const InteractiveQAndAInputSchema = z.object({
   studentProfile: z.object({
@@ -20,6 +20,7 @@ const InteractiveQAndAInputSchema = z.object({
     age: z.number().describe("The student's age."),
     country: z.string().describe("The student's country."),
     preferredLanguage: z.string().describe("The student's preferred language for learning."),
+    learningStyle: z.enum(["visual", "auditory", "kinesthetic", "reading_writing", "balanced", ""]).optional().describe("The student's preferred learning style."),
     educationQualification: z.object({
       boardExam: z.object({
         board: z.string().optional().describe('The board exam name (e.g., CBSE, State Board Name).'),
@@ -28,6 +29,7 @@ const InteractiveQAndAInputSchema = z.object({
       competitiveExam: z.object({
         examType: z.string().optional().describe('The type of competitive exam (e.g., JEE, NEET, UPSC).'),
         specificExam: z.string().optional().describe('The specific competitive exam or job position (e.g., JEE Main, UPSC CSE).'),
+        stage: z.string().optional().describe('The current stage within a professional certification, if applicable.'),
       }).optional(),
       universityExam: z.object({
         universityName: z.string().optional().describe('The name of the university.'),
@@ -67,7 +69,7 @@ export async function interactiveQAndA(input: InteractiveQAndAInput): Promise<In
 
 const prompt = ai.definePrompt({
   name: 'interactiveQAndAPrompt',
-  input: {schema: InteractiveQAndAInputSchema}, // Input schema is still InteractiveQAndAInputSchema for the prompt definition
+  input: {schema: InteractiveQAndAInputSchema}, 
   output: {schema: InteractiveQAndAOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are a Focused Topic AI Tutor implementing a multi-stage Q&A strategy.
@@ -82,7 +84,7 @@ const prompt = ai.definePrompt({
   Age: {{{studentProfile.age}}}
   Country: {{{studentProfile.country}}}
   Preferred Language: {{{studentProfile.preferredLanguage}}}
-  Educational Context: {{#with studentProfile.educationQualification}}{{#if boardExam.board}}Board: {{{boardExam.board}}}{{#if boardExam.standard}}, Standard: {{{boardExam.standard}}}{{/if}}{{/if}}{{#if competitiveExam.examType}}Exam: {{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}} ({{{competitiveExam.specificExam}}}){{/if}}{{/if}}{{#if universityExam.universityName}}University: {{{universityExam.universityName}}}, Course: {{{universityExam.course}}}{{#if universityExam.currentYear}}, Year: {{{universityExam.currentYear}}}{{/if}}{{/if}}{{else}}General knowledge for age {{{studentProfile.age}}}, within '{{{topic}}}'.{{/with}}
+  Educational Context: {{#with studentProfile.educationQualification}}{{#if boardExam.board}}Board: {{{boardExam.board}}}{{#if boardExam.standard}}, Standard: {{{boardExam.standard}}}{{/if}}{{/if}}{{#if competitiveExam.examType}}Exam: {{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}} ({{{competitiveExam.specificExam}}}){{/if}}{{#if competitiveExam.stage}}, Stage: {{{competitiveExam.stage}}}{{/if}}{{/if}}{{#if universityExam.universityName}}University: {{{universityExam.universityName}}}, Course: {{{universityExam.course}}}{{#if universityExam.currentYear}}, Year: {{{universityExam.currentYear}}}{{/if}}{{/if}}{{else}}General knowledge for age {{{studentProfile.age}}}, within '{{{topic}}}'.{{/with}}
 
   Conversation Context:
   {{#if conversationHistory}}Recent History (last few turns): {{{conversationHistory}}}{{/if}}
@@ -122,7 +124,7 @@ const prompt = ai.definePrompt({
 
   8.  **RAG Simulation**: For 'initial_material' & 'deeper_material', act as if retrieving info ONLY from '{{{topic}}}'. For 'out_of_syllabus', you may draw on related general knowledge.
 
-  9.  **Transition Question**: When 'isStageComplete' is true and 'nextStage' is different from 'currentStage' (and not 'completed'), the 'question' field in your output MUST be the *first* multiple-choice question for that 'nextStage', including its options. Feedback (if any from instruction 1 or 2) should still be for the student's last answer in the *previous* stage or an intro to the new stage.
+  9.  **Transition Question**: When 'isStageComplete' is true and 'nextStage' is different from 'currentStage' (and not 'completed'), the 'question' field in your output MUST be the *first* multiple-choice question for that 'nextStage', including its options. Feedback (from instruction 1 or 2) should still be for the student's last answer in the *previous* stage or an intro to the new stage.
 
   Stage-Specific Questioning Strategy:
 
@@ -145,13 +147,13 @@ const prompt = ai.definePrompt({
   *   Objective: Ask 1 multiple-choice question connecting '{{{topic}}}' to broader concepts or related fields.
   *   Action:
       *   If {{questionsAskedInStage}} < 1: Ask a new "beyond syllabus" multiple-choice question with options. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to false.
-      *   If {{questionsAskedInStage}} >= 1: You've asked enough. Set 'nextStage' to 'completed' and 'isStageComplete' to true. Your 'question' field should be a concluding remark about the topic '{{{topic}}}'.
+      *   If {{questionsAskedInStage}} >= 1: You've asked enough. Set 'nextStage' to 'completed' and 'isStageComplete' to true. Your 'question' field should be a concluding remark about the topic '{{{topic}}}'. (It can be an MCQ if you deem it appropriate for a final check, otherwise a statement.)
   {{/if}}
   {{#if isCompletedStage}}
   **Topic Completed**
-  *   Your 'question' field output MUST be a polite concluding remark for the topic '{{{topic}}}'. For example: "We've covered the key aspects of {{{topic}}}. Well done! You can select a new topic or use the 'New Q&A on This Topic' button to review it again." Do NOT ask a new question.
-  *   Your 'feedback' field output MUST be a short, positive concluding statement. For example: "Great job completing this topic session!" or "Excellent work on '{{{topic}}}'!". Avoid "null" or empty strings.
-  *   Set 'isCorrect' to null. 'suggestions' should be an empty array or not provided.
+  *   Your 'question' field output. If the *previous* stage was 'out_of_syllabus' and you asked an MCQ, the student might be answering it now. If so, your feedback is for that. If you are to provide a concluding remark instead of an MCQ, it should be: "We've covered the key aspects of {{{topic}}}. Well done! You can select a new topic or use the 'New Q&A on This Topic' button to review it again."
+  *   Your 'feedback' field output (if providing a concluding remark for 'question'): "Great job completing this topic session!" or "Excellent work on '{{{topic}}}'!". Otherwise, feedback is for the student's answer. Avoid "null" or empty strings for feedback.
+  *   Set 'isCorrect' based on student's answer if one was provided, else null. 'suggestions' should be an empty array or not provided.
   *   Set 'nextStage' to 'completed' and 'isStageComplete' to true.
   {{/if}}
   `,
@@ -173,6 +175,7 @@ const interactiveQAndAFlow = ai.defineFlow(
     outputSchema: InteractiveQAndAOutputSchema,
   },
   async (inputUnsafe) => {
+    // Ensure nested educationQualification objects exist to prevent Handlebars errors
     const baseInput = {
       ...inputUnsafe,
       studentProfile: {
@@ -198,13 +201,22 @@ const interactiveQAndAFlow = ai.defineFlow(
     const {output} = await prompt(stageEnhancedInput);
 
     if (output && output.question) {
-        // Ensure feedback is a non-empty string if present, otherwise undefined
-        const feedbackString = (output.feedback && output.feedback.trim() !== "") ? output.feedback.trim() : undefined;
+        // Ensure feedback is a non-empty string if present, otherwise provide a default if applicable
+        let feedbackString = (output.feedback && output.feedback.trim() !== "") ? output.feedback.trim() : undefined;
+        
+        // Ensure feedback is always populated if it's not the final "completed" stage without feedback
+        if (!feedbackString && !(stageEnhancedInput.isCompletedStage && output.nextStage === 'completed' && !output.isCorrect)) {
+            feedbackString = "Let's continue!"; // Default feedback if AI misses it
+             if (stageEnhancedInput.currentStage === 'initial_material' && stageEnhancedInput.questionsAskedInStage === 0 && !inputUnsafe.studentAnswer) {
+                feedbackString = `Let's start with some foundational questions on '${stageEnhancedInput.topic}'.`;
+            }
+        }
+
 
         return {
             question: output.question,
             feedback: feedbackString,
-            isCorrect: output.isCorrect === undefined ? undefined : output.isCorrect, // Ensure isCorrect is undefined or boolean
+            isCorrect: output.isCorrect === undefined ? undefined : output.isCorrect, // Allow undefined for isCorrect
             suggestions: output.suggestions || [],
             nextStage: output.nextStage || stageEnhancedInput.currentStage,
             isStageComplete: output.isStageComplete || false,
@@ -215,7 +227,7 @@ const interactiveQAndAFlow = ai.defineFlow(
     // Fallback when AI output is problematic
     return {
         question: `I'm having a bit of trouble formulating a multiple-choice question for the stage '${stageEnhancedInput.currentStage}' about ${stageEnhancedInput.topic}. Could you perhaps ask me something about it instead, or suggest where we should start?`,
-        feedback: "Apologies, I couldn't process the last interaction fully to generate a multiple-choice question. Please try again.",
+        feedback: "Apologies, I couldn't process the last interaction fully to generate a multiple-choice question. Please try again or I can ask the first question if you'd like.",
         isCorrect: undefined,
         suggestions: [],
         nextStage: stageEnhancedInput.currentStage,

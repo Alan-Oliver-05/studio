@@ -35,7 +35,7 @@ export interface UserProfile {
   country: string;
   state: string;
   preferredLanguage: string;
-  learningStyle?: LearningStyle; // Added learning style
+  learningStyle?: LearningStyle; 
   educationCategory: EducationCategory;
   educationQualification: EducationQualification;
 }
@@ -43,7 +43,7 @@ export interface UserProfile {
 export interface Subject {
   name: string;
   description: string;
-  studyMaterials: string[]; // These can be interpreted as high-level topics or key areas
+  studyMaterials: string[]; 
 }
 
 export interface Lesson {
@@ -58,7 +58,7 @@ export interface Topic {
 
 export interface VisualElement {
   type: 'bar_chart_data' | 'line_chart_data' | 'flowchart_description' | 'image_generation_prompt';
-  content: any; // Could be chart data array, string description, or image prompt string
+  content: any; 
   caption?: string;
 }
 
@@ -70,22 +70,22 @@ export interface Message {
   text: string;
   suggestions?: string[];
   timestamp: number;
-  attachmentPreview?: string | null; // For client-side display of image thumbnail before sending
-  visualElement?: VisualElement | null; // To hold structured visual data from AI
-  generatedImageUri?: string | null; // To store the data URI of an AI-generated image if applicable
-  feedback?: string | null; // Feedback from interactiveQAndA
-  isCorrect?: boolean | null; // Whether the user's previous answer was correct, from interactiveQAndA
-  // For interactive Q&A state progression
-  aiNextStage?: QAS_Stage; // Store the stage the AI wants to move to next
-  aiIsStageComplete?: boolean; // Store if AI indicated stage completion
+  attachmentPreview?: string | null; 
+  visualElement?: VisualElement | null; 
+  generatedImageUri?: string | null; 
+  feedback?: string | null; 
+  isCorrect?: boolean | null; 
+  // For interactive Q&A state progression, set by AI
+  aiNextStage?: QAS_Stage; 
+  aiIsStageComplete?: boolean;
 }
 
 export interface Conversation {
   id: string;
-  customTitle?: string; // User-defined title for the conversation in the library
-  topic: string; // This will store the most specific topic of conversation (e.g. "Refraction of Light", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Visual Learning")
-  subjectContext?: string; // General subject for context (e.g. "Physics for 12th Standard CBSE")
-  lessonContext?: string; // Lesson for context (e.g. "Optics")
+  customTitle?: string; 
+  topic: string; 
+  subjectContext?: string; 
+  lessonContext?: string; 
   studentProfile?: UserProfile;
   messages: Message[];
   summary?: string;
@@ -98,7 +98,7 @@ export interface Task {
   id: string;
   title: string;
   category: string;
-  dueDate?: string; // Stored as "yyyy-MM-dd" e.g. "2024-05-09"
+  dueDate?: string; 
   priority: TaskPriority;
   status: 'pending' | 'completed';
 }
@@ -106,7 +106,7 @@ export interface Task {
 export interface Note {
   id: string;
   title: string;
-  content: string; // HTML content from the rich text editor
+  content: string; 
   createdAt: number;
   updatedAt: number;
 }
@@ -115,13 +115,13 @@ export interface Note {
 export interface InteractiveQAndAInput {
   studentProfile: {
     name: string;
-    age: number; // Ensure it's number here for AI
+    age: number; 
     country: string;
     preferredLanguage: string;
     learningStyle?: LearningStyle;
     educationQualification?: {
       boardExam?: { board?: string; standard?: string };
-      competitiveExam?: { examType?: string; specificExam?: string; stage?: string }; // Added stage
+      competitiveExam?: { examType?: string; specificExam?: string; stage?: string };
       universityExam?: { universityName?: string; course?: string; currentYear?: string };
     };
   };
@@ -131,15 +131,15 @@ export interface InteractiveQAndAInput {
   studentAnswer?: string | null;
   previousQuestion?: string | null;
   conversationHistory?: string | null;
-  currentStage?: QAS_Stage;
-  questionsAskedInStage?: number;
+  currentStage?: QAS_Stage; // This will be 'initial_material', 'deeper_material', 'out_of_syllabus'
+  questionsAskedInStage?: number; // Tracks questions within the current stage
 }
 
 export interface InteractiveQAndAOutput {
-  question: string;
-  feedback?: string | null;
-  isCorrect?: boolean | null;
-  suggestions?: string[];
-  nextStage?: QAS_Stage;
-  isStageComplete?: boolean;
+  question: string; // The MCQ question or concluding remark
+  feedback?: string | null; // Feedback on user's answer or intro to new stage
+  isCorrect?: boolean | null; // Was the user's last answer correct?
+  suggestions?: string[]; // Suggestions for further study *within the topic*
+  nextStage?: QAS_Stage; // Stage the AI suggests moving to
+  isStageComplete?: boolean; // Has the current stage's objective been met?
 }

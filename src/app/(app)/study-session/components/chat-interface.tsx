@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from "react";
@@ -39,7 +40,7 @@ interface ChatInterfaceProps {
   initialInputQuery?: string;
   onInitialQueryConsumed?: () => void;
   enableImageUpload?: boolean;
-  initialQAStage?: QAS_Stage;
+  initialQAStage?: QAS_Stage; 
   initialQuestionsInStage?: number;
 }
 
@@ -126,7 +127,6 @@ const RenderBarChartVisual = ({ visualElement }: { visualElement: VisualElement 
   );
 };
 
-// Define which topics are handled by aiGuidedStudySession vs interactiveQAndA
 const SPECIAL_MODES_FOR_AI_GUIDED_STUDY = [
     "AI Learning Assistant Chat", 
     "Homework Help", 
@@ -173,17 +173,26 @@ export function ChatInterface({
     if (existingConversation && existingConversation.messages.length > 0) {
       setMessages(existingConversation.messages);
       if (isInteractiveQAMode) {
-        const lastAiMessage = [...existingConversation.messages].reverse().find(m => m.sender === 'ai');
-        if (lastAiMessage?.aiNextStage) {
-          setCurrentClientStage(lastAiMessage.aiNextStage);
-          if (lastAiMessage.aiIsStageComplete && lastAiMessage.aiNextStage !== (lastAiMessage as any).currentStageInternal) { 
-            setQuestionsAskedInClientStage(0);
+        const lastAiMsg = [...existingConversation.messages].reverse().find(m => m.sender === 'ai');
+        if (lastAiMsg?.aiNextStage) {
+          const newStage = lastAiMsg.aiNextStage;
+          setCurrentClientStage(newStage);
+          
+          // If stage changed and was completed, reset counter for new stage
+          // If stage is same and not complete, count questions in this stage.
+          // The 'aiIsStageComplete' on the message refers to the completion of the stage *leading up to that message's question*.
+          if (lastAiMsg.aiIsStageComplete && newStage !== (lastAiMsg as any).previousStageInternal ) { // (previousStageInternal needs to be stored or inferred if this logic is key)
+             setQuestionsAskedInClientStage(0); // New stage starting
           } else {
-            const aiQuestionsInThisStage = existingConversation.messages.filter(m => m.sender === 'ai' && m.aiNextStage === lastAiMessage.aiNextStage && !m.aiIsStageComplete).length;
-            setQuestionsAskedInClientStage(aiQuestionsInThisStage);
+            // Count AI questions for the current stage derived from lastAiMsg.aiNextStage
+            const aiQuestionsInCurrentStage = existingConversation.messages.filter(
+              m => m.sender === 'ai' && m.aiNextStage === newStage && !m.aiIsStageComplete
+            ).length;
+             setQuestionsAskedInClientStage(aiQuestionsInCurrentStage);
           }
-            if (lastAiMessage.aiNextStage === 'completed' && lastAiMessage.aiIsStageComplete) {
-                setIsTopicSessionCompleted(true);
+
+          if (newStage === 'completed' && lastAiMsg.aiIsStageComplete) {
+            setIsTopicSessionCompleted(true);
           } else {
             setIsTopicSessionCompleted(false);
           }
@@ -199,19 +208,17 @@ export function ChatInterface({
       };
       setMessages([firstAIMessage]);
       addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
-      if(isInteractiveQAMode){ 
-        setCurrentClientStage(initialQAStage); 
-        setQuestionsAskedInClientStage(initialQuestionsInStage);
-        setIsTopicSessionCompleted(false);
-      }
     } else { 
-        setMessages([]);
-         if(isInteractiveQAMode){
-            setCurrentClientStage(initialQAStage);
-            setQuestionsAskedInClientStage(initialQuestionsInStage);
-            setIsTopicSessionCompleted(false);
-        }
+        setMessages([]); // For interactive Q&A, the first message is from AI after calling the flow
     }
+
+    // For interactive Q&A, ensure initial state is set if no conversation loaded
+    if (isInteractiveQAMode && (!existingConversation || existingConversation.messages.length === 0)) {
+      setCurrentClientStage(initialQAStage);
+      setQuestionsAskedInClientStage(initialQuestionsInStage);
+      setIsTopicSessionCompleted(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, initialSystemMessage, topic, userProfile, context, isInteractiveQAMode, initialQAStage, initialQuestionsInStage]);
 
   useEffect(() => {
@@ -223,7 +230,8 @@ export function ChatInterface({
   useEffect(() => {
     if (initialInputQuery && initialInputQuery.trim() !== "") {
       setInput(initialInputQuery);
-      onInitialQueryConsumed?.();
+      // Do not submit here, let the user press send or Enter
+      if (onInitialQueryConsumed) onInitialQueryConsumed();
     }
   }, [initialInputQuery, onInitialQueryConsumed]);
 
@@ -296,7 +304,10 @@ export function ChatInterface({
     e?.preventDefault();
     if ((!input.trim() && !uploadedImage) || isLoading || !userProfile) return;
 
-    if (isInteractiveQAMode && isTopicSessionCompleted) {
+    const lastAiMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+    const isLastAiMessageAnMCQ = lastAiMessage?.sender === 'ai' && (lastAiMessage.text.match(/\b([A-D])\)\s/i) || lastAiMessage.text.match(/\b[A-D]\.\s/i));
+
+    if (isInteractiveQAMode && isTopicSessionCompleted && !isLastAiMessageAnMCQ) {
         toast({ title: "Topic Q&A Completed", description: `You've finished the Q&A for ${topic}. Please go back to select a new topic or start a new session.`, duration: 7000, variant: "default" });
         setInput(""); 
         return;
@@ -332,12 +343,13 @@ export function ChatInterface({
       let aiResponseMessage: MessageType;
       
       let aiFlowTopic: string;
+      // Determine the effective topic for AI flow based on chat mode
       if (topic.startsWith("Language ")) { 
-        aiFlowTopic = "LanguageTranslatorMode";
-      } else if (topic === "AI Learning Assistant Chat" || topic === "Homework Help" || topic === "Visual Learning Focus") {
-        aiFlowTopic = topic;
-      } else { // Default to interactive Q&A if not a special mode
-        aiFlowTopic = topic; 
+        aiFlowTopic = "LanguageTranslatorMode"; // Centralized topic for all language translations
+      } else if (SPECIAL_MODES_FOR_AI_GUIDED_STUDY.includes(topic)) {
+        aiFlowTopic = topic; // Use explicit special mode topic
+      } else { 
+        aiFlowTopic = topic; // For interactive Q&A, topic is the actual study topic
       }
 
 
@@ -352,7 +364,7 @@ export function ChatInterface({
           studentProfile: { ...userProfile, age: Number(userProfile.age) },
           subject: context?.subject || topic, 
           lesson: context?.lesson || topic, 
-          topic: aiFlowTopic, 
+          topic: aiFlowTopic, // This should be the actual study topic
           studentAnswer: userMessage.text,
           previousQuestion: previousAIQuestionText,
           conversationHistory: formatConversationForAI(currentMessagesWithUser.slice(-6)), 
@@ -369,23 +381,28 @@ export function ChatInterface({
         };
 
         if (qAndAResponse.nextStage) {
+            const previousStage = currentClientStage;
             setCurrentClientStage(qAndAResponse.nextStage); 
-            if (qAndAResponse.isStageComplete && qAndAResponse.nextStage !== currentClientStage) {
+            
+            if (qAndAResponse.isStageComplete && qAndAResponse.nextStage !== previousStage) {
                 setQuestionsAskedInClientStage(0); 
-            } else if (!qAndAResponse.isStageComplete && qAndAResponse.nextStage === currentClientStage) {
+            } else if (!qAndAResponse.isStageComplete && qAndAResponse.nextStage === previousStage) {
                 setQuestionsAskedInClientStage(prev => prev + 1); 
             }
-            if (qAndAResponse.isStageComplete && qAndAResponse.nextStage === 'completed') {
+             // If the AI sets nextStage to 'completed' and isStageComplete is true, mark the session as finished.
+            if (qAndAResponse.nextStage === 'completed' && qAndAResponse.isStageComplete) {
                 setIsTopicSessionCompleted(true);
-                toast({ title: "Topic Q&A Completed!", description: `You've finished all stages for ${topic}. Great job!`, duration: 7000});
+                if (!qAndAResponse.question.match(/\b([A-D])\)\s/i) && !qAndAResponse.question.match(/\b[A-D]\.\s/i)) {
+                     toast({ title: "Topic Q&A Completed!", description: `You've finished all stages for ${topic}. Great job!`, duration: 7000});
+                }
             }
         }
 
-      } else { 
+      } else { // Handled by aiGuidedStudySession
         const aiInput: AIGuidedStudySessionInput = {
           studentProfile: { ...userProfile, age: Number(userProfile.age) },
           subject: context?.subject || undefined, lesson: context?.lesson || undefined,
-          specificTopic: aiFlowTopic, 
+          specificTopic: aiFlowTopic, // This will be one of the SPECIAL_MODES_FOR_AI_GUIDED_STUDY
           question: userMessage.text.replace(`(Context from uploaded image: ${uploadedImageName})`, '').trim(),
           photoDataUri: imageToSendAsPhotoDataUri || undefined,
         };
@@ -434,15 +451,22 @@ export function ChatInterface({
         default: return 'Q&A Session';
     }
   };
+  
+  const lastAiMessageIsMCQ = messages.length > 0 && 
+                             messages[messages.length -1].sender === 'ai' &&
+                             (messages[messages.length -1].text.match(/\b([A-D])\)\s/i) || messages[messages.length -1].text.match(/\b[A-D]\.\s/i));
+
+  const isInputDisabled = isLoading || (isInteractiveQAMode && isTopicSessionCompleted && !lastAiMessageIsMCQ);
+
 
   return (
     <div className="flex flex-col h-full bg-card rounded-lg shadow-xl border border-border/50">
       {isInteractiveQAMode && (
         <div className={cn(
             "text-xs text-center p-2.5 border-b font-medium rounded-t-lg",
-            isTopicSessionCompleted ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-muted/60 text-muted-foreground"
+            (currentClientStage === 'completed' && isTopicSessionCompleted) ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-muted/60 text-muted-foreground"
         )}>
-          {isTopicSessionCompleted ? (
+          {(currentClientStage === 'completed' && isTopicSessionCompleted) ? (
             <span className="flex items-center justify-center"><Check className="h-4 w-4 mr-1.5"/> Topic Q&A Completed!</span>
           ) : (
             <span className="flex items-center justify-center">
@@ -501,12 +525,13 @@ export function ChatInterface({
                         <span>Correct!</span>
                       </div>
                     )}
-                    {message.feedback && (
+                    {message.feedback && (message.feedback.trim() !== "") && (
                       <div className={cn("mb-2 pb-2", message.text ? "border-b border-current/10" : "")}>
                         <p className="whitespace-pre-wrap leading-relaxed text-sm opacity-90">{message.feedback}</p>
                       </div>
                     )}
-                    {!(isTopicSessionCompleted && message.feedback && message.text === message.feedback) && message.text && (
+                    {/* Display AI question text, unless it's the "completed" stage and feedback already shown and there's no actual new question */}
+                    {!(currentClientStage === 'completed' && isTopicSessionCompleted && message.feedback && message.text === message.feedback) && message.text && (
                          <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
                     )}
                   </>
@@ -643,7 +668,7 @@ export function ChatInterface({
             <TooltipTrigger asChild>
               <Button
                 type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading || (isInteractiveQAMode && isTopicSessionCompleted)} aria-label="Upload Image"
+                disabled={isInputDisabled} aria-label="Upload Image"
                 className="flex-shrink-0 text-muted-foreground hover:text-primary"
               >
                 <ImagePlus className="h-5 w-5" />
@@ -655,13 +680,13 @@ export function ChatInterface({
         {enableImageUpload && (
           <Input
             type="file" accept="image/*" ref={fileInputRef} onChange={handleImageUpload} className="hidden"
-            disabled={isLoading || (isInteractiveQAMode && isTopicSessionCompleted)}
+            disabled={isInputDisabled}
           />
         )}
         <Input
           value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholderText}
           className="flex-grow text-sm h-10"
-          disabled={isLoading || (isInteractiveQAMode && isTopicSessionCompleted)}
+          disabled={isInputDisabled}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey && (input.trim() || (enableImageUpload && uploadedImage))) {
               e.preventDefault();
@@ -673,7 +698,7 @@ export function ChatInterface({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button type="submit" size="icon" 
-              disabled={isLoading || (!input.trim() && !(enableImageUpload && uploadedImage)) || (isInteractiveQAMode && isTopicSessionCompleted)} 
+              disabled={isInputDisabled || (!input.trim() && !(enableImageUpload && uploadedImage))} 
               aria-label="Send message" className="flex-shrink-0"
             >
               <SendHorizonal className="h-5 w-5" />
