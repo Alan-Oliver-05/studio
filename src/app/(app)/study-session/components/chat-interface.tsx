@@ -41,7 +41,7 @@ interface ChatInterfaceProps {
   onInitialQueryConsumed?: () => void;
   enableImageUpload?: boolean;
   initialQAStage?: QAS_Stage; 
-  initialQuestionsInStage?: number;
+  initialQuestionsInStage?: number; // Number of questions user has ALREADY ANSWERED for initialQAStage
 }
 
 const renderVisualElementContent = (visualElement: VisualElement) => {
@@ -137,6 +137,15 @@ const SPECIAL_MODES_FOR_AI_GUIDED_STUDY = [
     "Language Camera Translation", 
 ];
 
+function findLastIndex<T>(array: T[], predicate: (value: T, index: number, obj: T[]) => boolean): number {
+  for (let i = array.length - 1; i >= 0; i--) {
+    if (predicate(array[i], i, array)) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 
 export function ChatInterface({
   userProfile,
@@ -149,7 +158,7 @@ export function ChatInterface({
   onInitialQueryConsumed,
   enableImageUpload = true, 
   initialQAStage = 'initial_material', 
-  initialQuestionsInStage = 0,
+  initialQuestionsInStage = 0, // Number of questions user has ALREADY ANSWERED for initialQAStage
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [input, setInput] = useState("");
@@ -163,8 +172,9 @@ export function ChatInterface({
   
   const isInteractiveQAMode = !SPECIAL_MODES_FOR_AI_GUIDED_STUDY.includes(topic);
 
+  // questionsAnsweredInClientStage: Number of questions USER HAS ANSWERED for the currentClientStage.
+  const [questionsAnsweredInClientStage, setQuestionsAnsweredInClientStage] = useState<number>(initialQuestionsInStage);
   const [currentClientStage, setCurrentClientStage] = useState<QAS_Stage>(initialQAStage);
-  const [questionsAskedInClientStage, setQuestionsAskedInClientStage] = useState<number>(initialQuestionsInStage);
   const [isTopicSessionCompleted, setIsTopicSessionCompleted] = useState<boolean>(false);
 
 
@@ -175,30 +185,47 @@ export function ChatInterface({
       if (isInteractiveQAMode) {
         const lastAiMsg = [...existingConversation.messages].reverse().find(m => m.sender === 'ai');
         if (lastAiMsg?.aiNextStage) {
-          const newStage = lastAiMsg.aiNextStage;
-          setCurrentClientStage(newStage);
+          const restoredStage = lastAiMsg.aiNextStage;
+          setCurrentClientStage(restoredStage);
           
-          // If stage changed and was completed, reset counter for new stage
-          // If stage is same and not complete, count questions in this stage.
-          // The 'aiIsStageComplete' on the message refers to the completion of the stage *leading up to that message's question*.
-          if (lastAiMsg.aiIsStageComplete && newStage !== (lastAiMsg as any).previousStageInternal ) { // (previousStageInternal needs to be stored or inferred if this logic is key)
-             setQuestionsAskedInClientStage(0); // New stage starting
-          } else {
-            // Count AI questions for the current stage derived from lastAiMsg.aiNextStage
-            const aiQuestionsInCurrentStage = existingConversation.messages.filter(
-              m => m.sender === 'ai' && m.aiNextStage === newStage && !m.aiIsStageComplete
-            ).length;
-             setQuestionsAskedInClientStage(aiQuestionsInCurrentStage);
-          }
+          let answeredCount = 0;
+          // If the last AI message indicates it completed a stage and transitioned to `restoredStage`,
+          // then `answeredCount` for this `restoredStage` is 0 (as `lastAiMsg.question` is the first of this new stage).
+          // To check this: AI spoke last, and its `aiIsStageComplete` was true.
+          const lastUserMsgIndex = findLastIndex(existingConversation.messages, m => m.sender === 'user');
+          const lastAIMsgIndex = findLastIndex(existingConversation.messages, m => m.sender === 'ai');
 
-          if (newStage === 'completed' && lastAiMsg.aiIsStageComplete) {
+          if (lastAIMsgIndex > -1 && lastAIMsgIndex > lastUserMsgIndex && lastAiMsg.aiIsStageComplete) {
+            // AI spoke last and completed the previous stage. `lastAiMsg.question` is the first of `restoredStage`.
+             answeredCount = 0;
+          } else {
+            // Count user answers for the `restoredStage`
+            let aiQuestionForStagePending: MessageType | null = null;
+            for (const msg of existingConversation.messages) {
+                if (msg.sender === 'ai' && msg.aiNextStage === restoredStage && !msg.aiIsStageComplete) {
+                    aiQuestionForStagePending = msg;
+                } else if (msg.sender === 'user' && aiQuestionForStagePending && msg.timestamp > aiQuestionForStagePending.timestamp) {
+                    // Check if this user message is indeed an answer to aiQuestionForStagePending
+                    // This check is simplified; a more robust check might involve looking at message order strictly.
+                    const aiMsgIndex = existingConversation.messages.indexOf(aiQuestionForStagePending);
+                    const userMsgIndex = existingConversation.messages.indexOf(msg);
+                    if (userMsgIndex > aiMsgIndex) { // Basic check
+                         answeredCount++;
+                    }
+                    aiQuestionForStagePending = null; 
+                }
+            }
+          }
+          setQuestionsAnsweredInClientStage(answeredCount);
+
+          if (restoredStage === 'completed' && lastAiMsg.aiIsStageComplete) {
             setIsTopicSessionCompleted(true);
           } else {
             setIsTopicSessionCompleted(false);
           }
-        } else { 
+        } else { // No prior AI stage info, use props or defaults from page.tsx (which should handle new Q&A start)
           setCurrentClientStage(initialQAStage);
-          setQuestionsAskedInClientStage(initialQuestionsInStage);
+          setQuestionsAnsweredInClientStage(initialQuestionsInStage);
           setIsTopicSessionCompleted(false);
         }
       }
@@ -209,14 +236,13 @@ export function ChatInterface({
       setMessages([firstAIMessage]);
       addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
     } else { 
-        setMessages([]); // For interactive Q&A, the first message is from AI after calling the flow
-    }
-
-    // For interactive Q&A, ensure initial state is set if no conversation loaded
-    if (isInteractiveQAMode && (!existingConversation || existingConversation.messages.length === 0)) {
-      setCurrentClientStage(initialQAStage);
-      setQuestionsAskedInClientStage(initialQuestionsInStage);
-      setIsTopicSessionCompleted(false);
+        setMessages([]);
+        // Ensure initial Q&A state if no conversation history for Q&A mode
+        if (isInteractiveQAMode) {
+            setCurrentClientStage(initialQAStage);
+            setQuestionsAnsweredInClientStage(initialQuestionsInStage);
+            setIsTopicSessionCompleted(false);
+        }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, initialSystemMessage, topic, userProfile, context, isInteractiveQAMode, initialQAStage, initialQuestionsInStage]);
@@ -230,7 +256,6 @@ export function ChatInterface({
   useEffect(() => {
     if (initialInputQuery && initialInputQuery.trim() !== "") {
       setInput(initialInputQuery);
-      // Do not submit here, let the user press send or Enter
       if (onInitialQueryConsumed) onInitialQueryConsumed();
     }
   }, [initialInputQuery, onInitialQueryConsumed]);
@@ -343,13 +368,12 @@ export function ChatInterface({
       let aiResponseMessage: MessageType;
       
       let aiFlowTopic: string;
-      // Determine the effective topic for AI flow based on chat mode
       if (topic.startsWith("Language ")) { 
-        aiFlowTopic = "LanguageTranslatorMode"; // Centralized topic for all language translations
+        aiFlowTopic = "LanguageTranslatorMode";
       } else if (SPECIAL_MODES_FOR_AI_GUIDED_STUDY.includes(topic)) {
-        aiFlowTopic = topic; // Use explicit special mode topic
+        aiFlowTopic = topic; 
       } else { 
-        aiFlowTopic = topic; // For interactive Q&A, topic is the actual study topic
+        aiFlowTopic = topic; 
       }
 
 
@@ -364,12 +388,12 @@ export function ChatInterface({
           studentProfile: { ...userProfile, age: Number(userProfile.age) },
           subject: context?.subject || topic, 
           lesson: context?.lesson || topic, 
-          topic: aiFlowTopic, // This should be the actual study topic
+          topic: aiFlowTopic, 
           studentAnswer: userMessage.text,
           previousQuestion: previousAIQuestionText,
           conversationHistory: formatConversationForAI(currentMessagesWithUser.slice(-6)), 
           currentStage: currentClientStage,
-          questionsAskedInStage: questionsAskedInClientStage,
+          questionsAskedInStage: questionsAnsweredInClientStage, // Number of questions user has *answered* for currentClientStage
         };
         const qAndAResponse = await interactiveQAndA(qAndAInput);
         
@@ -379,17 +403,28 @@ export function ChatInterface({
             suggestions: qAndAResponse.suggestions, timestamp: Date.now(),
             aiNextStage: qAndAResponse.nextStage, aiIsStageComplete: qAndAResponse.isStageComplete,
         };
-
+        
+        // Update client stage based on AI's response
         if (qAndAResponse.nextStage) {
-            const previousStage = currentClientStage;
-            setCurrentClientStage(qAndAResponse.nextStage); 
-            
-            if (qAndAResponse.isStageComplete && qAndAResponse.nextStage !== previousStage) {
-                setQuestionsAskedInClientStage(0); 
-            } else if (!qAndAResponse.isStageComplete && qAndAResponse.nextStage === previousStage) {
-                setQuestionsAskedInClientStage(prev => prev + 1); 
+            const prevStageForThisTurn = currentClientStage; // Stage *before* this AI response decision
+            setCurrentClientStage(qAndAResponse.nextStage); // AI dictates the next stage
+
+            if (qAndAResponse.isStageComplete && qAndAResponse.nextStage !== prevStageForThisTurn && qAndAResponse.nextStage !== 'completed') {
+                // Stage was completed AND we are moving to a new, non-completed stage.
+                // The current AI response (qAndAResponse.question) is the *first* question of this new stage.
+                // So, questions *answered* by user in this new stage is 0.
+                setQuestionsAnsweredInClientStage(0);
+            } else if (qAndAResponse.nextStage === prevStageForThisTurn && !qAndAResponse.isStageComplete) {
+                // Still in the same stage, and this stage isn't completed by this question.
+                // User just answered a question for this stage. Increment answered count.
+                setQuestionsAnsweredInClientStage(prev => prev + 1);
+            } else if (qAndAResponse.nextStage === prevStageForThisTurn && qAndAResponse.isStageComplete) {
+                // AI just asked the *last* question of this stage. User answered it.
+                // The stage is now complete, but AI might not be moving to a *new different* stage (e.g., moving to 'completed' overall).
+                setQuestionsAnsweredInClientStage(prev => prev + 1);
             }
-             // If the AI sets nextStage to 'completed' and isStageComplete is true, mark the session as finished.
+            // If qAndAResponse.nextStage is 'completed', isTopicSessionCompleted handles overall state.
+
             if (qAndAResponse.nextStage === 'completed' && qAndAResponse.isStageComplete) {
                 setIsTopicSessionCompleted(true);
                 if (!qAndAResponse.question.match(/\b([A-D])\)\s/i) && !qAndAResponse.question.match(/\b[A-D]\.\s/i)) {
@@ -398,11 +433,11 @@ export function ChatInterface({
             }
         }
 
-      } else { // Handled by aiGuidedStudySession
+      } else { 
         const aiInput: AIGuidedStudySessionInput = {
           studentProfile: { ...userProfile, age: Number(userProfile.age) },
           subject: context?.subject || undefined, lesson: context?.lesson || undefined,
-          specificTopic: aiFlowTopic, // This will be one of the SPECIAL_MODES_FOR_AI_GUIDED_STUDY
+          specificTopic: aiFlowTopic, 
           question: userMessage.text.replace(`(Context from uploaded image: ${uploadedImageName})`, '').trim(),
           photoDataUri: imageToSendAsPhotoDataUri || undefined,
         };
@@ -452,6 +487,15 @@ export function ChatInterface({
     }
   };
   
+  const getTargetQuestionsForStage = (stage: QAS_Stage): number => {
+    switch(stage) {
+        case 'initial_material': return 3;
+        case 'deeper_material': return 2;
+        case 'out_of_syllabus': return 1;
+        default: return 0; // 'completed' or other
+    }
+  }
+
   const lastAiMessageIsMCQ = messages.length > 0 && 
                              messages[messages.length -1].sender === 'ai' &&
                              (messages[messages.length -1].text.match(/\b([A-D])\)\s/i) || messages[messages.length -1].text.match(/\b[A-D]\.\s/i));
@@ -461,19 +505,19 @@ export function ChatInterface({
 
   return (
     <div className="flex flex-col h-full bg-card rounded-lg shadow-xl border border-border/50">
-      {isInteractiveQAMode && (
+      {isInteractiveQAMode && currentClientStage !== 'completed' && (
         <div className={cn(
-            "text-xs text-center p-2.5 border-b font-medium rounded-t-lg",
-            (currentClientStage === 'completed' && isTopicSessionCompleted) ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-muted/60 text-muted-foreground"
+            "text-xs text-center p-2.5 border-b font-medium rounded-t-lg bg-muted/60 text-muted-foreground"
         )}>
-          {(currentClientStage === 'completed' && isTopicSessionCompleted) ? (
-            <span className="flex items-center justify-center"><Check className="h-4 w-4 mr-1.5"/> Topic Q&A Completed!</span>
-          ) : (
             <span className="flex items-center justify-center">
                 <Milestone className="h-4 w-4 mr-1.5"/>
-                Stage: {getStageDisplayName(currentClientStage)} (Q: {questionsAskedInClientStage + 1})
+                Stage: {getStageDisplayName(currentClientStage)} (Q: {questionsAnsweredInClientStage + 1} of {getTargetQuestionsForStage(currentClientStage)})
             </span>
-          )}
+        </div>
+      )}
+      {isInteractiveQAMode && currentClientStage === 'completed' && isTopicSessionCompleted && (
+         <div className="text-xs text-center p-2.5 border-b font-medium rounded-t-lg bg-green-500/10 text-green-700 dark:text-green-400">
+            <span className="flex items-center justify-center"><Check className="h-4 w-4 mr-1.5"/> Topic Q&A Completed!</span>
         </div>
       )}
       <ScrollArea className="flex-grow p-4 md:p-6" ref={scrollAreaRef}>
@@ -526,12 +570,12 @@ export function ChatInterface({
                       </div>
                     )}
                     {message.feedback && (message.feedback.trim() !== "") && (
-                      <div className={cn("mb-2 pb-2", message.text ? "border-b border-current/10" : "")}>
+                      <div className={cn("mb-2 pb-2", message.text && (currentClientStage !== 'completed' || (currentClientStage === 'completed' && (message.text.match(/\b([A-D])\)\s/i) || message.text.match(/\b[A-D]\.\s/i)))) ? "border-b border-current/10" : "")}>
                         <p className="whitespace-pre-wrap leading-relaxed text-sm opacity-90">{message.feedback}</p>
                       </div>
                     )}
-                    {/* Display AI question text, unless it's the "completed" stage and feedback already shown and there's no actual new question */}
-                    {!(currentClientStage === 'completed' && isTopicSessionCompleted && message.feedback && message.text === message.feedback) && message.text && (
+                    {/* Display AI question text, unless it's the "completed" stage's concluding remark that's same as feedback */}
+                    {!(currentClientStage === 'completed' && isTopicSessionCompleted && message.text === message.feedback && !(message.text.match(/\b([A-D])\)\s/i) || message.text.match(/\b[A-D]\.\s/i)) ) && message.text && (
                          <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
                     )}
                   </>

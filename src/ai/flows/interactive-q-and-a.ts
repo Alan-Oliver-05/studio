@@ -41,13 +41,13 @@ const InteractiveQAndAInputSchema = z.object({
   subject: z.string().describe('The subject of the lesson (e.g., Physics).'),
   lesson: z.string().describe('The specific lesson within the subject (e.g., Optics).'),
   topic: z.string().describe('The specific topic within the lesson for the Q&A (e.g., Refraction of Light). This is your primary knowledge base for this session.'),
-  studentAnswer: z.string().optional().nullable().describe('The student\'s answer to the previous question from the AI tutor.'),
+  studentAnswer: z.string().optional().nullable().describe('The student\'s answer to the previous question from the AI tutor. Null if this is the first question of a stage/session.'),
   previousQuestion: z.string().optional().nullable().describe('The previous question asked by the AI tutor to provide context.'),
   conversationHistory: z.string().optional().nullable().describe('A brief history of the current Q&A session to maintain context. Focus on the last few turns.'),
   currentStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed']).default('initial_material').optional()
-    .describe("The current stage of the Q&A session for this topic. Default to 'initial_material' if not provided by the client."),
+    .describe("The current stage of the Q&A session for this topic. Client ensures this is accurate."),
   questionsAskedInStage: z.number().default(0).optional()
-    .describe("Number of questions already asked by AI in the current stage for this topic. Default to 0 if not provided."),
+    .describe("Number of questions the user has ALREADY ANSWERED for the currentStage. If 0, I am asking the first question of this stage."),
 });
 export type InteractiveQAndAInput = z.infer<typeof InteractiveQAndAInputSchema>;
 
@@ -56,10 +56,10 @@ const InteractiveQAndAOutputSchema = z.object({
   feedback: z.string().optional().describe('Concise and encouraging feedback on the student\'s answer (if provided). Should be positive for correct answers or explanatory for incorrect ones. For new stages, it can be an introduction. This field MUST always be populated with a non-empty string unless the stage is "completed" and no final feedback is generated.'),
   isCorrect: z.boolean().optional().describe('Indicates if the student\'s last answer was correct. Null if no answer was provided or not applicable.'),
   suggestions: z.array(z.string()).optional().describe("A list of 1-2 specific suggestions for further study within the current topic/stage, such as related sub-topics or concepts the student might ask about next within the current topic."),
-  nextStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed']).optional()
-    .describe("The stage the AI suggests moving to next. If omitted, assume current stage continues. 'completed' means this topic session is finished."),
-  isStageComplete: z.boolean().optional()
-    .describe("True if the AI believes the current stage's objectives have been met and it's time to transition (or has transitioned).")
+  nextStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed'])
+    .describe("The stage the AI determines should be next. This MUST always be populated."),
+  isStageComplete: z.boolean()
+    .describe("True if the current stage's objectives have been met and it's time to transition to 'nextStage'. This MUST always be populated.")
 });
 export type InteractiveQAndAOutput = z.infer<typeof InteractiveQAndAOutputSchema>;
 
@@ -92,69 +92,59 @@ const prompt = ai.definePrompt({
   {{#if studentAnswer}}Student's Answer to Previous Question: "{{{studentAnswer}}}"{{/if}}
 
   Current Q&A Stage: {{{currentStage}}}
-  Questions Asked by AI in This Stage (before this turn): {{questionsAskedInStage}}
+  User has answered {{questionsAskedInStage}} questions in THIS Current Stage.
 
   Your Task:
   1.  **Feedback Generation (if 'studentAnswer' is provided)**:
-      *   Evaluate the 'studentAnswer' based *only* on the '{{{topic}}}' content (for 'initial_material' and 'deeper_material' stages). Set 'isCorrect'.
-      *   If the answer is correct: The 'feedback' field MUST contain a short, positive affirmation (e.g., "Correct!", "Excellent!", "That's right! Spot on."). Do not output "null" or an empty string for feedback.
-      *   If the answer is incorrect or partially correct: The 'feedback' field MUST contain a gentle explanation of the mistake and clarify the concept, guiding them towards the correct understanding. Do not output "null" or an empty string for feedback.
+      *   Evaluate 'studentAnswer' based ONLY on '{{{topic}}}' content (for 'initial_material' & 'deeper_material' stages). Set 'isCorrect'.
+      *   'feedback' field MUST contain short, positive affirmation if correct, or gentle explanation/clarification if incorrect/partial. Ensure feedback is NOT null/empty.
       *   All 'feedback' in {{{studentProfile.preferredLanguage}}}.
 
   2.  **Feedback Generation (if NO 'studentAnswer' is provided - e.g., start of session/new stage)**:
       *   Set 'isCorrect' to null.
-      *   The 'feedback' field MUST contain a brief stage introduction relevant to the topic and stage. For example:
-          *   If 'initial_material' stage: "Let's start with some foundational questions on '{{{topic}}}'."
-          *   If 'deeper_material' stage: "Great! Now, let's explore '{{{topic}}}' a bit more deeply."
-          *   If 'out_of_syllabus' stage: "Okay, let's see how '{{{topic}}}' connects to broader ideas."
-      *   Do not output "null" or an empty string for feedback.
+      *   'feedback' field MUST contain a brief stage introduction for '{{{topic}}}' relevant to '{{{currentStage}}}'. (e.g., "Let's start with foundational questions on '{{{topic}}}'.") Ensure feedback is NOT null/empty.
 
-  3.  **Question Style**: CRITICAL: Ask ONE multiple-choice question (MCQ) at a time about the current topic, relevant to the current stage.
-      *   The question itself and its options MUST be part of your 'question' output field. Example format:
-          "Which of these is a primary color?\\nA) Green\\nB) Orange\\nC) Blue\\nD) Purple"
-      *   Provide 3-4 distinct options. Ensure options are plausible and test understanding, not just recall of superficial details.
+  3.  **Question Style**: Ask ONE multiple-choice question (MCQ) at a time, relevant to '{{{currentStage}}}' objective for '{{{topic}}}'.
+      *   'question' field MUST include the MCQ and 3-4 distinct options (A, B, C, D). Example: "Which is a primary color?\\nA) Green\\nB) Orange\\nC) Blue\\nD) Purple"
 
-  4.  **Conciseness & Focus**: Maintain a concise, focused interaction.
+  4.  **Conciseness & Focus**: Maintain concise, focused interaction.
 
-  5.  **Suggestions**: After feedback (if any) and asking a new question (unless stage is 'completed'), provide 1-2 'suggestions' for related aspects *within the current topic '{{{topic}}}'* relevant to the current stage's objective. These suggestions should guide the student on what they might explore or ask about next within the topic.
+  5.  **Suggestions**: After feedback/question (unless 'nextStage' is 'completed'), provide 1-2 'suggestions' for related aspects *within '{{{topic}}}'* for current stage.
 
   6.  **Language**: All 'question', 'feedback', 'suggestions' in {{{studentProfile.preferredLanguage}}}.
 
-  7.  **Output**: Ensure a single, valid JSON object matching output schema. Always populate 'nextStage'. If the current stage's question target is met or you deem it covered, set 'isStageComplete' to true; otherwise, false.
+  7.  **Output Control**: CRITICAL: You MUST populate 'nextStage' and 'isStageComplete' in your JSON output.
+      *   'isStageComplete': true if you are transitioning to a new stage OR if the entire topic Q&A is now 'completed'. False otherwise.
+      *   'nextStage': The stage you are now targeting with your question, or 'completed'.
 
   8.  **RAG Simulation**: For 'initial_material' & 'deeper_material', act as if retrieving info ONLY from '{{{topic}}}'. For 'out_of_syllabus', you may draw on related general knowledge.
 
-  9.  **Transition Question**: When 'isStageComplete' is true and 'nextStage' is different from 'currentStage' (and not 'completed'), the 'question' field in your output MUST be the *first* multiple-choice question for that 'nextStage', including its options. Feedback (from instruction 1 or 2) should still be for the student's last answer in the *previous* stage or an intro to the new stage.
-
-  Stage-Specific Questioning Strategy:
+  Stage-Specific Logic:
+  (You are currently in '{{{currentStage}}}'. User has answered {{questionsAskedInStage}} questions for this stage.)
 
   {{#if isInitialMaterialStage}}
-  **Current Stage: Initial Material Review (Target: 3 questions total in this stage)**
-  *   Objective: Test foundational understanding of core concepts from '{{{topic}}}' by asking multiple-choice questions. Ensure questions are directly answerable from, and strictly limited to, the '{{{topic}}}' material.
-  *   Action:
-      *   If {{questionsAskedInStage}} < 3: Ask a new multiple-choice question (MCQ) with options about a core concept. Set 'nextStage' to 'initial_material' and 'isStageComplete' to false.
-      *   If {{questionsAskedInStage}} >= 3: You've asked enough for this stage. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to true. Your 'question' field should then contain the *first* multiple-choice question with options for the 'deeper_material' stage.
+  **Current Stage: Initial Material Review (Target: 3 questions total). Objective: Test foundational understanding of '{{{topic}}}'.**
+  *   If {{questionsAskedInStage}} < 3: Ask the ({{math questionsAskedInStage '+' 1}})rd foundational MCQ about '{{{topic}}}'. Set 'nextStage' to 'initial_material' and 'isStageComplete' to false.
+  *   If {{questionsAskedInStage}} >= 3: 'initial_material' stage is complete. Your 'feedback' is for the student's 3rd answer. Your 'question' MUST be the *first* MCQ for 'deeper_material' stage. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to true.
   {{/if}}
+
   {{#if isDeeperMaterialStage}}
-  **Current Stage: Deeper Material Analysis (Target: 2 questions total in this stage)**
-  *   Objective: Ask analytical or connecting multiple-choice questions about '{{{topic}}}', requiring more than simple recall. Questions must still be strictly within the material provided for '{{{topic}}}'. Do not go outside this topic.
-  *   Action:
-      *   If {{questionsAskedInStage}} < 2: Ask a new analytical MCQ with options. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to false.
-      *   If {{questionsAskedInStage}} >= 2: You've asked enough. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to true. Your 'question' field should be the *first* multiple-choice question with options for 'out_of_syllabus'.
+  **Current Stage: Deeper Material Analysis (Target: 2 questions total). Objective: Ask analytical MCQs about '{{{topic}}}'.**
+  *   If {{questionsAskedInStage}} < 2: Ask the ({{math questionsAskedInStage '+' 1}})rd analytical MCQ about '{{{topic}}}'. Set 'nextStage' to 'deeper_material' and 'isStageComplete' to false.
+  *   If {{questionsAskedInStage}} >= 2: 'deeper_material' stage is complete. Your 'feedback' is for the student's 2nd answer. Your 'question' MUST be the *first* MCQ for 'out_of_syllabus' stage. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to true.
   {{/if}}
+
   {{#if isOutOfSyllabusStage}}
-  **Current Stage: Beyond the Syllabus (Target: 1 question total in this stage)**
-  *   Objective: Ask 1 multiple-choice question connecting '{{{topic}}}' to broader concepts or related fields.
-  *   Action:
-      *   If {{questionsAskedInStage}} < 1: Ask a new "beyond syllabus" multiple-choice question with options. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to false.
-      *   If {{questionsAskedInStage}} >= 1: You've asked enough. Set 'nextStage' to 'completed' and 'isStageComplete' to true. Your 'question' field should be a concluding remark about the topic '{{{topic}}}'. (It can be an MCQ if you deem it appropriate for a final check, otherwise a statement.)
+  **Current Stage: Beyond the Syllabus (Target: 1 question total). Objective: Ask 1 MCQ connecting '{{{topic}}}' to broader concepts.**
+  *   If {{questionsAskedInStage}} < 1: Ask the 1st "beyond syllabus" MCQ. Set 'nextStage' to 'out_of_syllabus' and 'isStageComplete' to false.
+  *   If {{questionsAskedInStage}} >= 1: 'out_of_syllabus' stage is complete. Your 'feedback' is for the student's 1st answer. Your 'question' MUST be a concluding remark for '{{{topic}}}' (e.g., "We've covered the key aspects of {{{topic}}}. Well done!"). Set 'nextStage' to 'completed' and 'isStageComplete' to true.
   {{/if}}
+
   {{#if isCompletedStage}}
   **Topic Completed**
-  *   Your 'question' field output. If the *previous* stage was 'out_of_syllabus' and you asked an MCQ, the student might be answering it now. If so, your feedback is for that. If you are to provide a concluding remark instead of an MCQ, it should be: "We've covered the key aspects of {{{topic}}}. Well done! You can select a new topic or use the 'New Q&A on This Topic' button to review it again."
-  *   Your 'feedback' field output (if providing a concluding remark for 'question'): "Great job completing this topic session!" or "Excellent work on '{{{topic}}}'!". Otherwise, feedback is for the student's answer. Avoid "null" or empty strings for feedback.
-  *   Set 'isCorrect' based on student's answer if one was provided, else null. 'suggestions' should be an empty array or not provided.
-  *   Set 'nextStage' to 'completed' and 'isStageComplete' to true.
+  *   If 'studentAnswer' was provided (meaning user answered the last 'out_of_syllabus' question): Provide 'feedback' for that answer. 'question' should be your concluding remark: "We've covered the key aspects of {{{topic}}}. Well done! You can select a new topic or use the 'New Q&A on This Topic' button to review it again."
+  *   If NO 'studentAnswer' (this state normally reached after above): 'feedback' is "Great job completing this topic session!". 'question' same concluding remark.
+  *   Always set 'nextStage' to 'completed' and 'isStageComplete' to true. 'suggestions' empty.
   {{/if}}
   `,
   config: {
@@ -200,15 +190,19 @@ const interactiveQAndAFlow = ai.defineFlow(
 
     const {output} = await prompt(stageEnhancedInput);
 
-    if (output && output.question) {
-        // Ensure feedback is a non-empty string if present, otherwise provide a default if applicable
+    if (output && output.question && output.nextStage !== undefined && output.isStageComplete !== undefined) {
         let feedbackString = (output.feedback && output.feedback.trim() !== "") ? output.feedback.trim() : undefined;
         
-        // Ensure feedback is always populated if it's not the final "completed" stage without feedback
-        if (!feedbackString && !(stageEnhancedInput.isCompletedStage && output.nextStage === 'completed' && !output.isCorrect)) {
-            feedbackString = "Let's continue!"; // Default feedback if AI misses it
-             if (stageEnhancedInput.currentStage === 'initial_material' && stageEnhancedInput.questionsAskedInStage === 0 && !inputUnsafe.studentAnswer) {
-                feedbackString = `Let's start with some foundational questions on '${stageEnhancedInput.topic}'.`;
+        if (!feedbackString && !(stageEnhancedInput.isCompletedStage && output.nextStage === 'completed')) {
+            if (!inputUnsafe.studentAnswer) { // If no student answer, it's start of a stage/session
+                 switch(stageEnhancedInput.currentStage) {
+                    case 'initial_material': feedbackString = `Let's start with some foundational questions on '${stageEnhancedInput.topic}'.`; break;
+                    case 'deeper_material': feedbackString = `Great! Now, let's explore '${stageEnhancedInput.topic}' a bit more deeply.`; break;
+                    case 'out_of_syllabus': feedbackString = `Okay, let's see how '${stageEnhancedInput.topic}' connects to broader ideas.`; break;
+                    default: feedbackString = "Let's continue!";
+                 }
+            } else { // Student provided an answer, but AI didn't give feedback (which it should)
+                feedbackString = "Okay, let's move to the next question."; // Generic fallback
             }
         }
 
@@ -216,23 +210,23 @@ const interactiveQAndAFlow = ai.defineFlow(
         return {
             question: output.question,
             feedback: feedbackString,
-            isCorrect: output.isCorrect === undefined ? undefined : output.isCorrect, // Allow undefined for isCorrect
+            isCorrect: output.isCorrect, // Keep as is, can be undefined
             suggestions: output.suggestions || [],
-            nextStage: output.nextStage || stageEnhancedInput.currentStage,
-            isStageComplete: output.isStageComplete || false,
+            nextStage: output.nextStage,
+            isStageComplete: output.isStageComplete,
         };
     }
 
-    console.warn("Interactive Q&A: AI output was malformed or missing question. Input:", JSON.stringify(stageEnhancedInput));
-    // Fallback when AI output is problematic
+    console.warn("Interactive Q&A: AI output was malformed or missing critical fields. Input:", JSON.stringify(stageEnhancedInput), "Output:", JSON.stringify(output));
     return {
-        question: `I'm having a bit of trouble formulating a multiple-choice question for the stage '${stageEnhancedInput.currentStage}' about ${stageEnhancedInput.topic}. Could you perhaps ask me something about it instead, or suggest where we should start?`,
-        feedback: "Apologies, I couldn't process the last interaction fully to generate a multiple-choice question. Please try again or I can ask the first question if you'd like.",
+        question: `I'm having a bit of trouble with the stage logic for '${stageEnhancedInput.currentStage}' about ${stageEnhancedInput.topic}. Could you ask a question, or should we try to restart this topic?`,
+        feedback: "Apologies, there was an issue with processing the Q&A stage. Please try again.",
         isCorrect: undefined,
         suggestions: [],
-        nextStage: stageEnhancedInput.currentStage,
-        isStageComplete: false,
+        nextStage: stageEnhancedInput.currentStage, // Stay in current stage on error
+        isStageComplete: false, // Don't complete stage on error
     };
   }
 );
 
+    
