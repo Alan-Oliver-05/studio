@@ -30,6 +30,7 @@ const InteractiveQAndAInputSchema = z.object({
         examType: z.string().optional().describe('The type of competitive exam (e.g., JEE, NEET, UPSC).'),
         specificExam: z.string().optional().describe('The specific competitive exam or job position (e.g., JEE Main, UPSC CSE).'),
         stage: z.string().optional().describe('The current stage within a professional certification, if applicable.'),
+        examDate: z.string().optional().describe("The student's upcoming exam date (YYYY-MM-DD format)."), // Added examDate here
       }).optional(),
       universityExam: z.object({
         universityName: z.string().optional().describe('The name of the university.'),
@@ -46,8 +47,8 @@ const InteractiveQAndAInputSchema = z.object({
   conversationHistory: z.string().optional().nullable().describe('A brief history of the current Q&A session to maintain context. Focus on the last few turns.'),
   currentStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed']).default('initial_material').optional()
     .describe("The current stage of the Q&A session for this topic. Client ensures this is accurate."),
-  questionsAskedInStage: z.number().default(0).optional()
-    .describe("Number of questions the user has ALREADY ANSWERED for the currentStage. If 0, I am asking the first question of this stage."),
+  questionsAskedInStage: z.number().default(0).optional() // This field represents how many questions the user has ALREADY ANSWERED for the currentStage.
+    .describe("Number of questions the user has ALREADY ANSWERED for the currentStage. If 0, AI is asking the first question of this stage."),
 });
 export type InteractiveQAndAInput = z.infer<typeof InteractiveQAndAInputSchema>;
 
@@ -84,7 +85,7 @@ const prompt = ai.definePrompt({
   Age: {{{studentProfile.age}}}
   Country: {{{studentProfile.country}}}
   Preferred Language: {{{studentProfile.preferredLanguage}}}
-  Educational Context: {{#with studentProfile.educationQualification}}{{#if boardExam.board}}Board: {{{boardExam.board}}}{{#if boardExam.standard}}, Standard: {{{boardExam.standard}}}{{/if}}{{/if}}{{#if competitiveExam.examType}}Exam: {{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}} ({{{competitiveExam.specificExam}}}){{/if}}{{#if competitiveExam.stage}}, Stage: {{{competitiveExam.stage}}}{{/if}}{{/if}}{{#if universityExam.universityName}}University: {{{universityExam.universityName}}}, Course: {{{universityExam.course}}}{{#if universityExam.currentYear}}, Year: {{{universityExam.currentYear}}}{{/if}}{{/if}}{{else}}General knowledge for age {{{studentProfile.age}}}, within '{{{topic}}}'.{{/with}}
+  Educational Context: {{#with studentProfile.educationQualification}}{{#if boardExam.board}}Board: {{{boardExam.board}}}{{#if boardExam.standard}}, Standard: {{{boardExam.standard}}}{{/if}}{{/if}}{{#if competitiveExam.examType}}Exam: {{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}} ({{{competitiveExam.specificExam}}}){{/if}}{{#if competitiveExam.stage}}, Stage: {{{competitiveExam.stage}}}{{/if}}{{#if competitiveExam.examDate}}, Due: {{{competitiveExam.examDate}}}{{/if}}{{/if}}{{#if universityExam.universityName}}University: {{{universityExam.universityName}}}, Course: {{{universityExam.course}}}{{#if universityExam.currentYear}}, Year: {{{universityExam.currentYear}}}{{/if}}{{/if}}{{else}}General knowledge for age {{{studentProfile.age}}}, within '{{{topic}}}'.{{/with}}
 
   Conversation Context:
   {{#if conversationHistory}}Recent History (last few turns): {{{conversationHistory}}}{{/if}}
@@ -218,6 +219,8 @@ const interactiveQAndAFlow = ai.defineFlow(
     }
 
     console.warn("Interactive Q&A: AI output was malformed or missing critical fields. Input:", JSON.stringify(stageEnhancedInput), "Output:", JSON.stringify(output));
+    // Ensure to return a valid structure even on internal error.
+    // Provide a default question or error message for the user.
     return {
         question: `I'm having a bit of trouble with the stage logic for '${stageEnhancedInput.currentStage}' about ${stageEnhancedInput.topic}. Could you ask a question, or should we try to restart this topic?`,
         feedback: "Apologies, there was an issue with processing the Q&A stage. Please try again.",
@@ -230,3 +233,4 @@ const interactiveQAndAFlow = ai.defineFlow(
 );
 
     
+
