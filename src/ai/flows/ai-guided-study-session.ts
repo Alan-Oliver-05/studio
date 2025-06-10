@@ -55,7 +55,7 @@ const InitialNodeDataSchema = z.object({
   parentId: z.string().optional(),
   type: z.enum(['root', 'leaf', 'detail']).optional().default('leaf'),
   aiGenerated: z.boolean().optional().default(true),
-  x: z.number().optional(), 
+  x: z.number().optional(),
   y: z.number().optional(),
   color: z.string().optional(),
 }).describe("Schema for a single node in the initial mind map structure.");
@@ -89,13 +89,12 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isAiLearningAssistantChat: z.boolean().optional(),
     isHomeworkHelp: z.boolean().optional(),
     isLanguageTranslatorMode: z.boolean().optional(),
-    isVisualLearningFocus: z.boolean().optional(), 
-    isVisualLearningGraphs: z.boolean().optional(), 
-    isVisualLearningDiagrams: z.boolean().optional(), 
-    isVisualLearningMindMaps: z.boolean().optional(), 
+    isVisualLearningFocus: z.boolean().optional(),
+    isVisualLearningGraphs: z.boolean().optional(),
+    isVisualLearningDiagrams: z.boolean().optional(),
+    isVisualLearningMindMaps: z.boolean().optional(),
     isCurriculumSpecificMode: z.boolean().optional(),
 });
-
 
 const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
@@ -103,64 +102,65 @@ const prompt = ai.definePrompt({
   output: {schema: AIGuidedStudySessionOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [performWebSearch],
-  prompt: \`You are an expert AI Tutor and Learning Assistant. Your primary goal is to provide a personalized, supportive, and effective study session for a student based on their detailed profile and specific query.
-  Always maintain a supportive, encouraging, and patient tone. When explaining concepts, break them down into simple, understandable steps. Strive for clarity and conciseness in your responses.
-  Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, preferred language, and learning style.
+  prompt: \`
+You are EduAI Tutor, an expert AI Learning Assistant. Your main task is to provide a personalized, supportive, and effective study session for a student based on their detailed profile and specific query.
+Always maintain a supportive, encouraging, and patient tone. When explaining concepts, break them down into simple, understandable steps. Strive for clarity and conciseness in your responses.
+Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, preferred language, and learning style.
 
-  Student Profile:
-  Name: {{{studentProfile.name}}}
-  Age: {{{studentProfile.age}}}
-  Gender: {{{studentProfile.gender}}}
-  Country: {{{studentProfile.country}}}
-  State/Province: {{{studentProfile.state}}}
-  Preferred Language for Learning (for meta-communication and explanations): {{{studentProfile.preferredLanguage}}}
-  {{#if studentProfile.learningStyle}}Preferred Learning Style: {{{studentProfile.learningStyle}}}{{/if}}
+Student Profile:
+Name: {{{studentProfile.name}}}
+Age: {{{studentProfile.age}}}
+Gender: {{{studentProfile.gender}}}
+Country: {{{studentProfile.country}}}
+State/Province: {{{studentProfile.state}}}
+Preferred Language for Learning (for meta-communication and explanations): {{{studentProfile.preferredLanguage}}}
+{{#if studentProfile.learningStyle}}Preferred Learning Style: {{{studentProfile.learningStyle}}}{{/if}}
 
-  Educational Context:
-  {{#with studentProfile.educationQualification}}
-    {{#if boardExam.board}}
-    Studying for: Board Exam
-    Board: {{{boardExam.board}}}
-    {{#if boardExam.standard}}Standard/Grade: {{{boardExam.standard}}}{{/if}}
-    Curriculum Focus: Material relevant to the {{{boardExam.board}}} syllabus{{#if boardExam.standard}} for {{{boardExam.standard}}} standard{{/if}} in {{{studentProfile.country}}}.
-    {{/if}}
-    {{#if competitiveExam.examType}}
-    Preparing for: Competitive Exam
-    Exam Type: {{{competitiveExam.examType}}}
-    {{#if competitiveExam.specificExam}}Specific Exam: {{{competitiveExam.specificExam}}}{{/if}}
-    {{#if competitiveExam.stage}}Current Stage: {{{competitiveExam.stage}}}{{/if}}
-    {{#if competitiveExam.examDate}}Upcoming Exam Date: {{{competitiveExam.examDate}}}{{/if}}
-    Curriculum Focus: Material relevant to the syllabus of {{#if competitiveExam.specificExam}}{{{competitiveExam.specificExam}}} ({{/if}}{{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}}){{/if}} in {{{studentProfile.country}}}.
-    {{/if}}
-    {{#if universityExam.universityName}}
-    Attending: University
-    University: {{{universityExam.universityName}}}
-    {{#if universityExam.collegeName}}College: {{{universityExam.collegeName}}}{{/if}}
-    {{#if universityExam.course}}Course: {{{universityExam.course}}}{{/if}}
-    {{#if universityExam.currentYear}}Year: {{{universityExam.currentYear}}}{{/if}}
-    Curriculum Focus: Material relevant to the {{#if universityExam.course}}{{{universityExam.course}}} curriculum{{/if}}{{#if universityExam.currentYear}} for year {{{universityExam.currentYear}}}{{/if}} at {{{universityExam.universityName}}} in {{{studentProfile.country}}}.
-    {{/if}}
-  {{else}}
-    No specific educational qualification details provided. Focus on general knowledge appropriate for the student's age and location, or respond based on the direct question.
-  {{/with}}
-
-  Current Study Focus:
-  {{#if subject}}Subject: {{{subject}}}{{/if}}
-  {{#if lesson}}Lesson: {{{lesson}}}{{/if}}
-  Topic: {{{specificTopic}}}
-
-  Student's Question/Request: "{{{question}}}"
-
-  {{#if photoDataUri}}
-  Student provided an image/document for context ({{{photoDataUri}}}).
-  {{#unless isVisualLearningMindMaps}}
-  {{media url=photoDataUri}} 
-  {{/unless}}
+Educational Context:
+{{#with studentProfile.educationQualification}}
+  {{#if boardExam.board}}
+  Studying for: Board Exam
+  Board: {{{boardExam.board}}}
+  {{#if boardExam.standard}}Standard/Grade: {{{boardExam.standard}}}{{/if}}
+  Curriculum Focus: Material relevant to the {{{boardExam.board}}} syllabus{{#if boardExam.standard}} for {{{boardExam.standard}}} standard{{/if}} in {{{studentProfile.country}}}.
   {{/if}}
+  {{#if competitiveExam.examType}}
+  Preparing for: Competitive Exam
+  Exam Type: {{{competitiveExam.examType}}}
+  {{#if competitiveExam.specificExam}}Specific Exam: {{{competitiveExam.specificExam}}}{{/if}}
+  {{#if competitiveExam.stage}}Current Stage: {{{competitiveExam.stage}}}{{/if}}
+  {{#if competitiveExam.examDate}}Upcoming Exam Date: {{{competitiveExam.examDate}}}{{/if}}
+  Curriculum Focus: Material relevant to the syllabus of {{#if competitiveExam.specificExam}}{{{competitiveExam.specificExam}}} ({{/if}}{{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}}){{/if}} in {{{studentProfile.country}}}.
+  {{/if}}
+  {{#if universityExam.universityName}}
+  Attending: University
+  University: {{{universityExam.universityName}}}
+  {{#if universityExam.collegeName}}College: {{{universityExam.collegeName}}}{{/if}}
+  {{#if universityExam.course}}Course: {{{universityExam.course}}}{{/if}}
+  {{#if universityExam.currentYear}}Year: {{{universityExam.currentYear}}}{{/if}}
+  Curriculum Focus: Material relevant to the {{#if universityExam.course}}{{{universityExam.course}}} curriculum{{/if}}{{#if universityExam.currentYear}} for year {{{universityExam.currentYear}}}{{/if}} at {{{universityExam.universityName}}} in {{{studentProfile.country}}}.
+  {{/if}}
+{{else}}
+  No specific educational qualification details provided. Focus on general knowledge appropriate for the student's age and location, or respond based on the direct question.
+{{/with}}
 
-  Instructions for AI Tutor:
+Current Study Focus:
+{{#if subject}}Subject: {{{subject}}}{{/if}}
+{{#if lesson}}Lesson: {{{lesson}}}{{/if}}
+Topic: {{{specificTopic}}}
 
-  {{#if isAiLearningAssistantChat}}
+Student's Question/Request: "{{{question}}}"
+
+{{#if photoDataUri}}
+Student provided an image/document for context ({{{photoDataUri}}}).
+{{#unless isVisualLearningMindMaps}}
+{{media url=photoDataUri}}
+{{/unless}}
+{{/if}}
+
+Instructions for AI Tutor:
+
+{{#if isAiLearningAssistantChat}}
 # AI Tutor Agent System & Act Prompts (General Chat & Textual Mind Maps from Chat)
 
 ## Core System Prompt
@@ -357,7 +357,7 @@ Remember: You are not just creating visuals—you are creating learning experien
     3.  **Response**: Your main 'response' text (the field named 'response' in your output JSON) should inform the user: "I've analyzed your uploaded content and created an initial mind map structure on the canvas below. You can modify it, add more nodes, or ask me questions about the content."
     4.  **visualElement Output**:
         *   Set 'visualElement.type' to 'interactive_mind_map_canvas'.
-        *   Set 'visualElement.content' field in your JSON output to an object. This object MUST contain two keys: 1. 'initialTopic': A string value. For example: "Key Ideas from Uploaded Document". 2. 'initialNodes': An array of node objects. Each node object in this array MUST have an 'id' (string), 'text' (string), and can optionally have 'parentId' (string, linking to another node's 'id'), 'type' (string, e.g., 'root' or 'leaf'), and 'aiGenerated' (boolean, true if you generated it). For instance, a single node object within the 'initialNodes' array might look like this example string: '{"id": "concept1", "text": "Main Concept Extracted", "parentId": "root", "type": "leaf", "aiGenerated": true}'. Ensure the entire value for 'initialNodes' is a valid JSON array composed of such node objects.
+        *   Set the 'visualElement.content' field in your JSON output to an object. This object MUST contain two keys: 'initialTopic' (string value, e.g., "Key Ideas from Uploaded Document related to '{{{question}}}'") and 'initialNodes' (an array of node objects). Each node object in 'initialNodes' MUST have an 'id' (string), 'text' (string), and can optionally have 'parentId' (string, linking to another node's 'id'), 'type' (string, e.g., 'root' or 'leaf'), and 'aiGenerated' (boolean, true if you generated it). For instance, a single node object for 'initialNodes' could be described as: 'a node with id "concept1", text "Main Concept Extracted", parentId "root", type "leaf", and aiGenerated true'. Ensure 'initialNodes' is a valid JSON array of such node objects.
         *   Set 'visualElement.caption' to "Interactive Mind Map from Uploaded Content".
     5.  **Subsequent Q&A**: If the user then asks a question in the chat, your role is to answer that question based on the content of the document/image they uploaded. Your response will be textual. Do not try to update the visualElement for Q&A turns unless specifically asked to generate a new type of visual.
     {{else}}
@@ -366,7 +366,7 @@ Remember: You are not just creating visuals—you are creating learning experien
     2.  **Response**: Your main 'response' text (the field named 'response' in your output JSON) should be simple and inviting, e.g., "Great! I've set up an interactive canvas for you to build your mind map or flowchart on '{{{question}}}'. You can start adding nodes, connecting ideas, and organizing your thoughts visually."
     3.  **visualElement Output**:
         *   Set the 'visualElement.type' field in your output JSON to the string 'interactive_mind_map_canvas'.
-        *   Set the 'visualElement.content' field in your output JSON to an object structured like { "initialTopic": "{{{question}}}" }. No 'initialNodes' are needed here as it's a manual start.
+        *   Set the 'visualElement.content' field in your output JSON to an object structured like \{ "initialTopic": "{{{question}}}" \}. No 'initialNodes' are needed here as it's a manual start.
         *   Set the 'visualElement.caption' field in your output JSON to "Interactive Mind Map / Flowchart Canvas for {{{question}}}".
     4.  **Subsequent Q&A**: If the user asks questions, answer them textually based on the topic '{{{question}}}'.
     {{/if}}
@@ -416,7 +416,7 @@ Remember: You are not just creating visuals—you are creating learning experien
     4. Ask a relevant MCQ based on that "retrieved" info.
     5. Suggest official/reputable resources.
   - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
-  \`,
+  \`;
   config: {
     temperature: 0.4,
      safetySettings: [
@@ -437,19 +437,19 @@ Remember: You are not just creating visuals—you are creating learning experien
         threshold: 'BLOCK_MEDIUM_AND_ABOVE',
       },
     ],
-  }
+  },
 });
 
 const aiGuidedStudySessionFlow = ai.defineFlow(
   {
     name: 'aiGuidedStudySessionFlow',
-    inputSchema: AIGuidedStudySessionInputSchema, 
+    inputSchema: AIGuidedStudySessionInputSchema,
     outputSchema: AIGuidedStudySessionOutputSchema,
   },
   async (input: AIGuidedStudySessionInput) => {
     const studentProfile = input.studentProfile;
     const educationQualification = studentProfile.educationQualification || {};
-    const specificTopicFromInput = input.specificTopic; 
+    const specificTopicFromInput = input.specificTopic;
 
     const promptInput: z.infer<typeof PromptInputSchema> = {
       ...input,
@@ -469,7 +469,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
       isVisualLearningFocus: specificTopicFromInput.startsWith("Visual Learning"),
       isVisualLearningGraphs: specificTopicFromInput === "Visual Learning - Graphs & Charts",
       isVisualLearningDiagrams: specificTopicFromInput === "Visual Learning - Conceptual Diagrams",
-      isVisualLearningMindMaps: specificTopicFromInput === "Visual Learning - Mind Maps", 
+      isVisualLearningMindMaps: specificTopicFromInput === "Visual Learning - Mind Maps",
 
       isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help", "LanguageTranslatorMode"].includes(specificTopicFromInput) && !specificTopicFromInput.startsWith("Visual Learning"),
     };
@@ -477,15 +477,15 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     const {output} = await prompt(promptInput);
 
     if (output && output.response && Array.isArray(output.suggestions)) {
-        if (output.visualElement === undefined) { 
-            if (promptInput.isAiLearningAssistantChat && input.question.toLowerCase().includes("mind map")) { 
+        if (output.visualElement === undefined) {
+            if (promptInput.isAiLearningAssistantChat && input.question.toLowerCase().includes("mind map")) {
                 output.visualElement = null;
             } else {
-                output.visualElement = null; 
+                output.visualElement = null;
             }
         } else if (output.visualElement && promptInput.isVisualLearningMindMaps) {
             if (output.visualElement.type !== 'interactive_mind_map_canvas') {
-                 output.visualElement.type = 'interactive_mind_map_canvas'; 
+                 output.visualElement.type = 'interactive_mind_map_canvas';
             }
             if (typeof output.visualElement.content !== 'object' || output.visualElement.content === null) {
                 const defaultInitialTopic = input.photoDataUri ? "Analysis of Uploaded Content" : (input.question || "My Ideas");
@@ -495,7 +495,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
             if (output.visualElement.content.initialNodes !== undefined) {
                 if (!Array.isArray(output.visualElement.content.initialNodes)) {
                     console.warn("AI provided initialNodes but not as an array. Clearing initialNodes.");
-                    output.visualElement.content.initialNodes = undefined; 
+                    output.visualElement.content.initialNodes = undefined;
                 }
             } else {
                  // If initialNodes is not provided by AI (e.g. text query for mind map), make sure it's undefined, not null.
