@@ -53,12 +53,12 @@ const VisualElementSchema = z.object({
   type: z.enum(['bar_chart_data', 'line_chart_data', 'flowchart_description', 'image_generation_prompt', 'interactive_mind_map_canvas']).describe('The type of visual element suggested.'),
   content: z.any().describe('Structured data for charts (e.g., array of objects for bar/line charts), structured data for flowcharts (array of step objects), a string prompt for image generation, or configuration for an interactive canvas.'),
   caption: z.string().optional().describe('A brief caption or title for the visual element.'),
-}).describe("A structured representation of a visual aid suggested by the AI. For textual Mind Map requests via AI Learning Assistant Chat, this MUST be null. For interactive mind map canvas, type is 'interactive_mind_map_canvas'.");
+}).describe("A structured representation of a visual aid suggested by the AI. For textual Mind Map requests via AI Learning Assistant Chat, this MUST be null. For interactive mind map canvas requests via Visual Learning page, type is 'interactive_mind_map_canvas'.");
 
 const AIGuidedStudySessionOutputSchema = z.object({
-  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. The response should be comprehensive and directly address the query based on the student's specific curriculum if applicable. If providing an explanation or answering a question related to a specific curriculum, it should be followed by ONE multiple-choice question (MCQ) with options A, B, C, D to test understanding of that specific part of the curriculum."),
+  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. The response should be comprehensive and directly address the query based on the student's specific curriculum if applicable. If providing an explanation or answering a question related to a specific curriculum, it should be followed by ONE multiple-choice question (MCQ) with options A, B, C, D to test understanding of that specific part of the curriculum. For textual mind maps requested via AI Learning Assistant Chat or Visual Learning page (if 'Visual Learning - Mind Maps' topic is selected), this field contains the mind map. For interactive mind maps requested via Visual Learning page when 'specificTopic' is 'Visual Learning - Mind Maps', this field contains an introductory message for the canvas."),
   suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results."),
-  visualElement: VisualElementSchema.optional().nullable().describe("An optional visual element to aid understanding. This could be data for a chart, a description for a flowchart, a prompt for image generation, or a signal to render an interactive canvas. For textual mind maps requested by the student (via AI Learning Assistant chat), this MUST be null as the response field will contain the text-based mind map."),
+  visualElement: VisualElementSchema.optional().nullable().describe("An optional visual element to aid understanding. This could be data for a chart, a description for a flowchart, a prompt for image generation. For textual mind maps requested by the student (via AI Learning Assistant Chat OR Visual Learning - Mind Maps mode), this MUST be null as the response field will contain the text-based mind map. For interactive mind map canvas requests (via Visual Learning - Mind Maps mode IF it's configured for canvas instead of text), this MUST have type 'interactive_mind_map_canvas' and relevant content."),
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
 
@@ -81,7 +81,7 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
 
 const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
-  input: {schema: PromptInputSchema}, 
+  input: {schema: PromptInputSchema},
   output: {schema: AIGuidedStudySessionOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [performWebSearch],
@@ -185,10 +185,10 @@ If the student explicitly requests a 'mind map' (or similar terms like 'visual o
     *   Your main 'response' field MUST directly contain this structured mind map. Use Markdown-like formatting:
         *   Central idea as a main heading (e.g., '# Mind Map: [Derived Central Idea]').
         *   Main branches as level 2 headings or bolded bullet points (e.g., '## [Main Branch 1 Name]' or '* **Main Branch 1:**').
-        *   Sub-branches as indented bullet points under their respective main branch (e.g., '  * [Sub-branch 1.1 Name]', '    - [Sub-sub-branch 1.1.1 Name]').
+        *   Sub-branches as indented bullet points under their respective main branch (e.g., '  * [Sub-branch 1.1 Name]', '    - [Sub-sub-branch 1.1.1 Name]'). Use increasing indentation for deeper levels.
         *   Descriptions for sub-branches should follow the sub-branch item.
         *   Cross-connections (if any) can be listed in a separate section (e.g., '### Key Cross-Connections').
-        *   Example for textual output:
+        *   Example for textual output (inspired by a 'Judaism' mind map):
             '# Mind Map: Judaism'
             ''
             '## Beliefs'
@@ -210,7 +210,7 @@ If the student explicitly requests a 'mind map' (or similar terms like 'visual o
             '### Key Cross-Connections'
             '* Between Beliefs (Torah) and Branches and Types: Different interpretations of the Torah lead to various branches.'
 4.  **'visualElement' Output**: For these textual mind map requests (within AI Learning Assistant Chat), the 'visualElement' field in your JSON output MUST be set to null. Do NOT generate an image prompt or suggest image generation for this type of mind map.
-5.  **General AI Tutor Role Resumption**: For all other requests that are NOT explicitly for a textual mind map, continue to act as the general AI Learning Assistant as described in the "Teaching Methodology" and other sections below. In those cases, you MAY suggest other visual elements (like diagrams or image prompts for charts if appropriate for explanation), populating the 'visualElement' field accordingly.
+5.  **General AI Tutor Role Resumption**: For all other requests that are NOT explicitly for a textual mind map, continue to act as the general AI Learning Assistant as described in the "Teaching Methodology" and other sections below. In those cases, you MAY suggest other visual elements (like diagrams or image prompts for charts if appropriate for explanation), populating the 'visualElement' field accordingly. Do not ask the user if they want an image prompt created for textual mind maps.
 
 ## Teaching Methodology
 (Teaching methodology, Response Structure, Specialized Act Prompts, Response Guidelines, Question Response Protocol, Personalization Triggers, Sample Interaction Framework, Proactive Greeting remains as before)
@@ -329,11 +329,11 @@ Remember: You are not just creating visuals—you are creating learning experien
     Act as a Knowledge Organization Facilitator. The user wants to create a mind map or flowchart using an interactive canvas.
     Your role is to introduce the canvas and let the user build their visual structure.
     1.  **Acknowledge Request**: Confirm the user wants to create a mind map/flowchart for their topic: "{{{question}}}".
-    2.  **Response**: Your main `response` text should be simple and inviting, e.g., "Great! I've set up an interactive canvas for you to build your mind map or flowchart on '{{{question}}}'. You can start adding nodes, connecting ideas, and organizing your thoughts visually."
+    2.  **Response**: Your main 'response' text (the field named 'response' in your output JSON) should be simple and inviting, e.g., "Great! I've set up an interactive canvas for you to build your mind map or flowchart on '{{{question}}}'. You can start adding nodes, connecting ideas, and organizing your thoughts visually."
     3.  **visualElement Output**:
-        *   Set `visualElement.type` to `'interactive_mind_map_canvas'`.
-        *   Set `visualElement.content` to an object like `{{ '{ "initialTopic": "' + question + '" }' }}` (this is a Handlebars trick to embed JSON-like string).
-        *   Set `visualElement.caption` to "Interactive Mind Map / Flowchart Canvas for {{{question}}}".
+        *   Set the 'visualElement.type' field in your output JSON to the string 'interactive_mind_map_canvas'.
+        *   Set the 'visualElement.content' field in your output JSON to an object structured like { "initialTopic": "{{{question}}}" }.
+        *   Set the 'visualElement.caption' field in your output JSON to "Interactive Mind Map / Flowchart Canvas for {{{question}}}".
     Do NOT attempt to generate a textual mind map outline or an image prompt here. The user will use the interactive tool.
 
   {{else}}
@@ -410,7 +410,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     inputSchema: AIGuidedStudySessionInputSchema, // The flow itself accepts the original schema
     outputSchema: AIGuidedStudySessionOutputSchema,
   },
-  async (input: AIGuidedStudySessionInput) => { 
+  async (input: AIGuidedStudySessionInput) => {
     const studentProfile = input.studentProfile;
     const educationQualification = studentProfile.educationQualification || {};
     const specificTopicFromInput = input.specificTopic; // Renamed to avoid conflict
@@ -423,52 +423,53 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
         learningStyle: studentProfile.learningStyle || 'balanced',
         educationQualification: {
           boardExam: educationQualification.boardExam || {},
-          competitiveExam: educationQualification.competitiveExams || { examType: undefined, specificExam: undefined, stage: undefined, examDate: undefined },
-          universityExam: educationQualification.universityExams || {},
+          competitiveExam: educationQualification.competitiveExam || { examType: undefined, specificExam: undefined, stage: undefined, examDate: undefined },
+          universityExam: educationQualification.universityExam || {},
         },
       },
       // Add boolean flags for Handlebars
       isAiLearningAssistantChat: specificTopicFromInput === "AI Learning Assistant Chat" || specificTopicFromInput === "General Discussion",
       isHomeworkHelp: specificTopicFromInput === "Homework Help",
       isLanguageTranslatorMode: specificTopicFromInput === "LanguageTranslatorMode",
-      
-      isVisualLearningFocus: specificTopicFromInput.startsWith("Visual Learning"), 
+
+      isVisualLearningFocus: specificTopicFromInput.startsWith("Visual Learning"),
       isVisualLearningGraphs: specificTopicFromInput === "Visual Learning - Graphs & Charts",
       isVisualLearningDiagrams: specificTopicFromInput === "Visual Learning - Conceptual Diagrams",
       isVisualLearningMindMaps: specificTopicFromInput === "Visual Learning - Mind Maps", // For interactive canvas
-      
+
       isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help", "LanguageTranslatorMode"].includes(specificTopicFromInput) && !specificTopicFromInput.startsWith("Visual Learning"),
     };
-    
-    const {output} = await prompt(promptInput); 
+
+    const {output} = await prompt(promptInput);
 
     if (output && output.response && Array.isArray(output.suggestions)) {
         // Ensure visualElement is explicitly null if the AI didn't provide it,
         // or if it's a mode that should not have one (e.g. textual mind map in general chat)
-        if (output.visualElement === undefined) {
+        if (output.visualElement === undefined) { 
             if (promptInput.isAiLearningAssistantChat && input.question.toLowerCase().includes("mind map")) { // Textual mind map in general chat
                 output.visualElement = null;
-            } else if (promptInput.isVisualLearningMindMaps) { // Interactive canvas for visual learning mind maps
-                // This case should have visualElement defined by the prompt for interactive_mind_map_canvas
-                // If it's somehow undefined here, it's an error in the prompt logic for that case.
-                // However, if it was MEANT to be null by the prompt but AI omitted it, this line is okay.
-                // The specific mind map prompt *should* set it, even if to type 'interactive_mind_map_canvas'.
-                // Let's assume if it's undefined for this specific mode, something went wrong or it's intentionally null.
-                // Given the new interactive canvas, it *should* be defined.
-                // If it's truly undefined and it was the Mind Maps Visual Learning mode,
-                // it defaults to null, which is okay (chat interface will just show text).
-                // But the goal is for the AI to set visualElement.type = 'interactive_mind_map_canvas'.
-                output.visualElement = null; 
             } else {
-                output.visualElement = null; // General fallback
+                 // If it's visual learning mind maps mode, AI should have set visualElement.type to interactive_mind_map_canvas
+                 // If it didn't, that's an issue with prompt adherence. For now, defaulting to null if undefined.
+                output.visualElement = null; 
             }
+        } else if (output.visualElement && promptInput.isVisualLearningMindMaps && output.visualElement.type !== 'interactive_mind_map_canvas') {
+            // If it's mind map mode but AI gave a different visualElement, force it to what's expected
+            // The prompt for isVisualLearningMindMaps *should* guide AI to set type: 'interactive_mind_map_canvas'
+            // This is a fallback if AI provides some visualElement but not the right type for interactive canvas.
+             output.visualElement = {
+                type: 'interactive_mind_map_canvas',
+                content: { initialTopic: input.question || "My Ideas" },
+                caption: `Interactive Mind Map for ${input.question || "My Ideas"}`
+             };
         }
-        
+
+
         const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion"];
-        const isVisualLearningMode = promptInput.isVisualLearningFocus; 
+        const isVisualLearningMode = promptInput.isVisualLearningFocus;
 
         const shouldHaveMCQ = !nonMCQModes.includes(specificTopicFromInput) && !isVisualLearningMode &&
-                               (input.subject || input.lesson); 
+                               (input.subject || input.lesson);
 
         if (shouldHaveMCQ && !output.response.match(/\b([A-D])\)\s/i) && !output.response.match(/\b[A-D]\.\s/i)) {
             // console.warn("AI response for curriculum topic did not seem to include an MCQ. Appending a generic follow-up, but AI should have included it.");
@@ -484,6 +485,3 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
-
-
-    
