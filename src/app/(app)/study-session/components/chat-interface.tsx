@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, ImageIcon, Sparkles, BarChartBig, Link as LinkIcon, Check, AlertCircleIcon, ChevronRightSquare, Milestone } from "lucide-react";
+import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, ImageIcon, Sparkles, BarChartBig, Link as LinkIcon, Check, AlertCircleIcon, ChevronRightSquare, Milestone, BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from "@/ai/flows/ai-guided-study-session";
 import { interactiveQAndA } from "@/ai/flows/interactive-q-and-a";
@@ -26,6 +26,17 @@ import {
 } from "@/components/ui/chart";
 import type { ChartConfig } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
+import dynamic from "next/dynamic";
+
+// Dynamically import the AIMindMapDisplay component only on the client-side
+const AIMindMapDisplay = dynamic(
+  () => import('@/app/(app)/visual-learning/components/AIMindMapDisplay').then(mod => mod.default),
+  { 
+    ssr: false,
+    loading: () => <div className="flex justify-center items-center p-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /> Loading Interactive Canvas...</div>
+  }
+);
+
 
 interface ChatInterfaceProps {
   userProfile: UserProfile | null;
@@ -41,7 +52,7 @@ interface ChatInterfaceProps {
   onInitialQueryConsumed?: () => void;
   enableImageUpload?: boolean;
   initialQAStage?: QAS_Stage; 
-  initialQuestionsInStage?: number; // Number of questions user has ALREADY ANSWERED for initialQAStage
+  initialQuestionsInStage?: number; 
 }
 
 const renderVisualElementContent = (visualElement: VisualElement) => {
@@ -130,11 +141,16 @@ const RenderBarChartVisual = ({ visualElement }: { visualElement: VisualElement 
 const SPECIAL_MODES_FOR_AI_GUIDED_STUDY = [
     "AI Learning Assistant Chat", 
     "Homework Help", 
-    "Visual Learning Focus",
+    // "Visual Learning Focus", // Removed as sub-modes are now specific topics
+    "LanguageTranslatorMode", 
     "Language Text Translation", 
     "Language Voice Translation", 
     "Language Conversation Practice", 
-    "Language Camera Translation", 
+    "Language Camera Translation",
+    // Specific visual learning topics:
+    "Visual Learning - Graphs & Charts",
+    "Visual Learning - Conceptual Diagrams",
+    "Visual Learning - Mind Maps", // This corresponds to the interactive canvas
 ];
 
 function findLastIndex<T>(array: T[], predicate: (value: T, index: number, obj: T[]) => boolean): number {
@@ -158,7 +174,7 @@ export function ChatInterface({
   onInitialQueryConsumed,
   enableImageUpload = true, 
   initialQAStage = 'initial_material', 
-  initialQuestionsInStage = 0, // Number of questions user has ALREADY ANSWERED for initialQAStage
+  initialQuestionsInStage = 0, 
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [input, setInput] = useState("");
@@ -172,7 +188,6 @@ export function ChatInterface({
   
   const isInteractiveQAMode = !SPECIAL_MODES_FOR_AI_GUIDED_STUDY.includes(topic);
 
-  // questionsAnsweredInClientStage: Number of questions USER HAS ANSWERED for the currentClientStage.
   const [questionsAnsweredInClientStage, setQuestionsAnsweredInClientStage] = useState<number>(initialQuestionsInStage);
   const [currentClientStage, setCurrentClientStage] = useState<QAS_Stage>(initialQAStage);
   const [isTopicSessionCompleted, setIsTopicSessionCompleted] = useState<boolean>(false);
@@ -189,27 +204,20 @@ export function ChatInterface({
           setCurrentClientStage(restoredStage);
           
           let answeredCount = 0;
-          // If the last AI message indicates it completed a stage and transitioned to `restoredStage`,
-          // then `answeredCount` for this `restoredStage` is 0 (as `lastAiMsg.question` is the first of this new stage).
-          // To check this: AI spoke last, and its `aiIsStageComplete` was true.
           const lastUserMsgIndex = findLastIndex(existingConversation.messages, m => m.sender === 'user');
           const lastAIMsgIndex = findLastIndex(existingConversation.messages, m => m.sender === 'ai');
 
           if (lastAIMsgIndex > -1 && lastAIMsgIndex > lastUserMsgIndex && lastAiMsg.aiIsStageComplete) {
-            // AI spoke last and completed the previous stage. `lastAiMsg.question` is the first of `restoredStage`.
              answeredCount = 0;
           } else {
-            // Count user answers for the `restoredStage`
             let aiQuestionForStagePending: MessageType | null = null;
             for (const msg of existingConversation.messages) {
                 if (msg.sender === 'ai' && msg.aiNextStage === restoredStage && !msg.aiIsStageComplete) {
                     aiQuestionForStagePending = msg;
                 } else if (msg.sender === 'user' && aiQuestionForStagePending && msg.timestamp > aiQuestionForStagePending.timestamp) {
-                    // Check if this user message is indeed an answer to aiQuestionForStagePending
-                    // This check is simplified; a more robust check might involve looking at message order strictly.
                     const aiMsgIndex = existingConversation.messages.indexOf(aiQuestionForStagePending);
                     const userMsgIndex = existingConversation.messages.indexOf(msg);
-                    if (userMsgIndex > aiMsgIndex) { // Basic check
+                    if (userMsgIndex > aiMsgIndex) { 
                          answeredCount++;
                     }
                     aiQuestionForStagePending = null; 
@@ -223,21 +231,32 @@ export function ChatInterface({
           } else {
             setIsTopicSessionCompleted(false);
           }
-        } else { // No prior AI stage info, use props or defaults from page.tsx (which should handle new Q&A start)
+        } else { 
           setCurrentClientStage(initialQAStage);
           setQuestionsAnsweredInClientStage(initialQuestionsInStage);
           setIsTopicSessionCompleted(false);
         }
       }
-    } else if (initialSystemMessage && !isInteractiveQAMode) { 
+    } else if (initialSystemMessage && !isInteractiveQAMode && topic !== "Visual Learning - Mind Maps") { 
       const firstAIMessage: MessageType = {
         id: crypto.randomUUID(), sender: "ai", text: initialSystemMessage, timestamp: Date.now(),
       };
       setMessages([firstAIMessage]);
       addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
-    } else { 
+    } else if (initialSystemMessage && topic === "Visual Learning - Mind Maps") { // Handle initial message for interactive mind map
+        const firstAIMessage: MessageType = {
+          id: crypto.randomUUID(), sender: "ai", text: initialSystemMessage, timestamp: Date.now(),
+          visualElement: {
+              type: 'interactive_mind_map_canvas',
+              content: { initialTopic: initialInputQuery || "My Mind Map" }, // Pass user's question as initial topic
+              caption: `Interactive Mind Map for ${initialInputQuery || "My Mind Map"}`
+          }
+        };
+        setMessages([firstAIMessage]);
+        addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
+    }
+     else { 
         setMessages([]);
-        // Ensure initial Q&A state if no conversation history for Q&A mode
         if (isInteractiveQAMode) {
             setCurrentClientStage(initialQAStage);
             setQuestionsAnsweredInClientStage(initialQuestionsInStage);
@@ -245,7 +264,7 @@ export function ChatInterface({
         }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, initialSystemMessage, topic, userProfile, context, isInteractiveQAMode, initialQAStage, initialQuestionsInStage]);
+  }, [conversationId, initialSystemMessage, topic, userProfile, context, isInteractiveQAMode, initialQAStage, initialQuestionsInStage, initialInputQuery]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -254,11 +273,11 @@ export function ChatInterface({
   }, [messages]);
 
   useEffect(() => {
-    if (initialInputQuery && initialInputQuery.trim() !== "") {
+    if (initialInputQuery && initialInputQuery.trim() !== "" && topic !== "Visual Learning - Mind Maps") { // Don't auto-set input for mind maps if initial message handles it
       setInput(initialInputQuery);
       if (onInitialQueryConsumed) onInitialQueryConsumed();
     }
-  }, [initialInputQuery, onInitialQueryConsumed]);
+  }, [initialInputQuery, onInitialQueryConsumed, topic]);
 
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
     if (!enableImageUpload) return;
@@ -367,15 +386,7 @@ export function ChatInterface({
     try {
       let aiResponseMessage: MessageType;
       
-      let aiFlowTopic: string;
-      if (topic.startsWith("Language ")) { 
-        aiFlowTopic = "LanguageTranslatorMode";
-      } else if (SPECIAL_MODES_FOR_AI_GUIDED_STUDY.includes(topic)) {
-        aiFlowTopic = topic; 
-      } else { 
-        aiFlowTopic = topic; 
-      }
-
+      let aiFlowTopic: string = topic; // Default to the passed topic
 
       if (isInteractiveQAMode) {
         let previousAIQuestionText: string | undefined;
@@ -393,7 +404,7 @@ export function ChatInterface({
           previousQuestion: previousAIQuestionText,
           conversationHistory: formatConversationForAI(currentMessagesWithUser.slice(-6)), 
           currentStage: currentClientStage,
-          questionsAskedInStage: questionsAnsweredInClientStage, // Number of questions user has *answered* for currentClientStage
+          questionsAskedInStage: questionsAnsweredInClientStage, 
         };
         const qAndAResponse = await interactiveQAndA(qAndAInput);
         
@@ -404,27 +415,18 @@ export function ChatInterface({
             aiNextStage: qAndAResponse.nextStage, aiIsStageComplete: qAndAResponse.isStageComplete,
         };
         
-        // Update client stage based on AI's response
         if (qAndAResponse.nextStage) {
-            const prevStageForThisTurn = currentClientStage; // Stage *before* this AI response decision
-            setCurrentClientStage(qAndAResponse.nextStage); // AI dictates the next stage
+            const prevStageForThisTurn = currentClientStage; 
+            setCurrentClientStage(qAndAResponse.nextStage); 
 
             if (qAndAResponse.isStageComplete && qAndAResponse.nextStage !== prevStageForThisTurn && qAndAResponse.nextStage !== 'completed') {
-                // Stage was completed AND we are moving to a new, non-completed stage.
-                // The current AI response (qAndAResponse.question) is the *first* question of this new stage.
-                // So, questions *answered* by user in this new stage is 0.
                 setQuestionsAnsweredInClientStage(0);
             } else if (qAndAResponse.nextStage === prevStageForThisTurn && !qAndAResponse.isStageComplete) {
-                // Still in the same stage, and this stage isn't completed by this question.
-                // User just answered a question for this stage. Increment answered count.
                 setQuestionsAnsweredInClientStage(prev => prev + 1);
             } else if (qAndAResponse.nextStage === prevStageForThisTurn && qAndAResponse.isStageComplete) {
-                // AI just asked the *last* question of this stage. User answered it.
-                // The stage is now complete, but AI might not be moving to a *new different* stage (e.g., moving to 'completed' overall).
                 setQuestionsAnsweredInClientStage(prev => prev + 1);
             }
-            // If qAndAResponse.nextStage is 'completed', isTopicSessionCompleted handles overall state.
-
+            
             if (qAndAResponse.nextStage === 'completed' && qAndAResponse.isStageComplete) {
                 setIsTopicSessionCompleted(true);
                 if (!qAndAResponse.question.match(/\b([A-D])\)\s/i) && !qAndAResponse.question.match(/\b[A-D]\.\s/i)) {
@@ -492,7 +494,7 @@ export function ChatInterface({
         case 'initial_material': return 3;
         case 'deeper_material': return 2;
         case 'out_of_syllabus': return 1;
-        default: return 0; // 'completed' or other
+        default: return 0; 
     }
   }
 
@@ -574,7 +576,6 @@ export function ChatInterface({
                         <p className="whitespace-pre-wrap leading-relaxed text-sm opacity-90">{message.feedback}</p>
                       </div>
                     )}
-                    {/* Display AI question text, unless it's the "completed" stage's concluding remark that's same as feedback */}
                     {!(currentClientStage === 'completed' && isTopicSessionCompleted && message.text === message.feedback && !(message.text.match(/\b([A-D])\)\s/i) || message.text.match(/\b[A-D]\.\s/i)) ) && message.text && (
                          <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
                     )}
@@ -585,7 +586,7 @@ export function ChatInterface({
                   <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
                 )}
 
-                {message.sender === "ai" && message.visualElement && (
+                {message.sender === "ai" && message.visualElement && message.visualElement.type !== 'interactive_mind_map_canvas' && (
                   <Card className="mt-3 bg-background/50 border-primary/20 shadow-sm">
                      <CardHeader className="pb-2 pt-3 px-3">
                       <CardTitle className="text-xs sm:text-sm font-semibold text-primary flex items-center">
@@ -647,6 +648,11 @@ export function ChatInterface({
                        )}
                     </CardContent>
                   </Card>
+                )}
+                 {message.sender === "ai" && message.visualElement?.type === 'interactive_mind_map_canvas' && (
+                  <div className="mt-3 border rounded-md p-2 bg-muted/30">
+                    <AIMindMapDisplay initialTopic={message.visualElement.content?.initialTopic || "My Ideas"} />
+                  </div>
                 )}
 
                 {message.sender === "ai" && message.suggestions && message.suggestions.length > 0 && (
@@ -757,4 +763,7 @@ export function ChatInterface({
     </div>
   );
 }
+    
+
+
     

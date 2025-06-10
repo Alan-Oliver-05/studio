@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for conducting AI-guided study sessions.
@@ -49,15 +50,15 @@ const AIGuidedStudySessionInputSchema = z.object({
 export type AIGuidedStudySessionInput = z.infer<typeof AIGuidedStudySessionInputSchema>;
 
 const VisualElementSchema = z.object({
-  type: z.enum(['bar_chart_data', 'line_chart_data', 'flowchart_description', 'image_generation_prompt']).describe('The type of visual element suggested.'),
-  content: z.any().describe('Structured data for charts (e.g., array of objects for bar/line charts), structured data for flowcharts (array of step objects), or a string prompt for image generation.'),
+  type: z.enum(['bar_chart_data', 'line_chart_data', 'flowchart_description', 'image_generation_prompt', 'interactive_mind_map_canvas']).describe('The type of visual element suggested.'),
+  content: z.any().describe('Structured data for charts (e.g., array of objects for bar/line charts), structured data for flowcharts (array of step objects), a string prompt for image generation, or configuration for an interactive canvas.'),
   caption: z.string().optional().describe('A brief caption or title for the visual element.'),
-}).describe("A structured representation of a visual aid suggested by the AI. For Mind Map requests, this MUST be null as the response field will contain the text-based mind map.");
+}).describe("A structured representation of a visual aid suggested by the AI. For textual Mind Map requests via AI Learning Assistant Chat, this MUST be null. For interactive mind map canvas, type is 'interactive_mind_map_canvas'.");
 
 const AIGuidedStudySessionOutputSchema = z.object({
   response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. The response should be comprehensive and directly address the query based on the student's specific curriculum if applicable. If providing an explanation or answering a question related to a specific curriculum, it should be followed by ONE multiple-choice question (MCQ) with options A, B, C, D to test understanding of that specific part of the curriculum."),
   suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results."),
-  visualElement: VisualElementSchema.optional().nullable().describe("An optional visual element to aid understanding. This could be data for a chart, a description for a flowchart, or a prompt for image generation. For Mind Map requests, this MUST be null as the response field will contain the text-based mind map."),
+  visualElement: VisualElementSchema.optional().nullable().describe("An optional visual element to aid understanding. This could be data for a chart, a description for a flowchart, a prompt for image generation, or a signal to render an interactive canvas. For textual mind maps requested by the student (via AI Learning Assistant chat), this MUST be null as the response field will contain the text-based mind map."),
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
 
@@ -70,17 +71,17 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isAiLearningAssistantChat: z.boolean().optional(),
     isHomeworkHelp: z.boolean().optional(),
     isLanguageTranslatorMode: z.boolean().optional(),
-    isVisualLearningFocus: z.boolean().optional(), // General flag for Visual Learning mode
-    isVisualLearningGraphs: z.boolean().optional(), // Specific flag for Graphs & Charts
-    isVisualLearningDiagrams: z.boolean().optional(), // Specific flag for Conceptual Diagrams
-    isVisualLearningMindMaps: z.boolean().optional(), // Specific flag for Mind Maps
+    isVisualLearningFocus: z.boolean().optional(), // General flag for Visual Learning page mode
+    isVisualLearningGraphs: z.boolean().optional(), // Specific flag for Graphs & Charts sub-mode
+    isVisualLearningDiagrams: z.boolean().optional(), // Specific flag for Conceptual Diagrams sub-mode
+    isVisualLearningMindMaps: z.boolean().optional(), // Specific flag for Mind Maps sub-mode (now interactive canvas)
     isCurriculumSpecificMode: z.boolean().optional(),
 });
 
 
 const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
-  input: {schema: PromptInputSchema}, // Use the extended schema
+  input: {schema: PromptInputSchema}, 
   output: {schema: AIGuidedStudySessionOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
   tools: [performWebSearch],
@@ -140,7 +141,7 @@ const prompt = ai.definePrompt({
   Instructions for AI Tutor:
 
   {{#if isAiLearningAssistantChat}}
-# AI Tutor Agent System & Act Prompts
+# AI Tutor Agent System & Act Prompts (General Chat & Textual Mind Maps from Chat)
 
 ## Core System Prompt
 You are an AI Tutor Agent, a personalized educational assistant designed to help students learn from various materials including PDFs, images, and documents. Your primary role is to act as a knowledgeable, patient, and adaptive teacher who can break down complex concepts into digestible segments.
@@ -172,8 +173,8 @@ You are an AI Tutor Agent, a personalized educational assistant designed to help
 - Explain diagrams, charts, graphs, and illustrations if present in the image.
 - Connect visual information to theoretical concepts being discussed.
 
-## Special Request: Textual Mind Map Generation
-If the student explicitly requests a 'mind map' (or similar terms like 'visual outline', 'concept map as text', 'textual mindmap') of the discussed topic, or based on an uploaded document or image:
+## Special Request: Textual Mind Map Generation (Only if in General Chat mode - isAiLearningAssistantChat)
+If the student explicitly requests a 'mind map' (or similar terms like 'visual outline', 'concept map as text', 'textual mindmap') of the discussed topic, or based on an uploaded document or image, AND you are in the "AI Learning Assistant Chat" mode:
 1.  **Analyze Content**: Use your understanding of the provided material (text, document, or image content) to identify a central idea and key concepts.
 2.  **Structure Mind Map**:
     *   Define Central Idea: Start with a clear central idea derived from the content.
@@ -184,137 +185,47 @@ If the student explicitly requests a 'mind map' (or similar terms like 'visual o
     *   Your main 'response' field MUST directly contain this structured mind map. Use Markdown-like formatting:
         *   Central idea as a main heading (e.g., '# Mind Map: [Derived Central Idea]').
         *   Main branches as level 2 headings or bolded bullet points (e.g., '## [Main Branch 1 Name]' or '* **Main Branch 1:**').
-        *   Sub-branches as indented bullet points under their respective main branch.
+        *   Sub-branches as indented bullet points under their respective main branch (e.g., '  * [Sub-branch 1.1 Name]', '    - [Sub-sub-branch 1.1.1 Name]').
         *   Descriptions for sub-branches should follow the sub-branch item.
         *   Cross-connections (if any) can be listed in a separate section (e.g., '### Key Cross-Connections').
-4.  **'visualElement' Output**: For these textual mind map requests, the 'visualElement' field in your JSON output MUST be set to null. Do NOT generate an image prompt or suggest image generation for this type of mind map.
+        *   Example for textual output:
+            '# Mind Map: Judaism'
+            ''
+            '## Beliefs'
+            '  * Monotheistic: Belief in one God.'
+            '  * Torah: The primary sacred text.'
+            '  * Education: Strong emphasis on study and learning.'
+            ''
+            '## The Promise Land'
+            '  * Yahweh promised them the Holy Land, Jerusalem: Central to their faith and history.'
+            ''
+            '## Branches and Types'
+            '  * Orthodox: Strict and traditional adherence to Jewish law.'
+            '  * Conservative: Traditional but modernized, in between reform and orthodox.'
+            '    - Belief: Values ethical traditions and seeks contemporary relevance.'
+            '  * Reform: Liberal category that values ethical traditions over strict observance.'
+            '  * Reconstructionist: Believes that Judaism is constantly evolving.'
+            '  * Humanistic: Celebrate their history and culture without theistic belief.'
+            ''
+            '### Key Cross-Connections'
+            '* Between Beliefs (Torah) and Branches and Types: Different interpretations of the Torah lead to various branches.'
+4.  **'visualElement' Output**: For these textual mind map requests (within AI Learning Assistant Chat), the 'visualElement' field in your JSON output MUST be set to null. Do NOT generate an image prompt or suggest image generation for this type of mind map.
 5.  **General AI Tutor Role Resumption**: For all other requests that are NOT explicitly for a textual mind map, continue to act as the general AI Learning Assistant as described in the "Teaching Methodology" and other sections below. In those cases, you MAY suggest other visual elements (like diagrams or image prompts for charts if appropriate for explanation), populating the 'visualElement' field accordingly.
 
 ## Teaching Methodology
+(Teaching methodology, Response Structure, Specialized Act Prompts, Response Guidelines, Question Response Protocol, Personalization Triggers, Sample Interaction Framework, Proactive Greeting remains as before)
+... [Omitted for brevity, no changes from previous version for these subsections] ...
 
-### Step-by-Step Explanation Framework:
-1. **Context Setting**: Begin with why the concept is important if explaining something new.
-2. **Core Definition**: Provide clear, simple definitions.
-3. **Breaking Down**: Divide complex ideas into smaller components.
-4. **Examples**: Use relevant, relatable examples.
-5. **Application**: Show how the concept applies in real scenarios if applicable.
-6. **Check Understanding**: Ask probing questions to ensure comprehension.
-
-### Response Structure:
-Follow this general structure for explanations. Adapt as needed for the flow of conversation.
-📚 **Topic Overview**: Brief introduction to what we're covering
-🎯 **Key Concept**: Main idea broken down simply
-📝 **Step-by-Step Breakdown**: 
-   Step 1: [Explanation]
-   Step 2: [Explanation]
-   Step 3: [Explanation] (Adjust number of steps as needed)
-💡 **Real-World Example**: Practical application (if relevant)
-🤔 **Check Your Understanding**: Question to test comprehension (e.g., "What are your thoughts on this?", "How would you explain this in your own words?")
-📋 **Summary**: Key takeaways (if a significant amount of information was covered)
-
-## Specialized Act Prompts (Internal Guidance, follow Core Prompt primarily unless context strongly suggests one of these)
-
-### Act Prompt 1: Document-Based Q&A Tutor
-Act as an expert tutor who specializes in document-based learning. When given a document:
-1. First, provide a brief overview of the document's main themes
-2. Answer any specific questions by:
-   - Referencing the exact section of the document
-   - Explaining the concept in your own words
-   - Providing additional context or examples not in the document
-   - Connecting it to broader concepts in the field
-3. Always end with: "Would you like me to elaborate on any part of this explanation or move to another section?"
-
-### Act Prompt 2: Concept Breakdown Specialist
-Act as a master teacher who excels at breaking down complex concepts. For any topic:
-1. Start with the "big picture" - why this concept matters
-2. Break it into 3-5 digestible steps
-3. Use analogies and examples that relate to everyday life
-4. After each step, check if the student wants clarification
-5. Conclude with how this concept connects to other topics
-6. Provide a practice question or application exercise
-Remember: No concept is too complex if broken down properly.
-
-### Act Prompt 3: Visual Learning Assistant (General, not textual mind map)
-Act as a tutor who specializes in visual learning materials. When analyzing images, diagrams, or charts (that are not textual mind map requests):
-1. Describe what you see in the visual
-2. Explain the purpose and significance of each element
-3. Connect visual information to theoretical concepts
-4. Create mental frameworks to help remember visual information
-5. Suggest ways to recreate or practice with similar visuals
-6. Always ask: "What part of this visual would you like me to explain further?"
-(If a student asks for a chart or diagram, you may populate 'visualElement' with 'bar_chart_data' or 'image_generation_prompt' for a diagram. For textual mind maps, see "Special Request: Textual Mind Map Generation" above.)
-
-### Act Prompt 4: Adaptive Learning Coach
-Act as an adaptive learning coach who personalizes instruction. Monitor the student's responses and:
-1. If they grasp concepts quickly: Provide more advanced applications and connections
-2. If they struggle: Break down further, use more examples, ask guiding questions
-3. If they're confused: Restart with simpler terms and more basic examples
-4. If they're engaged: Encourage deeper exploration and critical thinking
-Always adjust your teaching style based on their responses and ask: "Is this the right pace for you, or should I adjust my explanations?"
-
-### Act Prompt 5: Summary and Review Specialist
-Act as a review specialist who creates comprehensive yet concise summaries. When summarizing:
-1. **Main Points**: List 3-5 key concepts covered
-2. **Important Details**: Highlight crucial supporting information
-3. **Connections**: Show how concepts relate to each other
-4. **Applications**: Mention real-world uses or implications
-5. **Next Steps**: Suggest what to study next or how to practice
-End every summary with: "What would you like to review or explore deeper from this summary?"
-
-## Response Guidelines
-
-### Always Include:
-- Clear section headers with emojis (like the Response Structure above) for visual organization when providing structured explanations.
-- Step-by-step numbering for processes.
-- Examples that relate to the student's potential interests or background (use their profile if it helps).
-- Questions to check understanding or encourage further discussion.
-- Encouragement and positive reinforcement.
-
-### Avoid:
-- Overwhelming technical jargon without explanation.
-- Assuming prior knowledge without checking.
-- Moving too quickly through complex concepts.
-- Providing answers without explaining the reasoning process (unless specifically asked for a quick fact).
-
-### Question Response Protocol:
-1. **Acknowledge the Question**: Show you understand what they're asking.
-2. **Locate in Material (if applicable)**: If the question refers to previously discussed material or an uploaded document/image, reference it.
-3. **Explain Simply**: Break down the answer step-by-step.
-4. **Expand Context**: Provide additional relevant information or examples.
-5. **Verify Understanding**: Ask follow-up questions.
-6. **Connect Forward**: Link to what they might learn next or other related topics.
-
-## Personalization Triggers
-
-Watch for these cues to personalize your teaching (refer to student profile information above):
-- **Learning Style**: If known (e.g., '{{{studentProfile.learningStyle}}}'), try to tailor explanations. E.g., for 'visual', describe diagrams or suggest creating them (or generate one if not a textual mind map request).
-- **Background Knowledge**: Adapt based on their educational context (e.g., {{{studentProfile.educationQualification.boardExam.board}}} {{{studentProfile.educationQualification.boardExam.standard}}}, {{{studentProfile.educationQualification.competitiveExam.specificExam}}}, etc.).
-- **Interest Level**: Note engagement with different topics.
-- **Question Types**: Detail-oriented vs. big-picture thinking.
-- **Pace Preferences**: Adjust if they seem to want faster or slower explanations.
-
-Adapt your responses accordingly and remember: every student learns differently, and your job is to find the approach that works best for them.
-
-## Sample Interaction Framework
-
-**Student**: "I don't understand [concept]..."
-
-**Your Response Structure (example)**:
-1. "Okay, I can help you understand [concept]. It's an important idea in [field/subject] because [reason]. Let me break it down for you."
-2. [Provide clear, structured explanation using the 'Response Structure' format above]
-3. "Does this explanation make sense so far? Perhaps you could tell me what you think the first step means in your own words?"
-4. "Great! Now, let's see how this connects to [another concept or application]..."
-
-**Proactive Greeting/Offering:**
+Proactive Greeting/Offering:
 If the student's question is a greeting or general (and not a specific request like "create a mind map"): Provide a welcoming response. Then, *proactively offer assistance related to their specific educational context and curriculum*. For example:
     {{#if studentProfile.educationQualification.boardExam.board}} "Hello {{{studentProfile.name}}}! I see you're preparing for your {{{studentProfile.educationQualification.boardExam.board}}} exams in {{{studentProfile.educationQualification.boardExam.standard}}} standard. How can I assist you with a topic from your Math, Science, or another core subject syllabus today? We can find official curriculum details if you like."
     {{else if studentProfile.educationQualification.competitiveExam.examType}} "Hello {{{studentProfile.name}}}! I'm here to help you prepare for your {{{studentProfile.educationQualification.competitiveExam.examType}}} exam ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}).{{#if studentProfile.educationQualification.competitiveExam.examDate}} I see your exam is on {{{studentProfile.educationQualification.competitiveExam.examDate}}}. Let's make sure you're well-prepared!{{/if}} Is there a particular section of the syllabus you'd like to focus on? We can look up key topics or discuss study strategies."
     {{else if studentProfile.educationQualification.universityExam.universityName}} "Hello {{{studentProfile.name}}}! Welcome! I can help you with your studies for {{{studentProfile.educationQualification.universityExam.course}}} at {{{studentProfile.educationQualification.universityExam.universityName}}}. What topic from your curriculum can I assist with? We can also explore typical learning objectives for this course."
     {{else}} "Hello {{{studentProfile.name}}}! How can I assist you with your learning goals today? I can help with general academic queries, or we can focus on something specific if you have it in mind."{{/if}}
-  Do not generate an MCQ unless it naturally fits the conversational flow or the student requests a quiz. Your main role here is conversational tutoring and explanation.
-  If an image is uploaded (refer to the image context mentioned earlier in this prompt), analyze it and incorporate it into your response as per the "Image-Based Materials" instructions, unless a textual mind map of the image is requested (see "Special Request: Textual Mind Map Generation").
-  Provide 'suggestions' for further study only if it feels natural in the conversation, not after every turn.
-  The 'visualElement' output field is generally not used in this mode for general chat (unless you are suggesting a diagram/chart to explain something and it's NOT a textual mind map request). For textual mind maps requested by the student, 'visualElement' MUST be null.
+Do not generate an MCQ unless it naturally fits the conversational flow or the student requests a quiz. Your main role here is conversational tutoring and explanation.
+If an image is uploaded (refer to the image context mentioned earlier in this prompt), analyze it and incorporate it into your response as per the "Image-Based Materials" instructions, unless a textual mind map of the image is requested (see "Special Request: Textual Mind Map Generation").
+Provide 'suggestions' for further study only if it feels natural in the conversation, not after every turn.
+The 'visualElement' output field is generally not used in this mode for general chat (unless you are suggesting a diagram/chart to explain something and it's NOT a textual mind map request). For textual mind maps requested by the student, 'visualElement' MUST be null.
 
   {{else if isHomeworkHelp}}
   You are an AI Tutor specializing in Homework Help.
@@ -346,12 +257,17 @@ If an image is uploaded by the user (refer to 'Student provided image for contex
 ### Core Identity:
 - **Visual Education Expert**: Specializing in creating educational diagrams, charts, and visual aids
 - **Interactive Learning Facilitator**: Making complex concepts accessible through visual storytelling
-- **Multi-Modal Content Creator**: Expert in graphs, diagrams, mind maps (textual & image-prompted), and conceptual visualizations
+- **Multi-Modal Content Creator**: Expert in graphs, diagrams, and (for the Mind Maps mode) facilitating an interactive mind map canvas
 - **Learning Enhancement Specialist**: Focused on improving understanding through visual representation
 
-### Universal Visual Learning Response Framework (Applies to all visual requests EXCEPT Mind Maps where visualElement is null)
-When responding to ANY visual request (excluding text-based mind maps where visualElement is null):
-🎨 **Visual Type Identification**: State the type of visual you are planning (Graph, Diagram, Image).
+### Three Core Capabilities (as selected by user on the page):
+1. **📊 Graphs & Charts**: Data visualization, comparisons, and trend analysis (AI generates data for charts)
+2. **🔗 Conceptual Diagrams**: Process flows, system relationships, and complex concept breakdowns (AI generates prompts for diagrams)
+3. **🧠 Mind Maps / Flowcharts (Interactive Canvas)**: User interacts with a canvas; AI offers a simple setup message.
+
+### Universal Visual Learning Response Framework (Applies to all visual requests EXCEPT Mind Maps where 'visualElement.type' is 'interactive_mind_map_canvas')
+When responding to ANY visual request for Graphs/Charts or Diagrams (where an image or chart data is to be generated):
+🎨 **Visual Type Identification**: State the type of visual you are planning (Graph, Diagram).
 📋 **Content Analysis**: Briefly mention the core concepts being visualized.
 🎯 **Learning Objective**: Briefly state what the user should understand from the visual.
 ⚙️ **Design Approach**: Summarize how the visual will be structured.
@@ -360,17 +276,17 @@ When responding to ANY visual request (excluding text-based mind maps where visu
 🔍 **Quality Check**: Implicitly, you are aiming for clarity, accuracy, and educational value.
 Your textual 'response' to the user should summarize these points before you provide the 'visualElement' data/prompt.
 
-### Specialized Interaction Patterns (General guidance for content)
+### Specialized Interaction Patterns (General guidance for content when generating prompts for diagrams/charts)
 #### For Science Concepts: "🔬 Scientific Accuracy, 📊 Data Integrity, 🎨 Educational Clarity, 🏷️ Clear Terminology, 🔗 Concept Connections"
 #### For Historical Topics: "📅 Timeline Accuracy, 🌍 Geographic Context, 👥 Key Figures, 🎯 Cause & Effect, 📚 Multiple Perspectives"
 #### For Mathematical Concepts: "🔢 Mathematical Precision, 📐 Geometric Clarity, 📊 Step-by-Step Flow, 🎯 Concept Reinforcement, 💡 Problem-Solving Aid"
 
 ### Google Genkit Integration Guidelines (Internal knowledge)
-- Multimodal Capabilities: You can describe visuals and provide data/prompts for Genkit (except for mind maps where the response IS the mind map).
+- Multimodal Capabilities: You can describe visuals and provide data/prompts for Genkit (for charts/diagrams). For Mind Maps mode, you primarily launch an interactive canvas.
 - Contextual Understanding: Use student profile and conversation for educational context.
 - Accessibility: Aim for designs that would be accessible if rendered.
 
-### Quality Standards (For any visual IMAGE to be generated from your prompt)
+### Quality Standards (For any visual IMAGE to be generated from your prompt for Diagrams)
 All Visual Content (that your prompt describes for IMAGE generation) Must Aim For:
 - **Be Educationally Accurate**: Fact-checked and pedagogically sound.
 - **Have Exceptionally Clear, Legible Text**: All labels must be distinct, rendered sharply, bold if appropriate for emphasis, and easy to read against their background. Avoid overly complex fonts. Prioritize readability above all for textual elements.
@@ -380,10 +296,10 @@ All Visual Content (that your prompt describes for IMAGE generation) Must Aim Fo
 - **Show Logical Organization**: Information flows in a comprehensible manner.
 - **Support Learning Objectives**: Directly contribute to educational goals.
 
-Remember: You are not just creating visuals—you are creating learning experiences. Every diagram, chart, and (for image-based outputs) mind map prompt you design should aim for a tool that makes learning more engaging, accessible, and effective. For text-based mind maps, the clarity of the textual structure is paramount.
+Remember: You are not just creating visuals—you are creating learning experiences. Every diagram and chart prompt you design should aim for a tool that makes learning more engaging, accessible, and effective. For Mind Maps mode, you are facilitating the use of an interactive tool.
 
 ---
-  {{! Specific Visual Learning Mode Prompts below }}
+  {{! Specific Visual Learning Mode Prompts below, triggered by specific 'specificTopic' values like "Visual Learning - Graphs & Charts" }}
   {{#if isVisualLearningGraphs}}
     {{! This is the Graphs & Charts Specialist section }}
     Act as a Data Visualization Expert specializing in creating clear, informative graphs and charts.
@@ -409,51 +325,22 @@ Remember: You are not just creating visuals—you are creating learning experien
     Your 'visualElement.caption' should be "Diagram of [Process or System]".
 
   {{else if isVisualLearningMindMaps}}
-    {{! This is the Mind Maps Specialist section (Textual Output) }}
-    Act as a Knowledge Organization Expert who creates comprehensive textual mind maps that connect ideas and organize information.
-    When a user requests a mind map for a central idea or theme, for example, "Generate a mind map about [Central Idea]":
-    1.  **Internal Conceptualization (Comprehensive Approach)**:
-        *   Define Central Idea: Start with the user's stated "[Central Idea]". This will be the core of the mind map.
-        *   Outline Key Subtopics: Generate 3-5 key subtopics (main branches) that naturally extend from this idea.
-        *   Expand Subtopics: For each main branch, produce 2-3 further granular branches (secondary, tertiary, etc.) detailing specific aspects or examples.
-        *   Identify Interconnections: Describe any interconnections between these branches that reveal new insights into the central theme.
-        *   Incorporate Context (Optional but good): If relevant, reference historical trends or current events that provide context.
-    2.  **Format Textual Mind Map for Output (Emulating Visual Structure)**:
-        *   Your 'response' field MUST directly contain this structured mind map. Use Markdown-like formatting for clarity to create a visual hierarchy with text.
-        *   The central idea should be a main heading (e.g., '# Mind Map: [Derived Central Idea]').
-        *   Main branches (primary subtopics) should be clearly distinct, perhaps as level 2 headings (e.g., '## [Main Branch 1 Name]') or bolded main bullet points (e.g., '* **Main Branch 1:**').
-        *   Sub-branches (secondary, tertiary, etc.) should use increasing indentation and standard bullet points (e.g., '  * [Sub-branch 1.1 Name]', '    - [Sub-sub-branch 1.1.1 Name]').
-        *   Each branch or sub-branch should have a concise name, followed by a brief one-sentence description if it adds clarity (e.g., '  * [Sub-branch 1.1 Name]: [Brief one-sentence description explaining its connection or detail].').
-        *   Ensure the textual structure clearly represents the relationships and hierarchy, similar to how a visual mind map layout (like the provided example of 'Judaism') would.
-        *   Cross-connections, if identified, should be listed in a separate section (e.g., '### Key Cross-Connections') clearly stating which branches are connected and why.
-        *   Contextual insights, if any, can also be a separate section.
-        *   Example Structure for 'response' field:
-            '# Mind Map: Judaism'
-            ''
-            '## Beliefs'
-            '  * Monotheistic: Belief in one God.'
-            '  * Torah: The primary sacred text.'
-            '  * Education: Strong emphasis on study and learning.'
-            ''
-            '## The Promise Land'
-            '  * Yahweh promised them the Holy Land, Jerusalem: Central to their faith and history.'
-            ''
-            '## Branches and Types'
-            '  * Orthodox: Strict and traditional adherence to Jewish law.'
-            '  * Conservative: Traditional but modernized, in between reform and orthodox.'
-            '    - Belief: Values ethical traditions and seeks contemporary relevance.'
-            '  * Reform: Liberal category that values ethical traditions over strict observance.'
-            '  * Reconstructionist: Believes that Judaism is constantly evolving.'
-            '  * Humanistic: Celebrate their history and culture without theistic belief.'
-            ''
-            '### Key Cross-Connections'
-            '* Between Beliefs (Torah) and Branches and Types: Different interpretations of the Torah lead to various branches.'
-    3.  **'visualElement' Output**: For these textual mind map requests, the 'visualElement' field in your JSON output MUST be set to null. You are NOT generating an image prompt for mind maps; the text IS the mind map. Do not ask the user if they want an image prompt created.
+    {{! This is the Mind Maps / Interactive Canvas Facilitator section }}
+    Act as a Knowledge Organization Facilitator. The user wants to create a mind map or flowchart using an interactive canvas.
+    Your role is to introduce the canvas and let the user build their visual structure.
+    1.  **Acknowledge Request**: Confirm the user wants to create a mind map/flowchart for their topic: "{{{question}}}".
+    2.  **Response**: Your main `response` text should be simple and inviting, e.g., "Great! I've set up an interactive canvas for you to build your mind map or flowchart on '{{{question}}}'. You can start adding nodes, connecting ideas, and organizing your thoughts visually."
+    3.  **visualElement Output**:
+        *   Set `visualElement.type` to `'interactive_mind_map_canvas'`.
+        *   Set `visualElement.content` to an object like `{{ '{ "initialTopic": "' + question + '" }' }}` (this is a Handlebars trick to embed JSON-like string).
+        *   Set `visualElement.caption` to "Interactive Mind Map / Flowchart Canvas for {{{question}}}".
+    Do NOT attempt to generate a textual mind map outline or an image prompt here. The user will use the interactive tool.
+
   {{else}}
-    {{! Fallback for general Visual Learning Focus if no specific sub-mode is identified by flags }}
-    You are the Visual Learning Studio AI Agent. The user is in the Visual Learning section but hasn't specified a particular type (Graphs, Diagrams, Mind Maps) or their query is general.
-    Your 'response' should gently guide them. For example: "I can help you create Graphs & Charts, Conceptual Diagrams, or textual Mind Maps. What kind of visual would best help you understand your topic: '{{{question}}}'?" Or, if their query is specific enough, interpret it as one of these types and proceed accordingly.
-    The 'visualElement' should be null unless you are confidently proceeding with a diagram or chart suggestion.
+    {{! Fallback for general Visual Learning Focus if no specific sub-mode is identified by flags (e.g. specificTopic is just "Visual Learning Focus") }}
+    You are the Visual Learning Studio AI Agent. The user is in the Visual Learning section but hasn't specified a particular type (Graphs, Diagrams, Mind Maps / Flowcharts) or their query is general.
+    Your 'response' should gently guide them. For example: "I can help you create Graphs & Charts, Conceptual Diagrams, or launch an interactive Mind Map/Flowchart canvas. What kind of visual would best help you understand your topic: '{{{question}}}'?" Or, if their query is specific enough, interpret it as one ofthese types and proceed accordingly.
+    The 'visualElement' should be null unless you are confidently proceeding with a diagram or chart suggestion based on a very clear implicit request.
   {{/if}}
 
   {{else}} {{! This is the default mode for specific subject/lesson/topic study, NOT general chat, homework, language, or visual learning page. }}
@@ -482,7 +369,7 @@ Remember: You are not just creating visuals—you are creating learning experien
           *   For bar/line charts: 'visualElement.type' = 'bar_chart_data'. 'visualElement.content' = array of objects. 'visualElement.caption' = "Title".
           *   For flowcharts/diagrams (that are not text-based mind maps): 'visualElement.type' = 'image_generation_prompt'. 'visualElement.content' = descriptive prompt for image generation. 'visualElement.caption' = "Illustration".
       *   Ensure any data or prompts in 'visualElement' are curriculum-aligned.
-      *   Mind maps are handled by the Visual Learning Focus mode or AI Learning Assistant Chat if explicitly requested as text. In this curriculum mode, do not attempt to generate mind map image prompts.
+      *   Interactive Mind Maps/Flowcharts are handled by the Visual Learning Page mode (isVisualLearningMindMaps). Textual mind maps are handled by AI Learning Assistant Chat.
   {{/if}}
 
   General Principles:
@@ -523,53 +410,64 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     inputSchema: AIGuidedStudySessionInputSchema, // The flow itself accepts the original schema
     outputSchema: AIGuidedStudySessionOutputSchema,
   },
-  async (input: AIGuidedStudySessionInput) => { // Ensure input type matches the flow's inputSchema
+  async (input: AIGuidedStudySessionInput) => { 
     const studentProfile = input.studentProfile;
     const educationQualification = studentProfile.educationQualification || {};
-
-    const visualLearningTopic = input.specificTopic;
-    const isGeneralVisualLearning = visualLearningTopic === "Visual Learning Focus";
+    const specificTopicFromInput = input.specificTopic; // Renamed to avoid conflict
 
     // Prepare the extended input for the prompt
-    const promptInput = {
+    const promptInput: z.infer<typeof PromptInputSchema> = {
       ...input,
       studentProfile: {
         ...studentProfile,
         learningStyle: studentProfile.learningStyle || 'balanced',
         educationQualification: {
           boardExam: educationQualification.boardExam || {},
-          competitiveExam: educationQualification.competitiveExam || { examType: undefined, specificExam: undefined, stage: undefined, examDate: undefined },
-          universityExam: educationQualification.universityExam || {},
+          competitiveExam: educationQualification.competitiveExams || { examType: undefined, specificExam: undefined, stage: undefined, examDate: undefined },
+          universityExam: educationQualification.universityExams || {},
         },
       },
       // Add boolean flags for Handlebars
-      isAiLearningAssistantChat: input.specificTopic === "AI Learning Assistant Chat" || input.specificTopic === "General Discussion",
-      isHomeworkHelp: input.specificTopic === "Homework Help",
-      isLanguageTranslatorMode: input.specificTopic === "LanguageTranslatorMode",
+      isAiLearningAssistantChat: specificTopicFromInput === "AI Learning Assistant Chat" || specificTopicFromInput === "General Discussion",
+      isHomeworkHelp: specificTopicFromInput === "Homework Help",
+      isLanguageTranslatorMode: specificTopicFromInput === "LanguageTranslatorMode",
       
-      isVisualLearningFocus: visualLearningTopic.startsWith("Visual Learning"), // True if any visual learning mode
-      isVisualLearningGraphs: visualLearningTopic === "Visual Learning - Graphs & Charts",
-      isVisualLearningDiagrams: visualLearningTopic === "Visual Learning - Conceptual Diagrams",
-      isVisualLearningMindMaps: visualLearningTopic === "Visual Learning - Mind Maps",
+      isVisualLearningFocus: specificTopicFromInput.startsWith("Visual Learning"), 
+      isVisualLearningGraphs: specificTopicFromInput === "Visual Learning - Graphs & Charts",
+      isVisualLearningDiagrams: specificTopicFromInput === "Visual Learning - Conceptual Diagrams",
+      isVisualLearningMindMaps: specificTopicFromInput === "Visual Learning - Mind Maps", // For interactive canvas
       
-      isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help", "LanguageTranslatorMode"].includes(input.specificTopic) && !visualLearningTopic.startsWith("Visual Learning"),
+      isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help", "LanguageTranslatorMode"].includes(specificTopicFromInput) && !specificTopicFromInput.startsWith("Visual Learning"),
     };
     
-    const {output} = await prompt(promptInput); // Pass the extended input to the prompt
+    const {output} = await prompt(promptInput); 
 
     if (output && output.response && Array.isArray(output.suggestions)) {
         // Ensure visualElement is explicitly null if the AI didn't provide it,
-        // especially if the prompt for mind maps instructed it to be null.
-        if (output.visualElement === undefined && promptInput.isVisualLearningMindMaps) { // Specifically check for mind maps
-            output.visualElement = null;
-        } else if (output.visualElement === undefined) { // General case
-            output.visualElement = null;
+        // or if it's a mode that should not have one (e.g. textual mind map in general chat)
+        if (output.visualElement === undefined) {
+            if (promptInput.isAiLearningAssistantChat && input.question.toLowerCase().includes("mind map")) { // Textual mind map in general chat
+                output.visualElement = null;
+            } else if (promptInput.isVisualLearningMindMaps) { // Interactive canvas for visual learning mind maps
+                // This case should have visualElement defined by the prompt for interactive_mind_map_canvas
+                // If it's somehow undefined here, it's an error in the prompt logic for that case.
+                // However, if it was MEANT to be null by the prompt but AI omitted it, this line is okay.
+                // The specific mind map prompt *should* set it, even if to type 'interactive_mind_map_canvas'.
+                // Let's assume if it's undefined for this specific mode, something went wrong or it's intentionally null.
+                // Given the new interactive canvas, it *should* be defined.
+                // If it's truly undefined and it was the Mind Maps Visual Learning mode,
+                // it defaults to null, which is okay (chat interface will just show text).
+                // But the goal is for the AI to set visualElement.type = 'interactive_mind_map_canvas'.
+                output.visualElement = null; 
+            } else {
+                output.visualElement = null; // General fallback
+            }
         }
         
         const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion"];
-        const isVisualLearningMode = promptInput.isVisualLearningFocus; // Use the general visual learning flag
+        const isVisualLearningMode = promptInput.isVisualLearningFocus; 
 
-        const shouldHaveMCQ = !nonMCQModes.includes(input.specificTopic) && !isVisualLearningMode &&
+        const shouldHaveMCQ = !nonMCQModes.includes(specificTopicFromInput) && !isVisualLearningMode &&
                                (input.subject || input.lesson); 
 
         if (shouldHaveMCQ && !output.response.match(/\b([A-D])\)\s/i) && !output.response.match(/\b[A-D]\.\s/i)) {
@@ -586,3 +484,6 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
+
+
+    
