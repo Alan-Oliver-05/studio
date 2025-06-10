@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
@@ -26,7 +27,7 @@ interface ModeConfig {
   label: string;
   icon: React.ElementType;
   description: string;
-  storageTopic: string; // This will be the 'specificTopic' for the AI flow
+  storageTopic: string; 
   initialSystemMessageTemplate: string;
   placeholderTextTemplate: string;
   enableImageUpload: boolean;
@@ -45,14 +46,14 @@ const visualModes: ModeConfig[] = [
     storageTopic: "Visual Learning - Conceptual Diagrams",
     initialSystemMessageTemplate: "Hi ${profileName}! Ready to make some Conceptual Diagrams? Tell me the process or system you want to illustrate. Remember to specify that text labels should be clear and legible. For example: 'Diagram the process of photosynthesis clearly with legible labels.'",
     placeholderTextTemplate: "E.g., Diagram the water cycle with clear labels...",
-    enableImageUpload: true, // User might upload an image to base a diagram on
+    enableImageUpload: true, 
   },
   {
-    id: "mindmaps", label: "Mind Maps", icon: BrainCircuit, description: "Organize ideas with textual mind maps.",
-    storageTopic: "Visual Learning - Mind Maps",
-    initialSystemMessageTemplate: "Welcome ${profileName}! Let's build a Mind Map. What's the central idea or topic? I'll create a structured textual outline for you. For example: 'Generate a mind map about the solar system.'",
-    placeholderTextTemplate: "E.g., Create a mind map of renewable energy sources...",
-    enableImageUpload: false, // Mind maps are textual outputs
+    id: "mindmaps", label: "Mind Maps / Flowcharts", icon: BrainCircuit, description: "Organize ideas with interactive canvas.",
+    storageTopic: "Visual Learning - Mind Maps", // Corresponds to the interactive canvas mode
+    initialSystemMessageTemplate: "Welcome ${profileName}! Let's use the interactive canvas. What's the central idea or topic for your mind map or flowchart? For example: 'My Project Plan.'",
+    placeholderTextTemplate: "E.g., Type your central idea for the canvas...",
+    enableImageUpload: true, // The canvas itself might allow image uploads from user, AI interaction is text
   },
 ];
 
@@ -77,7 +78,7 @@ export default function VisualLearningPage() {
       const modeTopic = getStorageTopicForMode(mode);
       const newId = `${modeTopic.replace(/\s+/g, '-').toLowerCase()}-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(newId);
-      setChatKey(newId); // Use the new ID as key to force re-mount of ChatInterface
+      setChatKey(newId); 
       router.push(`/visual-learning?mode=${mode}`, { scroll: false });
     }
   };
@@ -161,64 +162,90 @@ export default function VisualLearningPage() {
   }
   
   const getInitialMessageForMode = (modeConfig: ModeConfig) => {
-    return modeConfig.initialSystemMessageTemplate.replace('${profileName}', profile.name);
+    let initialMessage = modeConfig.initialSystemMessageTemplate.replace('${profileName}', profile.name);
+    // For mindmaps, specifically use the initial input query if the user is restoring a session.
+    if (modeConfig.id === 'mindmaps' && searchParams.get('sessionId')) {
+        const conversation = getConversationById(currentConversationId || "");
+        const firstUserMessage = conversation?.messages.find(m => m.sender === 'user');
+        if(firstUserMessage?.text) {
+            initialMessage = initialMessage.replace("What's the central idea or topic?", `For your topic: "${firstUserMessage.text}"`);
+        }
+    }
+    return initialMessage;
   }
+
 
   return (
     <div className="h-full flex flex-col pt-0">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 pt-0 mt-0">
         <div className="text-center sm:text-left">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-                <PieChartIcon className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Visual Learning Studio
+                <PieChartIcon className="mr-3 h-7 w-7 sm:h-8 sm:w-8 text-accent"/> Visual Learning Studio
             </h1>
             <p className="text-muted-foreground mt-1">
-              Explore concepts with AI-generated graphs, diagrams, and textual mind maps.
+              Explore concepts with AI-generated graphs, diagrams, and interactive mind maps.
             </p>
         </div>
-        <Button onClick={handleNewSessionClick} variant="outline" className="mt-3 sm:mt-0">
+        <Button onClick={handleNewSessionClick} variant="outline" className="mt-3 sm:mt-0 shadow-sm">
           <RotateCcw className="mr-2 h-4 w-4" /> New Session ({activeModeConfig.label})
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        {visualModes.map((mode) => (
-          <Card
-            key={mode.id}
-            onClick={() => handleModeChange(mode.id)}
-            className={cn(
-              "cursor-pointer hover:shadow-lg transition-shadow border-2 flex flex-col",
-              activeMode === mode.id ? "border-primary ring-2 ring-primary/50 bg-primary/5" : "border-border bg-card"
-            )}
-            tabIndex={0}
-            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleModeChange(mode.id)}
-            role="button"
-            aria-pressed={activeMode === mode.id}
-            aria-label={`Switch to ${mode.label} mode`}
-          >
-            <CardHeader className="flex flex-col items-center justify-center p-3 sm:p-4 text-center">
-              <mode.icon className={cn("h-6 w-6 sm:h-7 sm:h-7 mb-1.5", activeMode === mode.id ? "text-primary" : "text-muted-foreground")} />
-              <CardTitle className="text-xs sm:text-sm font-semibold">{mode.label}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 pt-0 text-center flex-grow">
-                 <CardDescription className="text-xs">{mode.description}</CardDescription>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        {visualModes.map((mode) => {
+          const Icon = mode.icon;
+          const isActive = activeMode === mode.id;
+          return (
+            <Card
+              key={mode.id}
+              onClick={() => handleModeChange(mode.id)}
+              className={cn(
+                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-1",
+                "bg-card/70 backdrop-blur-md border-2",
+                isActive 
+                  ? "border-primary shadow-2xl shadow-primary/30 ring-2 ring-primary/60" 
+                  : "border-border hover:border-primary/50 hover:shadow-xl dark:bg-slate-800/50 dark:hover:border-primary/70"
+              )}
+              tabIndex={0}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleModeChange(mode.id)}
+              role="button"
+              aria-pressed={isActive}
+              aria-label={`Switch to ${mode.label} mode`}
+            >
+              <CardHeader className="flex flex-row items-center gap-3 p-4">
+                <div className={cn(
+                    "p-2.5 rounded-lg transition-colors",
+                    isActive ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                )}>
+                    <Icon className={cn("h-6 w-6 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary")} />
+                </div>
+                <div>
+                    <CardTitle className={cn("text-base font-semibold transition-colors", isActive ? "text-primary" : "text-foreground group-hover:text-primary")}>{mode.label}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                   <CardDescription className="text-xs leading-relaxed text-muted-foreground">{mode.description}</CardDescription>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
         {profile && currentConversationId && chatKey && activeModeConfig && (
           <DynamicChatInterface
-            key={chatKey} // This key is crucial for re-rendering ChatInterface on mode change
+            key={chatKey} 
             userProfile={profile}
-            topic={activeModeConfig.storageTopic} // This will be "Visual Learning - Graphs & Charts", etc.
+            topic={activeModeConfig.storageTopic} 
             conversationId={currentConversationId}
             initialSystemMessage={getInitialMessageForMode(activeModeConfig)}
             placeholderText={activeModeConfig.placeholderTextTemplate}
             enableImageUpload={activeModeConfig.enableImageUpload}
+            initialInputQuery={activeMode === 'mindmaps' && !searchParams.get('sessionId') ? "My central idea" : undefined} // For new mindmap sessions, pass a placeholder
           />
         )}
       </div>
     </div>
   );
 }
+
