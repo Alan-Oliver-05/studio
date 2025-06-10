@@ -190,7 +190,7 @@ export default function VisualLearningPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+      <div className="flex flex-wrap justify-center gap-4 mb-6">
         {visualModes.map((mode) => {
           const Icon = mode.icon;
           const isActive = activeMode === mode.id;
@@ -200,9 +200,9 @@ export default function VisualLearningPage() {
               onClick={() => handleModeChange(mode.id)}
               className={cn(
                 "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col",
-                "bg-card border-2 rounded-xl overflow-hidden", // Changed to rounded-xl
+                "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-56 md:w-60 lg:w-64 flex-shrink-0", // Adjusted width
                 isActive
-                  ? "border-primary shadow-xl shadow-primary/25 ring-1 ring-primary/50" // Enhanced active shadow
+                  ? "border-primary shadow-xl shadow-primary/25 ring-1 ring-primary/50" 
                   : "border-border hover:border-primary/50 hover:shadow-lg dark:bg-slate-800/70 dark:hover:border-primary/70"
               )}
               tabIndex={0}
@@ -211,17 +211,17 @@ export default function VisualLearningPage() {
               aria-pressed={isActive}
               aria-label={`Switch to ${mode.label} mode`}
             >
-              <CardHeader className="items-center text-center p-3 pb-1"> {/* Reduced padding further */}
+              <CardHeader className="items-center text-center p-2 pb-0.5"> {/* Further reduced padding */}
                 <div className={cn(
-                    "p-2 rounded-full mb-1.5 transition-colors", // Further reduced padding and margin
+                    "p-1.5 rounded-full mb-1 transition-colors", // Further reduced padding & margin
                     isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                 )}>
-                    <Icon className={cn("h-6 w-6 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary")} /> {/* Icon size h-6 w-6 */}
+                    <Icon className={cn("h-5 w-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary")} /> {/* Reduced icon size */}
                 </div>
-                <CardTitle className={cn("text-sm font-semibold transition-colors", isActive ? "text-primary" : "text-foreground group-hover:text-primary")}>{mode.label}</CardTitle> {/* Title size sm */}
+                <CardTitle className={cn("text-xs font-medium transition-colors", isActive ? "text-primary" : "text-foreground group-hover:text-primary")}>{mode.label}</CardTitle> {/* Reduced title size */}
               </CardHeader>
-              <CardContent className="p-3 pt-1 text-center flex-grow flex flex-col justify-center"> {/* Reduced padding */}
-                   <CardDescription className="text-xs leading-normal text-muted-foreground">{mode.description}</CardDescription> {/* leading-normal for better wrap */}
+              <CardContent className="p-2 pt-0.5 text-center flex-grow flex flex-col justify-center"> {/* Further reduced padding */}
+                   <CardDescription className="text-xs leading-snug text-muted-foreground">{mode.description}</CardDescription> {/* Adjusted line height */}
               </CardContent>
               {isActive && (
                 <div className="w-full h-1 bg-primary mt-auto"></div>
@@ -253,3 +253,4 @@ export default function VisualLearningPage() {
   );
 }
     
+
