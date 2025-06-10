@@ -351,7 +351,7 @@ Remember: You are not just creating visuals—you are creating learning experien
     3.  **Response**: Your main 'response' text (the field named 'response' in your output JSON) should inform the user: "I've analyzed your uploaded content and created an initial mind map structure on the canvas below. You can modify it, add more nodes, or ask me questions about the content."
     4.  **visualElement Output**:
         *   Set 'visualElement.type' to 'interactive_mind_map_canvas'.
-        *   'visualElement.content' must be an object. It MUST contain a key 'initialTopic' (a string value, e.g., "Key Ideas from Uploaded Document related to '{{{question}}}'"). It MUST also contain a key 'initialNodes' which is an array of node objects you formulated. Each node object in 'initialNodes' MUST have an 'id' (string), 'text' (string), and can optionally have 'parentId' (string, linking to another node's 'id'), 'type' (string, e.g., 'root' or 'leaf'), and 'aiGenerated' (boolean, true if you generated it). For instance, a single node object for 'initialNodes' could be described as: 'a node with id "concept1", text "Main Concept Extracted", parentId "root", type "leaf", and aiGenerated true'. Ensure 'initialNodes' is a valid JSON array of such node objects.
+        *   'visualElement.content' must be an object. It MUST contain a key 'initialTopic' (a string value, e.g., "Key Ideas from Uploaded Document related to '{{{question}}}'"). It MUST also contain a key 'initialNodes' which is an array of node objects you formulated. Each node object in 'initialNodes' MUST have an 'id' (string), 'text' (string), and can optionally have 'parentId' (string, linking to another node's 'id'), 'type' (string, e.g., 'root' or 'leaf'), and 'aiGenerated' (boolean, true if you generated it). For instance, describe a single node object for 'initialNodes' as: 'a node with id "concept1", text "Main Concept Extracted", parentId "root", type "leaf", and aiGenerated true'. Ensure 'initialNodes' is a valid JSON array of such node objects.
         *   Set 'visualElement.caption' to "Interactive Mind Map from Uploaded Content".
     5.  **Subsequent Q&A**: If the user then asks a question in the chat, your role is to answer that question based on the content of the document/image they uploaded. Your response will be textual. Do not try to update the visualElement for Q&A turns unless specifically asked to generate a new type of visual.
     {{else}}
@@ -410,8 +410,7 @@ Remember: You are not just creating visuals—you are creating learning experien
     4. Ask a relevant MCQ based on that "retrieved" info.
     5. Suggest official/reputable resources.
   - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
-\`
-;
+\`;
 
 const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
@@ -498,11 +497,11 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
             if (output.visualElement.content.initialNodes !== undefined) {
                 if (!Array.isArray(output.visualElement.content.initialNodes)) {
                     console.warn("AI provided initialNodes but not as an array. Clearing initialNodes.");
-                    output.visualElement.content.initialNodes = undefined; // Corrected: was output.visualElement.content.initialNode before
+                    output.visualElement.content.initialNodes = undefined;
                 }
             } else {
                  // If initialNodes is not provided by AI (e.g. text query for mind map), make sure it's undefined, not null.
-                 output.visualElement.content.initialNodes = undefined;  // Corrected: was output.visualElement.content.initialNode before
+                 output.visualElement.content.initialNodes = undefined; 
             }
         }
 
@@ -526,3 +525,5 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
+
+    
