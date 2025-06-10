@@ -54,7 +54,7 @@ const visualModes: ModeConfig[] = [
     storageTopic: "Visual Learning - Mind Maps",
     initialSystemMessageTemplate: "Welcome ${profileName}! For the interactive canvas, what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'",
     placeholderTextTemplate: "E.g., Type your central idea for the canvas...",
-    enableImageUpload: true, // Can be true if the canvas itself has upload features
+    enableImageUpload: true, 
   },
 ];
 
@@ -190,7 +190,7 @@ export default function VisualLearningPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"> {/* Reduced gap from gap-6 to gap-4 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
         {visualModes.map((mode) => {
           const Icon = mode.icon;
           const isActive = activeMode === mode.id;
@@ -199,11 +199,11 @@ export default function VisualLearningPage() {
               key={mode.id}
               onClick={() => handleModeChange(mode.id)}
               className={cn(
-                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col", // Reduced hover effect slightly
-                "bg-card border-2 rounded-lg overflow-hidden",
+                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col",
+                "bg-card border-2 rounded-xl overflow-hidden", // Changed to rounded-xl
                 isActive
-                  ? "border-primary shadow-lg shadow-primary/20 ring-1 ring-primary/40"
-                  : "border-border hover:border-primary/50 hover:shadow-md dark:bg-slate-800/60 dark:hover:border-primary/70"
+                  ? "border-primary shadow-xl shadow-primary/25 ring-1 ring-primary/50" // Enhanced active shadow
+                  : "border-border hover:border-primary/50 hover:shadow-lg dark:bg-slate-800/70 dark:hover:border-primary/70"
               )}
               tabIndex={0}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleModeChange(mode.id)}
@@ -211,27 +211,27 @@ export default function VisualLearningPage() {
               aria-pressed={isActive}
               aria-label={`Switch to ${mode.label} mode`}
             >
-              <CardHeader className="items-center text-center p-4 pt-5"> {/* Reduced padding */}
+              <CardHeader className="items-center text-center p-3 pb-1"> {/* Reduced padding further */}
                 <div className={cn(
-                    "p-2.5 rounded-full mb-2 transition-colors", // Reduced padding for icon container
-                    isActive ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                    "p-2 rounded-full mb-1.5 transition-colors", // Further reduced padding and margin
+                    isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                 )}>
-                    <Icon className={cn("h-8 w-8 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary")} /> {/* Reduced icon size */}
+                    <Icon className={cn("h-6 w-6 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary")} /> {/* Icon size h-6 w-6 */}
                 </div>
-                <CardTitle className={cn("text-base font-semibold transition-colors", isActive ? "text-primary" : "text-foreground group-hover:text-primary")}>{mode.label}</CardTitle> {/* Smaller title */}
+                <CardTitle className={cn("text-sm font-semibold transition-colors", isActive ? "text-primary" : "text-foreground group-hover:text-primary")}>{mode.label}</CardTitle> {/* Title size sm */}
               </CardHeader>
-              <CardContent className="p-3 pt-0 text-center flex-grow flex flex-col justify-center"> {/* Reduced padding */}
-                   <CardDescription className="text-xs leading-snug text-muted-foreground">{mode.description}</CardDescription> {/* Smaller description */}
+              <CardContent className="p-3 pt-1 text-center flex-grow flex flex-col justify-center"> {/* Reduced padding */}
+                   <CardDescription className="text-xs leading-normal text-muted-foreground">{mode.description}</CardDescription> {/* leading-normal for better wrap */}
               </CardContent>
               {isActive && (
-                <div className="w-full h-1 bg-primary rounded-b-md mt-auto"></div>
+                <div className="w-full h-1 bg-primary mt-auto"></div>
               )}
             </Card>
           );
         })}
       </div>
       
-      <div className="flex-grow min-h-0 w-full"> {/* Removed max-w-4xl and mx-auto */}
+      <div className="flex-grow min-h-0 w-full">
         {profile && currentConversationId && chatKey && activeModeConfig && (
           <DynamicChatInterface
             key={chatKey}
