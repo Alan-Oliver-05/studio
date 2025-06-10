@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
+import type { UserProfile } from "@/types";
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -35,23 +36,23 @@ interface ModeConfig {
 
 const visualModes: ModeConfig[] = [
   {
-    id: "graphs", label: "Graphs & Charts", icon: BarChart3, description: "Visualize data, comparisons, and trends with AI-generated charts.",
+    id: "graphs", label: "Graphs & Charts", icon: BarChart3, description: "Visualize data, comparisons, and trends.",
     storageTopic: "Visual Learning - Graphs & Charts",
-    initialSystemMessageTemplate: "Hello ${profileName}! Let's create some Graphs & Charts. Describe the data you want to visualize, what kind of chart you're thinking of (e.g., bar, line, pie), and what insights you're hoping to see. For example: 'Create a bar chart for country populations.'",
-    placeholderTextTemplate: "E.g., Create a bar chart of global temperatures...",
+    initialSystemMessageTemplate: "Hello ${profileName}! Let's create some Graphs & Charts. Describe the data, chart type (bar, line), and insights. E.g., 'Bar chart for country populations.'",
+    placeholderTextTemplate: "E.g., Bar chart of global temperatures...",
     enableImageUpload: false,
   },
   {
-    id: "diagrams", label: "Conceptual Diagrams", icon: LayoutGrid, description: "Illustrate complex systems and processes with clear, AI-generated diagrams.",
+    id: "diagrams", label: "Conceptual Diagrams", icon: LayoutGrid, description: "Illustrate complex systems and processes.",
     storageTopic: "Visual Learning - Conceptual Diagrams",
-    initialSystemMessageTemplate: "Hi ${profileName}! Ready to make some Conceptual Diagrams? Tell me the process or system you want to illustrate. Remember to specify that text labels should be clear and legible. For example: 'Diagram the process of photosynthesis clearly with legible labels.'",
+    initialSystemMessageTemplate: "Hi ${profileName}! For Conceptual Diagrams, tell me the process/system. Ensure text labels are clear. E.g., 'Diagram photosynthesis with legible labels.'",
     placeholderTextTemplate: "E.g., Diagram the water cycle with clear labels...",
     enableImageUpload: true,
   },
   {
-    id: "mindmaps", label: "Mind Maps / Flowcharts", icon: BrainCircuit, description: "Organize ideas visually using an interactive canvas, guided by AI.",
+    id: "mindmaps", label: "Mind Maps / Flowcharts", icon: BrainCircuit, description: "Organize ideas with an interactive canvas.",
     storageTopic: "Visual Learning - Mind Maps",
-    initialSystemMessageTemplate: "Welcome ${profileName}! Let's use the interactive canvas. What's the central idea or topic for your mind map or flowchart? For example: 'My Project Plan.'",
+    initialSystemMessageTemplate: "Welcome ${profileName}! For the interactive canvas, what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'",
     placeholderTextTemplate: "E.g., Type your central idea for the canvas...",
     enableImageUpload: true,
   },
@@ -161,18 +162,17 @@ export default function VisualLearningPage() {
     );
   }
 
-  const getInitialMessageForMode = (modeConfig: ModeConfig) => {
-    let initialMessage = modeConfig.initialSystemMessageTemplate.replace('${profileName}', profile.name);
-    if (modeConfig.id === 'mindmaps' && searchParams.get('sessionId')) {
-        const conversation = getConversationById(currentConversationId || "");
+  const getInitialMessageForMode = (modeConfig: ModeConfig, currentProfile: UserProfile) => {
+    let initialMessage = modeConfig.initialSystemMessageTemplate.replace('${profileName}', currentProfile.name);
+    if (modeConfig.id === 'mindmaps' && searchParams.get('sessionId') && currentConversationId) {
+        const conversation = getConversationById(currentConversationId);
         const firstUserMessage = conversation?.messages.find(m => m.sender === 'user');
         if(firstUserMessage?.text) {
             initialMessage = initialMessage.replace("What's the central idea or topic?", `For your topic: "${firstUserMessage.text}"`);
         }
     }
     return initialMessage;
-  }
-
+  };
 
   return (
     <div className="min-h-full flex flex-col pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
@@ -190,7 +190,7 @@ export default function VisualLearningPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
         {visualModes.map((mode) => {
           const Icon = mode.icon;
           const isActive = activeMode === mode.id;
@@ -199,11 +199,11 @@ export default function VisualLearningPage() {
               key={mode.id}
               onClick={() => handleModeChange(mode.id)}
               className={cn(
-                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-1.5 flex flex-col",
-                "bg-card border-2 rounded-xl overflow-hidden", // More opaque card, rounded-xl
+                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-1 flex flex-col",
+                "bg-card border-2 rounded-lg overflow-hidden",
                 isActive
-                  ? "border-primary shadow-xl shadow-primary/25 ring-2 ring-primary/50"
-                  : "border-border hover:border-primary/60 hover:shadow-lg dark:bg-slate-800/80 dark:hover:border-primary/70"
+                  ? "border-primary shadow-lg shadow-primary/20 ring-1 ring-primary/40"
+                  : "border-border hover:border-primary/50 hover:shadow-md dark:bg-slate-800/60 dark:hover:border-primary/60"
               )}
               tabIndex={0}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleModeChange(mode.id)}
@@ -211,45 +211,46 @@ export default function VisualLearningPage() {
               aria-pressed={isActive}
               aria-label={`Switch to ${mode.label} mode`}
             >
-              <CardHeader className="items-center text-center p-5 sm:p-6">
+              <CardHeader className="items-center text-center p-3 pt-4">
                 <div className={cn(
-                    "p-3 rounded-full mb-3 transition-colors", // Larger icon padding, circular
+                    "p-2 rounded-full mb-1.5 transition-colors",
                     isActive ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                 )}>
-                    <Icon className={cn("h-10 w-10 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary")} />
+                    <Icon className={cn("h-7 w-7 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary")} />
                 </div>
-                <CardTitle className={cn("text-lg font-semibold transition-colors", isActive ? "text-primary" : "text-foreground group-hover:text-primary")}>{mode.label}</CardTitle>
+                <CardTitle className={cn("text-sm font-semibold transition-colors", isActive ? "text-primary" : "text-foreground group-hover:text-primary")}>{mode.label}</CardTitle>
               </CardHeader>
-              <CardContent className="p-5 pt-0 text-center flex-grow flex flex-col justify-center">
-                   <CardDescription className="text-sm leading-relaxed text-muted-foreground">{mode.description}</CardDescription>
+              <CardContent className="p-3 pt-0 text-center flex-grow flex flex-col justify-center">
+                   <CardDescription className="text-xs leading-snug text-muted-foreground">{mode.description}</CardDescription>
               </CardContent>
               {isActive && (
-                <div className="w-full h-1.5 bg-primary rounded-b-lg mt-auto"></div>
+                <div className="w-full h-1 bg-primary rounded-b-md mt-auto"></div>
               )}
             </Card>
           );
         })}
       </div>
       
-      <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
+      <div className="flex-grow min-h-0 w-full">
         {profile && currentConversationId && chatKey && activeModeConfig && (
           <DynamicChatInterface
             key={chatKey}
             userProfile={profile}
             topic={activeModeConfig.storageTopic}
             conversationId={currentConversationId}
-            initialSystemMessage={getInitialMessageForMode(activeModeConfig)}
+            initialSystemMessage={getInitialMessageForMode(activeModeConfig, profile)}
             placeholderText={activeModeConfig.placeholderTextTemplate}
             enableImageUpload={activeModeConfig.enableImageUpload}
             initialInputQuery={activeMode === 'mindmaps' && !searchParams.get('sessionId') ? "My central idea" : undefined}
           />
         )}
       </div>
-       <div className="text-center mt-8 py-4">
-            <Sparkles className="h-6 w-6 text-accent mx-auto mb-2 opacity-80"/>
-            <p className="text-sm text-muted-foreground">Select a mode above to begin your visual exploration.</p>
+       <div className="text-center mt-4 py-2">
+            <Sparkles className="h-4 w-4 text-accent mx-auto mb-1 opacity-70"/>
+            <p className="text-xs text-muted-foreground">Select a mode above to begin your visual exploration.</p>
         </div>
     </div>
   );
 }
     
+
