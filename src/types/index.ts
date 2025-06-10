@@ -57,9 +57,24 @@ export interface Topic {
   description?: string;
 }
 
+export interface InitialNodeData {
+  id: string;
+  text: string;
+  parentId?: string;
+  type?: 'root' | 'leaf' | 'detail'; // Consistent with AIMindMapDisplay internal Node type
+  aiGenerated?: boolean;
+  // x and y are optional, AIMindMapDisplay can layout if not provided
+  x?: number;
+  y?: number;
+  color?: string; // Optional color hint from AI
+}
+
 export interface VisualElement {
-  type: 'bar_chart_data' | 'line_chart_data' | 'flowchart_description' | 'image_generation_prompt';
-  content: any; 
+  type: 'bar_chart_data' | 'line_chart_data' | 'flowchart_description' | 'image_generation_prompt' | 'interactive_mind_map_canvas';
+  content: any | { // For interactive_mind_map_canvas specifically
+    initialTopic?: string;
+    initialNodes?: InitialNodeData[];
+  }; 
   caption?: string;
 }
 

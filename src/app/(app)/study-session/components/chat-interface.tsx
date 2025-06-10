@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from "react";
-import type { UserProfile, Message as MessageType, VisualElement, QAS_Stage, InteractiveQAndAInput } from "@/types";
+import type { UserProfile, Message as MessageType, VisualElement, QAS_Stage, InteractiveQAndAInput, InitialNodeData } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -61,10 +61,23 @@ const renderVisualElementContent = (visualElement: VisualElement) => {
     if (typeof visualElement.content === 'string') {
       contentRepresentation = visualElement.content;
     } else if (Array.isArray(visualElement.content) || typeof visualElement.content === 'object') {
-      try {
-        contentRepresentation = JSON.stringify(visualElement.content, null, 2);
-      } catch (e) {
-        contentRepresentation = "Could not display structured content."
+      // For interactive_mind_map_canvas, content can be an object with initialTopic/initialNodes
+      if (visualElement.type === 'interactive_mind_map_canvas' && typeof visualElement.content === 'object') {
+         if (visualElement.content.initialTopic && visualElement.content.initialNodes) {
+            contentRepresentation = `Canvas for "${visualElement.content.initialTopic}" with ${visualElement.content.initialNodes.length} initial nodes.`;
+         } else if (visualElement.content.initialTopic) {
+            contentRepresentation = `Canvas for "${visualElement.content.initialTopic}".`;
+         } else if (visualElement.content.initialNodes) {
+            contentRepresentation = `Canvas with ${visualElement.content.initialNodes.length} initial nodes.`;
+         } else {
+            contentRepresentation = "Interactive canvas setup.";
+         }
+      } else {
+        try {
+          contentRepresentation = JSON.stringify(visualElement.content, null, 2);
+        } catch (e) {
+          contentRepresentation = "Could not display structured content."
+        }
       }
     }
   }
@@ -185,6 +198,7 @@ export function ChatInterface({
   const [generatingImageForMessageId, setGeneratingImageForMessageId] = useState<string | null>(null);
   
   const isInteractiveQAMode = !SPECIAL_MODES_FOR_AI_GUIDED_STUDY.includes(topic);
+  const isMindMapMode = topic === "Visual Learning - Mind Maps";
 
   const [questionsAnsweredInClientStage, setQuestionsAnsweredInClientStage] = useState<number>(initialQuestionsInStage);
   const [currentClientStage, setCurrentClientStage] = useState<QAS_Stage>(initialQAStage);
@@ -235,23 +249,17 @@ export function ChatInterface({
           setIsTopicSessionCompleted(false);
         }
       }
-    } else if (initialSystemMessage && !isInteractiveQAMode && topic !== "Visual Learning - Mind Maps") { 
+    } else if (initialSystemMessage && !isInteractiveQAMode) { 
       const firstAIMessage: MessageType = {
         id: crypto.randomUUID(), sender: "ai", text: initialSystemMessage, timestamp: Date.now(),
+        visualElement: isMindMapMode ? {
+            type: 'interactive_mind_map_canvas',
+            content: { initialTopic: initialInputQuery || "My Mind Map" }, 
+            caption: `Interactive Mind Map for ${initialInputQuery || "My Mind Map"}`
+        } : undefined
       };
       setMessages([firstAIMessage]);
       addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
-    } else if (initialSystemMessage && topic === "Visual Learning - Mind Maps") { 
-        const firstAIMessage: MessageType = {
-          id: crypto.randomUUID(), sender: "ai", text: initialSystemMessage, timestamp: Date.now(),
-          visualElement: {
-              type: 'interactive_mind_map_canvas',
-              content: { initialTopic: initialInputQuery || "My Mind Map" }, 
-              caption: `Interactive Mind Map for ${initialInputQuery || "My Mind Map"}`
-          }
-        };
-        setMessages([firstAIMessage]);
-        addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
     }
      else { 
         setMessages([]);
@@ -262,7 +270,7 @@ export function ChatInterface({
         }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, initialSystemMessage, topic, userProfile, context, isInteractiveQAMode, initialQAStage, initialQuestionsInStage, initialInputQuery]);
+  }, [conversationId, initialSystemMessage, topic, userProfile, context, isInteractiveQAMode, initialQAStage, initialQuestionsInStage, initialInputQuery, isMindMapMode]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -422,7 +430,11 @@ export function ChatInterface({
             } else if (qAndAResponse.nextStage === prevStageForThisTurn && !qAndAResponse.isStageComplete) {
                 setQuestionsAnsweredInClientStage(prev => prev + 1);
             } else if (qAndAResponse.nextStage === prevStageForThisTurn && qAndAResponse.isStageComplete) {
-                setQuestionsAnsweredInClientStage(prev => prev + 1);
+                // If stage is complete but nextStage is the same, it means user just answered the last question of this stage
+                // And AI decided to transition to the *same* stage again (which is unusual, but we'll count it)
+                // Or if AI meant to transition *from* this stage, questionsAnswered should be based on next stage.
+                // For now, simple increment, assuming it implies one more question in current stage was handled.
+                setQuestionsAnsweredInClientStage(prev => prev + 1); 
             }
             
             if (qAndAResponse.nextStage === 'completed' && qAndAResponse.isStageComplete) {
@@ -504,7 +516,7 @@ export function ChatInterface({
 
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-lg shadow-xl border border-border/50">
+    <div className={cn("flex flex-col h-full rounded-lg shadow-xl border border-border/50", isMindMapMode ? "bg-transparent" : "bg-card")}>
       {isInteractiveQAMode && currentClientStage !== 'completed' && (
         <div className={cn(
             "text-xs text-center p-2.5 border-b font-medium rounded-t-lg bg-muted/60 text-muted-foreground"
@@ -541,7 +553,7 @@ export function ChatInterface({
                   message.sender === "user"
                     ? "bg-primary text-primary-foreground rounded-br-none"
                     : "bg-muted text-foreground rounded-bl-none border border-border/70",
-                  message.visualElement?.type === 'interactive_mind_map_canvas' ? 'w-full' : 'max-w-[80%] sm:max-w-[70%]'
+                  message.visualElement?.type === 'interactive_mind_map_canvas' ? 'w-full bg-transparent shadow-none border-0 p-0' : 'max-w-[80%] sm:max-w-[70%]'
                 )}
               >
                 {message.attachmentPreview && message.sender === 'user' && enableImageUpload && (
@@ -649,8 +661,11 @@ export function ChatInterface({
                   </Card>
                 )}
                  {message.sender === "ai" && message.visualElement?.type === 'interactive_mind_map_canvas' && (
-                  <div className="mt-3 border rounded-md bg-muted/30">
-                    <AIMindMapDisplay initialTopic={message.visualElement.content?.initialTopic || "My Ideas"} />
+                  <div className="mt-3 border-0 rounded-md bg-transparent p-0">
+                    <AIMindMapDisplay 
+                        initialTopic={message.visualElement.content?.initialTopic} 
+                        initialNodes={message.visualElement.content?.initialNodes} 
+                    />
                   </div>
                 )}
 
@@ -691,9 +706,16 @@ export function ChatInterface({
                 </Avatar>
                 <div className={cn(
                     "rounded-xl px-4 py-3 text-sm shadow-md bg-muted text-foreground rounded-bl-none border",
-                     topic === "Visual Learning - Mind Maps" ? 'w-full' : 'max-w-[70%]' // Apply full width if mind map
+                     topic === "Visual Learning - Mind Maps" && enableImageUpload ? 'w-full bg-transparent shadow-none border-0 p-0' : 'max-w-[70%]' 
                     )}>
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    {isMindMapMode && enableImageUpload ? ( // Special loading for mindmap when image might be processing
+                        <div className="p-4 text-center text-muted-foreground">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto mb-2" />
+                            Analyzing and preparing canvas...
+                        </div>
+                    ) : (
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    )}
                 </div>
              </div>
           )}

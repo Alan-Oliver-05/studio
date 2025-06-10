@@ -11,7 +11,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { performWebSearch } from '@/ai/tools/web-search-tool';
-import type { LearningStyle } from '@/types';
+import type { LearningStyle, InitialNodeData } from '@/types';
 
 const AIGuidedStudySessionInputSchema = z.object({
   studentProfile: z.object({
@@ -45,20 +45,39 @@ const AIGuidedStudySessionInputSchema = z.object({
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
   specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode" if it is a language translator session, "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps").'),
   question: z.string().describe("The student's question or request for the study session."),
-  photoDataUri: z.string().optional().nullable().describe("An optional photo uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
+  photoDataUri: z.string().optional().nullable().describe("An optional photo (or document content as image) uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
 export type AIGuidedStudySessionInput = z.infer<typeof AIGuidedStudySessionInputSchema>;
 
+const InitialNodeDataSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  parentId: z.string().optional(),
+  type: z.enum(['root', 'leaf', 'detail']).optional().default('leaf'),
+  aiGenerated: z.boolean().optional().default(true),
+  // x: z.number().optional(), // Layout determined by component for now
+  // y: z.number().optional(),
+  // color: z.string().optional(),
+}).describe("Schema for a single node in the initial mind map structure.");
+
+
+const VisualElementContentSchema = z.any().or(z.object({
+    initialTopic: z.string().optional().describe("The initial central topic for the mind map canvas, often from the user's query."),
+    initialNodes: z.array(InitialNodeDataSchema).optional().describe("An array of nodes to pre-populate the mind map canvas, typically generated from AI analysis of an uploaded document/image."),
+})).describe('Structured data for charts, a string prompt for image generation, or configuration for an interactive mind map canvas including optional initial nodes.');
+
+
 const VisualElementSchema = z.object({
   type: z.enum(['bar_chart_data', 'line_chart_data', 'flowchart_description', 'image_generation_prompt', 'interactive_mind_map_canvas']).describe('The type of visual element suggested.'),
-  content: z.any().describe('Structured data for charts (e.g., array of objects for bar/line charts), structured data for flowcharts (array of step objects), a string prompt for image generation, or configuration for an interactive canvas.'),
+  content: VisualElementContentSchema,
   caption: z.string().optional().describe('A brief caption or title for the visual element.'),
-}).describe("A structured representation of a visual aid suggested by the AI. For textual Mind Map requests via AI Learning Assistant Chat, this MUST be null. For interactive mind map canvas requests via Visual Learning page, type is 'interactive_mind_map_canvas'.");
+}).describe("A structured representation of a visual aid suggested by the AI. For textual Mind Map requests via AI Learning Assistant Chat, this MUST be null. For interactive mind map canvas requests via Visual Learning page (topic 'Visual Learning - Mind Maps'), type is 'interactive_mind_map_canvas'. If a document/image is uploaded with this request, 'content' can include 'initialNodes' to pre-populate the canvas.");
+
 
 const AIGuidedStudySessionOutputSchema = z.object({
-  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. The response should be comprehensive and directly address the query based on the student's specific curriculum if applicable. If providing an explanation or answering a question related to a specific curriculum, it should be followed by ONE multiple-choice question (MCQ) with options A, B, C, D to test understanding of that specific part of the curriculum. For textual mind maps requested via AI Learning Assistant Chat or Visual Learning page (if 'Visual Learning - Mind Maps' topic is selected), this field contains the mind map. For interactive mind maps requested via Visual Learning page when 'specificTopic' is 'Visual Learning - Mind Maps', this field contains an introductory message for the canvas."),
+  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. If an 'interactive_mind_map_canvas' is being set up from an uploaded document, this response should inform the user about the auto-generated initial structure. For Q&A about the map, this contains the textual explanation."),
   suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results."),
-  visualElement: VisualElementSchema.optional().nullable().describe("An optional visual element to aid understanding. This could be data for a chart, a description for a flowchart, a prompt for image generation. For textual mind maps requested by the student (via AI Learning Assistant Chat OR Visual Learning - Mind Maps mode), this MUST be null as the response field will contain the text-based mind map. For interactive mind map canvas requests (via Visual Learning - Mind Maps mode IF it's configured for canvas instead of text), this MUST have type 'interactive_mind_map_canvas' and relevant content."),
+  visualElement: VisualElementSchema.optional().nullable().describe("An optional visual element to aid understanding. For interactive mind map canvas requests (via Visual Learning - Mind Maps mode), this MUST have type 'interactive_mind_map_canvas'. If based on an uploaded file, its 'content' field can include an 'initialNodes' array."),
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
 
@@ -134,8 +153,10 @@ const prompt = ai.definePrompt({
   Student's Question/Request: "{{{question}}}"
 
   {{#if photoDataUri}}
-  Student provided image for context:
-  {{media url=photoDataUri}}
+  Student provided an image/document for context ({{{photoDataUri}}}).
+  {{#unless isVisualLearningMindMaps}}
+  {{media url=photoDataUri}} 
+  {{/unless}}
   {{/if}}
 
   Instructions for AI Tutor:
@@ -263,9 +284,9 @@ If an image is uploaded by the user (refer to 'Student provided image for contex
 ### Three Core Capabilities (as selected by user on the page):
 1. **📊 Graphs & Charts**: Data visualization, comparisons, and trend analysis (AI generates data for charts)
 2. **🔗 Conceptual Diagrams**: Process flows, system relationships, and complex concept breakdowns (AI generates prompts for diagrams)
-3. **🧠 Mind Maps / Flowcharts (Interactive Canvas)**: User interacts with a canvas; AI offers a simple setup message.
+3. **🧠 Mind Maps / Flowcharts (Interactive Canvas)**: User interacts with a canvas; AI offers setup or analysis.
 
-### Universal Visual Learning Response Framework (Applies to all visual requests EXCEPT Mind Maps where 'visualElement.type' is 'interactive_mind_map_canvas')
+### Universal Visual Learning Response Framework (Applies to all visual requests EXCEPT Mind Maps where 'visualElement.type' is 'interactive_mind_map_canvas' AND no 'photoDataUri' is provided)
 When responding to ANY visual request for Graphs/Charts or Diagrams (where an image or chart data is to be generated):
 🎨 **Visual Type Identification**: State the type of visual you are planning (Graph, Diagram).
 📋 **Content Analysis**: Briefly mention the core concepts being visualized.
@@ -282,7 +303,7 @@ Your textual 'response' to the user should summarize these points before you pro
 #### For Mathematical Concepts: "🔢 Mathematical Precision, 📐 Geometric Clarity, 📊 Step-by-Step Flow, 🎯 Concept Reinforcement, 💡 Problem-Solving Aid"
 
 ### Google Genkit Integration Guidelines (Internal knowledge)
-- Multimodal Capabilities: You can describe visuals and provide data/prompts for Genkit (for charts/diagrams). For Mind Maps mode, you primarily launch an interactive canvas.
+- Multimodal Capabilities: You can describe visuals and provide data/prompts for Genkit (for charts/diagrams). For Mind Maps mode, you primarily launch an interactive canvas, potentially pre-filled from document analysis.
 - Contextual Understanding: Use student profile and conversation for educational context.
 - Accessibility: Aim for designs that would be accessible if rendered.
 
@@ -296,7 +317,7 @@ All Visual Content (that your prompt describes for IMAGE generation) Must Aim Fo
 - **Show Logical Organization**: Information flows in a comprehensible manner.
 - **Support Learning Objectives**: Directly contribute to educational goals.
 
-Remember: You are not just creating visuals—you are creating learning experiences. Every diagram and chart prompt you design should aim for a tool that makes learning more engaging, accessible, and effective. For Mind Maps mode, you are facilitating the use of an interactive tool.
+Remember: You are not just creating visuals—you are creating learning experiences. Every diagram and chart prompt you design should aim for a tool that makes learning more engaging, accessible, and effective. For Mind Maps mode, you are facilitating the use of an interactive tool, possibly seeded with AI-extracted content.
 
 ---
   {{! Specific Visual Learning Mode Prompts below, triggered by specific 'specificTopic' values like "Visual Learning - Graphs & Charts" }}
@@ -326,20 +347,36 @@ Remember: You are not just creating visuals—you are creating learning experien
 
   {{else if isVisualLearningMindMaps}}
     {{! This is the Mind Maps / Interactive Canvas Facilitator section }}
-    Act as a Knowledge Organization Facilitator. The user wants to create a mind map or flowchart using an interactive canvas.
-    Your role is to introduce the canvas and let the user build their visual structure.
+    Act as a Knowledge Organization Facilitator. The user wants to create a mind map or flowchart.
+
+    {{#if photoDataUri}}
+    The student has UPLOADED A DOCUMENT/IMAGE ({{{photoDataUri}}}) for mind map/flowchart generation.
+    1.  **Analyze Uploaded Content**: Your primary task is to analyze the content of the uploaded document/image. Extract 3-5 key concepts, steps, or main sections from it.
+    2.  **Formulate 'initialNodes'**:
+        *   Create a 'root' node. Its 'text' can be based on the student's '{{{question}}}' (if provided and relevant, e.g., "Analysis of uploaded document about {{{question}}}"), or a generic title like "Key Points from Uploaded Content". Set 'id' to 'root', 'type' to 'root', 'aiGenerated' to true.
+        *   For each extracted key concept/step, create a child node. Its 'text' should be the concept. Set 'id' uniquely (e.g., 'node1', 'node2'), 'parentId' to 'root', 'type' to 'leaf', 'aiGenerated' to true.
+    3.  **Response**: Your main 'response' text (the field named 'response' in your output JSON) should inform the user: "I've analyzed your uploaded content and created an initial mind map structure on the canvas below. You can modify it, add more nodes, or ask me questions about the content."
+    4.  **visualElement Output**:
+        *   Set 'visualElement.type' to 'interactive_mind_map_canvas'.
+        *   Set 'visualElement.content' to an object structured like: `{ "initialTopic": "Derived Topic from Upload or User Query", "initialNodes": [ /* array of node objects you formulated */ ] }`. Example: `{"initialTopic": "Photosynthesis Analysis", "initialNodes": [{"id": "root", "text": "Photosynthesis Key Points", "type": "root", "aiGenerated": true}, {"id": "node1", "text": "Light-dependent Reactions", "parentId": "root", "type": "leaf", "aiGenerated": true}, {"id": "node2", "text": "Calvin Cycle", "parentId": "root", "type": "leaf", "aiGenerated": true}]}`. Ensure valid JSON structure for 'initialNodes'.
+        *   Set 'visualElement.caption' to "Interactive Mind Map from Uploaded Content".
+    5.  **Subsequent Q&A**: If the user then asks a question in the chat, your role is to answer that question based on the content of the document/image they uploaded. Your response will be textual. Do not try to update the visualElement for Q&A turns unless specifically asked to generate a new type of visual.
+    {{else}}
+    The student wants to create a mind map/flowchart MANUALLY or based on a typed topic.
     1.  **Acknowledge Request**: Confirm the user wants to create a mind map/flowchart for their topic: "{{{question}}}".
     2.  **Response**: Your main 'response' text (the field named 'response' in your output JSON) should be simple and inviting, e.g., "Great! I've set up an interactive canvas for you to build your mind map or flowchart on '{{{question}}}'. You can start adding nodes, connecting ideas, and organizing your thoughts visually."
     3.  **visualElement Output**:
         *   Set the 'visualElement.type' field in your output JSON to the string 'interactive_mind_map_canvas'.
-        *   Set the 'visualElement.content' field in your output JSON to an object structured like { "initialTopic": "{{{question}}}" }.
+        *   Set the 'visualElement.content' field in your output JSON to an object structured like { "initialTopic": "{{{question}}}" }. No 'initialNodes' are needed here as it's a manual start.
         *   Set the 'visualElement.caption' field in your output JSON to "Interactive Mind Map / Flowchart Canvas for {{{question}}}".
-    Do NOT attempt to generate a textual mind map outline or an image prompt here. The user will use the interactive tool.
+    4.  **Subsequent Q&A**: If the user asks questions, answer them textually based on the topic '{{{question}}}'.
+    {{/if}}
+    Do NOT attempt to generate a textual mind map outline or an image prompt here when `isVisualLearningMindMaps` is true. The user will use the interactive tool.
 
   {{else}}
     {{! Fallback for general Visual Learning Focus if no specific sub-mode is identified by flags (e.g. specificTopic is just "Visual Learning Focus") }}
     You are the Visual Learning Studio AI Agent. The user is in the Visual Learning section but hasn't specified a particular type (Graphs, Diagrams, Mind Maps / Flowcharts) or their query is general.
-    Your 'response' should gently guide them. For example: "I can help you create Graphs & Charts, Conceptual Diagrams, or launch an interactive Mind Map/Flowchart canvas. What kind of visual would best help you understand your topic: '{{{question}}}'?" Or, if their query is specific enough, interpret it as one ofthese types and proceed accordingly.
+    Your 'response' should gently guide them. For example: "I can help you create Graphs & Charts, Conceptual Diagrams, or launch an interactive Mind Map/Flowchart canvas. What kind of visual would best help you understand your topic: '{{{question}}}'?" Or, if their query is specific enough, interpret it as one of these types and proceed accordingly.
     The 'visualElement' should be null unless you are confidently proceeding with a diagram or chart suggestion based on a very clear implicit request.
   {{/if}}
 
@@ -449,19 +486,27 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
             if (promptInput.isAiLearningAssistantChat && input.question.toLowerCase().includes("mind map")) { // Textual mind map in general chat
                 output.visualElement = null;
             } else {
-                 // If it's visual learning mind maps mode, AI should have set visualElement.type to interactive_mind_map_canvas
-                 // If it didn't, that's an issue with prompt adherence. For now, defaulting to null if undefined.
                 output.visualElement = null; 
             }
-        } else if (output.visualElement && promptInput.isVisualLearningMindMaps && output.visualElement.type !== 'interactive_mind_map_canvas') {
-            // If it's mind map mode but AI gave a different visualElement, force it to what's expected
-            // The prompt for isVisualLearningMindMaps *should* guide AI to set type: 'interactive_mind_map_canvas'
-            // This is a fallback if AI provides some visualElement but not the right type for interactive canvas.
-             output.visualElement = {
-                type: 'interactive_mind_map_canvas',
-                content: { initialTopic: input.question || "My Ideas" },
-                caption: `Interactive Mind Map for ${input.question || "My Ideas"}`
-             };
+        } else if (output.visualElement && promptInput.isVisualLearningMindMaps) {
+            // If it's mind map mode, ensure the type is correct and content is an object
+            if (output.visualElement.type !== 'interactive_mind_map_canvas') {
+                 output.visualElement.type = 'interactive_mind_map_canvas'; // Force correct type
+            }
+            // Ensure content is an object, even if AI messes up and provides a string or something else
+            if (typeof output.visualElement.content !== 'object' || output.visualElement.content === null) {
+                // If photoDataUri was present, AI should have tried to make initialNodes.
+                // If not, it should at least have initialTopic.
+                const defaultInitialTopic = input.photoDataUri ? "Analysis of Uploaded Content" : (input.question || "My Ideas");
+                output.visualElement.content = { initialTopic: defaultInitialTopic };
+                 // if initialNodes were expected but not provided, leave them undefined for now.
+                 // The component AIMindMapDisplay should handle undefined initialNodes gracefully.
+            }
+            // Further ensure, if initialNodes are present, they are an array
+            if (output.visualElement.content.initialNodes !== undefined && !Array.isArray(output.visualElement.content.initialNodes)) {
+                console.warn("AI provided initialNodes but not as an array. Clearing initialNodes.");
+                output.visualElement.content.initialNodes = undefined; // Or [] if preferred
+            }
         }
 
 
