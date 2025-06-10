@@ -18,6 +18,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider
 } from "@/components/ui/tooltip";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +29,6 @@ import type { ChartConfig } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 import dynamic from "next/dynamic";
 
-// Dynamically import the AIMindMapDisplay component only on the client-side
 const AIMindMapDisplay = dynamic(
   () => import('@/app/(app)/visual-learning/components/AIMindMapDisplay').then(mod => mod.default),
   { 
@@ -141,16 +141,14 @@ const RenderBarChartVisual = ({ visualElement }: { visualElement: VisualElement 
 const SPECIAL_MODES_FOR_AI_GUIDED_STUDY = [
     "AI Learning Assistant Chat", 
     "Homework Help", 
-    // "Visual Learning Focus", // Removed as sub-modes are now specific topics
     "LanguageTranslatorMode", 
     "Language Text Translation", 
     "Language Voice Translation", 
     "Language Conversation Practice", 
     "Language Camera Translation",
-    // Specific visual learning topics:
     "Visual Learning - Graphs & Charts",
     "Visual Learning - Conceptual Diagrams",
-    "Visual Learning - Mind Maps", // This corresponds to the interactive canvas
+    "Visual Learning - Mind Maps", 
 ];
 
 function findLastIndex<T>(array: T[], predicate: (value: T, index: number, obj: T[]) => boolean): number {
@@ -243,12 +241,12 @@ export function ChatInterface({
       };
       setMessages([firstAIMessage]);
       addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
-    } else if (initialSystemMessage && topic === "Visual Learning - Mind Maps") { // Handle initial message for interactive mind map
+    } else if (initialSystemMessage && topic === "Visual Learning - Mind Maps") { 
         const firstAIMessage: MessageType = {
           id: crypto.randomUUID(), sender: "ai", text: initialSystemMessage, timestamp: Date.now(),
           visualElement: {
               type: 'interactive_mind_map_canvas',
-              content: { initialTopic: initialInputQuery || "My Mind Map" }, // Pass user's question as initial topic
+              content: { initialTopic: initialInputQuery || "My Mind Map" }, 
               caption: `Interactive Mind Map for ${initialInputQuery || "My Mind Map"}`
           }
         };
@@ -273,7 +271,7 @@ export function ChatInterface({
   }, [messages]);
 
   useEffect(() => {
-    if (initialInputQuery && initialInputQuery.trim() !== "" && topic !== "Visual Learning - Mind Maps") { // Don't auto-set input for mind maps if initial message handles it
+    if (initialInputQuery && initialInputQuery.trim() !== "" && topic !== "Visual Learning - Mind Maps") { 
       setInput(initialInputQuery);
       if (onInitialQueryConsumed) onInitialQueryConsumed();
     }
@@ -386,7 +384,7 @@ export function ChatInterface({
     try {
       let aiResponseMessage: MessageType;
       
-      let aiFlowTopic: string = topic; // Default to the passed topic
+      let aiFlowTopic: string = topic; 
 
       if (isInteractiveQAMode) {
         let previousAIQuestionText: string | undefined;
@@ -539,10 +537,11 @@ export function ChatInterface({
               )}
               <div
                 className={cn(
-                  "max-w-[80%] sm:max-w-[70%] rounded-xl px-3.5 py-2.5 text-sm shadow-md",
+                  "rounded-xl px-3.5 py-2.5 text-sm shadow-md",
                   message.sender === "user"
                     ? "bg-primary text-primary-foreground rounded-br-none"
-                    : "bg-muted text-foreground rounded-bl-none border border-border/70"
+                    : "bg-muted text-foreground rounded-bl-none border border-border/70",
+                  message.visualElement?.type === 'interactive_mind_map_canvas' ? 'w-full' : 'max-w-[80%] sm:max-w-[70%]'
                 )}
               >
                 {message.attachmentPreview && message.sender === 'user' && enableImageUpload && (
@@ -650,7 +649,7 @@ export function ChatInterface({
                   </Card>
                 )}
                  {message.sender === "ai" && message.visualElement?.type === 'interactive_mind_map_canvas' && (
-                  <div className="mt-3 border rounded-md p-2 bg-muted/30">
+                  <div className="mt-3 border rounded-md bg-muted/30">
                     <AIMindMapDisplay initialTopic={message.visualElement.content?.initialTopic || "My Ideas"} />
                   </div>
                 )}
@@ -690,7 +689,10 @@ export function ChatInterface({
                 <Avatar className="h-8 w-8 border border-primary/30 shadow-sm flex-shrink-0">
                   <AvatarFallback className="bg-primary/10"><Bot className="h-5 w-5 text-primary" /></AvatarFallback>
                 </Avatar>
-                <div className="max-w-[70%] rounded-xl px-4 py-3 text-sm shadow-md bg-muted text-foreground rounded-bl-none border">
+                <div className={cn(
+                    "rounded-xl px-4 py-3 text-sm shadow-md bg-muted text-foreground rounded-bl-none border",
+                     topic === "Visual Learning - Mind Maps" ? 'w-full' : 'max-w-[70%]' // Apply full width if mind map
+                    )}>
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 </div>
              </div>
@@ -714,6 +716,7 @@ export function ChatInterface({
         className="flex items-center gap-2 sm:gap-3 border-t border-border/50 p-3 bg-background rounded-b-lg"
       >
         {enableImageUpload && (
+          <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -726,6 +729,7 @@ export function ChatInterface({
             </TooltipTrigger>
             <TooltipContent><p>Upload Image (max 4MB)</p></TooltipContent>
           </Tooltip>
+          </TooltipProvider>
         )}
         {enableImageUpload && (
           <Input
@@ -745,6 +749,7 @@ export function ChatInterface({
           }}
           aria-label="Chat input"
         />
+         <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button type="submit" size="icon" 
@@ -756,6 +761,7 @@ export function ChatInterface({
           </TooltipTrigger>
           <TooltipContent><p>Send Message</p></TooltipContent>
         </Tooltip>
+        </TooltipProvider>
       </form>
       <div className="px-3 pb-2 pt-1 text-center text-xs text-muted-foreground">
         <p>AI responses are for informational purposes and may sometimes be inaccurate. Always verify critical information.</p>

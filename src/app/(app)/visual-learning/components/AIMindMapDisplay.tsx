@@ -2,9 +2,11 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Plus, Edit2, Trash2, Upload, FileText, Image as ImageIconLucide, Brain, Loader2, Camera } from 'lucide-react';
+import { Plus, Edit2, Trash2, Upload, FileText, Image as ImageIconLucide, Brain, Loader2, Camera, ZoomIn, ZoomOut, RotateCcw as ResetIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+
 
 interface Node {
   id: string;
@@ -12,7 +14,7 @@ interface Node {
   x: number;
   y: number;
   type: 'root' | 'leaf' | 'detail';
-  color: string; // Base color for the node (e.g., blue for manual, purple for AI)
+  color: string;
   aiGenerated: boolean;
   parentId?: string;
   confidence?: number;
@@ -25,6 +27,9 @@ interface AIMindMapDisplayProps {
 
 const MANUAL_NODE_COLOR = '#3b82f6'; // blue-500
 const AI_NODE_COLOR = '#8b5cf6';     // purple-500
+const MIN_SCALE = 0.2;
+const MAX_SCALE = 3.0;
+const ZOOM_SENSITIVITY = 0.001;
 
 const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => {
   const [nodes, setNodes] = useState<Node[]>([
@@ -32,7 +37,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
       id: 'root',
       text: initialTopic || 'AI Learning Map',
       x: 100,
-      y: 300,
+      y: 150, // Adjusted initial Y for better centering with new height
       type: 'root',
       color: MANUAL_NODE_COLOR,
       aiGenerated: false
@@ -41,14 +46,16 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
+  const [dragInfo, setDragInfo] = useState<{ type: 'node' | 'canvas', id?: string, offset: { x: number, y: number }, startCoords: { x: number, y: number }} | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  // const [aiSuggestions, setAISuggestions] = useState<{text: string, type: string, confidence: number}[]>([]); // Kept for potential future use
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [scale, setScale] = useState(1);
+  const [translateX, setTranslateX] = useState(50); // Initial pan
+  const [translateY, setTranslateY] = useState(50); // Initial pan
 
   useEffect(() => {
     if (initialTopic) {
@@ -60,9 +67,23 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
     }
   }, [initialTopic]);
 
+  const getTransformedPoint = useCallback((screenX: number, screenY: number) => {
+    if (!svgRef.current) return { x: 0, y: 0 };
+    const svg = svgRef.current;
+    const point = svg.createSVGPoint();
+    point.x = screenX;
+    point.y = screenY;
+    const transformedPoint = point.matrixTransform(svg.getScreenCTM()?.inverse());
+    return {
+        x: (transformedPoint.x - translateX) / scale,
+        y: (transformedPoint.y - translateY) / scale
+    };
+  }, [translateX, translateY, scale]);
+
+
   const analyzeContent = useCallback(async (file: File) => {
     setIsProcessing(true);
-    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000)); // Simulate variable processing
+    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
     
     const fileType = file.type;
     let suggestions: { text: string, type: string, confidence: number }[] = [];
@@ -107,9 +128,9 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
       x: parentNode.x + 200,
       y: parentNode.y + (index * 35) - ((subNodesContent.length -1) * 35 / 2),
       type: 'detail' as 'detail',
-      color: parentColor, // Inherit base color, visual styling (fill/stroke) differentiates
+      color: parentColor,
       parentId,
-      aiGenerated: true // Detail nodes are also AI-generated in this context
+      aiGenerated: true
     }));
     
     setNodes(prevNodes => [...prevNodes, ...detailNodesToAdd]);
@@ -119,7 +140,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
     const parentNode = nodes.find(n => n.id === parentId);
     if (!parentNode) return;
 
-    const newGeneratedNodes: Node[] = analysisSuggestions.map((suggestion, index) => {
+    const newGeneratedNodesData: Node[] = analysisSuggestions.map((suggestion, index) => {
       const yOffset = (nodes.filter(n => n.parentId === parentId).length + index) * 50 - (analysisSuggestions.length > 1 ? ((analysisSuggestions.length-1)*50/2) : 0);
       return {
         id: `ai_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
@@ -127,7 +148,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
         x: parentNode.x + 250,
         y: parentNode.y + yOffset,
         type: 'leaf' as 'leaf',
-        color: AI_NODE_COLOR, // All AI generated nodes get purple base color
+        color: AI_NODE_COLOR,
         parentId,
         aiGenerated: true,
         confidence: suggestion.confidence,
@@ -135,11 +156,11 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
       };
     });
 
-    setNodes(prevNodes => [...prevNodes, ...newGeneratedNodes]);
+    setNodes(prevNodes => [...prevNodes, ...newGeneratedNodesData]);
     
     setTimeout(() => {
-      newGeneratedNodes.forEach(node => {
-        if (node.confidence && node.confidence > 0.85 && node.aiType) { // Slightly lower threshold for auto-details
+      newGeneratedNodesData.forEach(node => {
+        if (node.confidence && node.confidence > 0.85 && node.aiType) {
           generateDetailNodes(node.id, node.color, node.aiType);
         }
       });
@@ -153,10 +174,9 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
     
     for (const file of currentFiles) {
       const analysisSuggestions = await analyzeContent(file);
-      // setAISuggestions(prev => [...prev, ...analysisSuggestions]);
       generateNodesFromAnalysis(analysisSuggestions, selectedNodeId || 'root');
     }
-     event.target.value = ''; // Reset file input
+     event.target.value = '';
   }, [analyzeContent, generateNodesFromAnalysis, selectedNodeId]);
 
   const getSmartSuggestions = (nodeText: string): string[] => {
@@ -187,7 +207,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
       x: parentNode.x + 220,
       y: parentNode.y + yOffset,
       type: 'leaf',
-      color: MANUAL_NODE_COLOR, // Manual nodes are blue
+      color: MANUAL_NODE_COLOR,
       parentId,
       aiGenerated: false
     };
@@ -209,16 +229,16 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
       x: parentNode.x + 220,
       y: parentNode.y + yOffset,
       type: 'leaf',
-      color: AI_NODE_COLOR, // Smart add implies AI suggestion
+      color: AI_NODE_COLOR,
       parentId,
       aiGenerated: true 
     };
     setNodes(prev => [...prev, newNode]);
   };
 
-  const updateNode = (id: string, updates: Partial<Node>) => {
+  const updateNodeText = (id: string, newText: string) => {
     setNodes(prevNodes => prevNodes.map(node => 
-      node.id === id ? { ...node, ...updates } : node
+      node.id === id ? { ...node, text: newText } : node
     ));
   };
 
@@ -238,26 +258,90 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
     setSelectedNodeId(null);
   };
 
-  const handleMouseDown = (e: React.MouseEvent<SVGRectElement>, node: Node) => {
+  const handleNodeMouseDown = (e: React.MouseEvent<SVGGElement>, node: Node) => {
+    e.stopPropagation(); // Prevent triggering canvas pan
     if (editingNodeId) return;
-    if (!svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setDragOffset({ x: x - node.x, y: y - node.y });
+    const transformedPoint = getTransformedPoint(e.clientX, e.clientY);
+    setDragInfo({
+      type: 'node',
+      id: node.id,
+      offset: { x: transformedPoint.x - node.x, y: transformedPoint.y - node.y },
+      startCoords: { x: transformedPoint.x, y: transformedPoint.y }
+    });
     setSelectedNodeId(node.id);
-    setIsDragging(true);
+  };
+  
+  const handleCanvasMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (e.target !== svgRef.current) return; // Only pan if clicking on svg background
+    const transformedPoint = getTransformedPoint(e.clientX, e.clientY);
+    setDragInfo({
+      type: 'canvas',
+      offset: { x: 0, y: 0 }, // Not used for canvas pan start, but kept for structure
+      startCoords: { x: e.clientX, y: e.clientY } // Use screen coords for canvas pan delta
+    });
   };
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!isDragging || !selectedNodeId || !svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    updateNode(selectedNodeId, { x: x - dragOffset.x, y: y - dragOffset.y });
+    if (!dragInfo) return;
+    e.preventDefault();
+
+    if (dragInfo.type === 'node' && dragInfo.id) {
+      const transformedPoint = getTransformedPoint(e.clientX, e.clientY);
+      const newX = transformedPoint.x - dragInfo.offset.x;
+      const newY = transformedPoint.y - dragInfo.offset.y;
+      setNodes(prevNodes => prevNodes.map(n => n.id === dragInfo.id ? { ...n, x: newX, y: newY } : n));
+    } else if (dragInfo.type === 'canvas') {
+      const dx = e.clientX - dragInfo.startCoords.x;
+      const dy = e.clientY - dragInfo.startCoords.y;
+      setTranslateX(prev => prev + dx);
+      setTranslateY(prev => prev + dy);
+      setDragInfo(prev => prev ? { ...prev, startCoords: { x: e.clientX, y: e.clientY }} : null);
+    }
   };
 
-  const handleMouseUp = () => setIsDragging(false);
+  const handleMouseUp = () => {
+    setDragInfo(null);
+  };
+
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    if (!svgRef.current) return;
+
+    const svg = svgRef.current;
+    const rect = svg.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const newScale = Math.min(Math.max(scale - e.deltaY * ZOOM_SENSITIVITY * scale, MIN_SCALE), MAX_SCALE);
+    
+    // Zoom towards mouse pointer
+    const newTranslateX = mouseX - (mouseX - translateX) * (newScale / scale);
+    const newTranslateY = mouseY - (mouseY - translateY) * (newScale / scale);
+
+    setScale(newScale);
+    setTranslateX(newTranslateX);
+    setTranslateY(newTranslateY);
+  };
+
+  const zoom = (factor: number) => {
+    if (!svgRef.current) return;
+    const svg = svgRef.current;
+    const rect = svg.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
+    const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+    setTranslateX(centerX - (centerX - translateX) * (newScale / scale));
+    setTranslateY(centerY - (centerY - translateY) * (newScale / scale));
+    setScale(newScale);
+  };
+
+  const resetView = () => {
+    setScale(1);
+    setTranslateX(50);
+    setTranslateY(50);
+  };
+
 
   const renderConnections = () => {
     return nodes.map(node => {
@@ -295,33 +379,32 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
   const renderNode = (node: Node) => {
     const isSelected = selectedNodeId === node.id;
     const isEditing = editingNodeId === node.id;
-    const nodeWidth = node.type === 'root' ? 120 : Math.min(Math.max(node.text.length * 7 + 30, 120), 350); // +30 for padding & potential icon
+    const nodeWidth = node.type === 'root' ? 120 : Math.min(Math.max(node.text.length * 7 + 30, 120), 350);
     const nodeFill = node.color;
-    const textColor = 'white'; // All nodes have white text for contrast against blue/purple
+    const textColor = 'white';
     const strokeColor = node.color;
     const isAIDerived = node.aiGenerated || node.type === 'detail';
 
 
     return (
-      <g key={node.id} className="select-none">
+      <g key={node.id} className="select-none cursor-grab active:cursor-grabbing" onMouseDown={(e) => handleNodeMouseDown(e, node)}>
         <rect
           x={node.x}
           y={node.y}
           width={nodeWidth}
           height={35}
-          rx={17.5} // More rounded
+          rx={17.5}
           fill={nodeFill}
           stroke={strokeColor}
           strokeWidth={isSelected ? 3 : 2}
-          className={cn("transition-all duration-200 cursor-grab", isSelected ? 'drop-shadow-lg' : 'opacity-90 hover:opacity-100', isDragging && selectedNodeId === node.id && 'cursor-grabbing')}
-          onMouseDown={(e) => handleMouseDown(e, node)}
+          className={cn("transition-all duration-200", isSelected ? 'drop-shadow-lg' : 'opacity-90 hover:opacity-100')}
           strokeDasharray={isAIDerived && node.type !== 'root' ? "6,3" : "none"}
         />
         
         {node.confidence && node.aiGenerated && (
           <Brain 
             className="w-3 h-3 opacity-80" 
-            fill="white" // Make brain icon white to stand out on colored nodes
+            fill="white"
             strokeWidth={0.5}
             x={node.x + nodeWidth - 22} 
             y={node.y + 5}
@@ -331,8 +414,8 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
         
         {!isEditing ? (
           <text
-            x={node.x + 15} // More padding from left
-            y={node.y + 22.5} // Vertically center
+            x={node.x + 15}
+            y={node.y + 22.5}
             fill={textColor}
             fontSize="11"
             fontWeight={node.type === 'root' ? '600' : '500'}
@@ -347,7 +430,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
                 <input
                 type="text"
                 value={node.text}
-                onChange={(e) => updateNode(node.id, { text: e.target.value })}
+                onChange={(e) => updateNodeText(node.id, e.target.value)}
                 onBlur={() => setEditingNodeId(null)}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === 'Escape') setEditingNodeId(null);
@@ -360,31 +443,37 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
         )}
         
         {isSelected && !isEditing && (
-          <g transform={`translate(${node.x + nodeWidth + 5}, ${node.y + 17.5})`}>
-            {/* Add Child */}
-            <circle cx={10} cy={0} r={10} fill="#10b981" className="cursor-pointer hover:opacity-80" onClick={() => addNode(node.id)}>
-              <title>Add child node</title>
-              <Plus className="text-white w-3 h-3" x={10 - 6} y={0 - 6} />
-            </circle>
-            {/* AI Smart Add */}
-            <circle cx={32} cy={0} r={10} fill="#a78bfa" className="cursor-pointer hover:opacity-80" onClick={() => addSmartNode(node.id)}>
-              <title>AI Smart Add</title>
-              <Brain className="text-white w-3 h-3"  x={32 - 6} y={0 - 6} />
-            </circle>
+          <g transform={`translate(${node.x + nodeWidth + 5}, ${node.y + 17.5})`} className="cursor-pointer">
+            <TooltipTrigger asChild>
+              <circle cx={10} cy={0} r={10} fill="#10b981" className="hover:opacity-80" onClick={(e) => { e.stopPropagation(); addNode(node.id); }}>
+                <Plus className="text-white w-3 h-3" x={10 - 6} y={0 - 6} />
+              </circle>
+            </TooltipTrigger>
+            <TooltipContent><p>Add child node</p></TooltipContent>
+            
+            <TooltipTrigger asChild>
+              <circle cx={32} cy={0} r={10} fill="#a78bfa" className="hover:opacity-80" onClick={(e) => { e.stopPropagation(); addSmartNode(node.id);}}>
+                <Brain className="text-white w-3 h-3"  x={32 - 6} y={0 - 6} />
+              </circle>
+            </TooltipTrigger>
+             <TooltipContent><p>AI Smart Add</p></TooltipContent>
           </g>
         )}
         {isSelected && !isEditing && node.id !== 'root' && (
-             <g transform={`translate(${node.x - 15}, ${node.y + 17.5})`}>
-                {/* Edit Node */}
-                <circle cx={0} cy={-9} r={8} fill="#60a5fa" className="cursor-pointer hover:opacity-80" onClick={() => setEditingNodeId(node.id)}>
-                    <title>Edit node</title>
-                    <Edit2 className="text-white w-2.5 h-2.5" x={0-5} y={-9-5} />
-                </circle>
-                {/* Delete Node */}
-                <circle cx={0} cy={9} r={8} fill="#f87171" className="cursor-pointer hover:opacity-80" onClick={() => deleteNode(node.id)}>
-                    <title>Delete node</title>
-                    <Trash2 className="text-white w-2.5 h-2.5" x={0-5} y={9-5} />
-                </circle>
+             <g transform={`translate(${node.x - 15}, ${node.y + 17.5})`} className="cursor-pointer">
+                <TooltipTrigger asChild>
+                  <circle cx={0} cy={-9} r={8} fill="#60a5fa" className="hover:opacity-80" onClick={(e) => {e.stopPropagation(); setEditingNodeId(node.id);}}>
+                      <Edit2 className="text-white w-2.5 h-2.5" x={0-5} y={-9-5} />
+                  </circle>
+                </TooltipTrigger>
+                <TooltipContent><p>Edit node</p></TooltipContent>
+
+                <TooltipTrigger asChild>
+                  <circle cx={0} cy={9} r={8} fill="#f87171" className="hover:opacity-80" onClick={(e) => {e.stopPropagation(); deleteNode(node.id);}}>
+                      <Trash2 className="text-white w-2.5 h-2.5" x={0-5} y={9-5} />
+                  </circle>
+                </TooltipTrigger>
+                <TooltipContent><p>Delete node</p></TooltipContent>
             </g>
         )}
       </g>
@@ -392,8 +481,8 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
   };
 
   return (
-    <div className="w-full h-[calc(100vh-10rem)] md:h-[calc(100vh-12rem)] bg-slate-100 dark:bg-slate-800/50 relative overflow-hidden rounded-lg">
-      {/* Control Panel */}
+    <TooltipProvider>
+    <div className="w-full h-[70vh] bg-slate-100 dark:bg-slate-800/50 relative overflow-hidden rounded-lg border border-border">
       <div className="absolute top-4 left-4 z-10 bg-white dark:bg-slate-700 rounded-xl shadow-lg p-4 w-64">
         <div className="flex items-center space-x-2 mb-3">
           <Brain className="w-6 h-6 text-purple-600" />
@@ -448,10 +537,45 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
           </div>
         </div>
       )}
+      
+      {/* Zoom Controls */}
+       <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1.5">
+         <Tooltip>
+            <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => zoom(1.25)} className="bg-white/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9"><ZoomIn className="h-4 w-4" /></Button>
+            </TooltipTrigger>
+            <TooltipContent side="right"><p>Zoom In</p></TooltipContent>
+        </Tooltip>
+         <Tooltip>
+            <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => zoom(0.8)} className="bg-white/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9"><ZoomOut className="h-4 w-4" /></Button>
+            </TooltipTrigger>
+            <TooltipContent side="right"><p>Zoom Out</p></TooltipContent>
+        </Tooltip>
+         <Tooltip>
+            <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={resetView} className="bg-white/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9"><ResetIcon className="h-4 w-4" /></Button>
+            </TooltipTrigger>
+            <TooltipContent side="right"><p>Reset View</p></TooltipContent>
+        </Tooltip>
+      </div>
 
-      <svg ref={svgRef} width="100%" height="100%" className="cursor-grab active:cursor-grabbing" onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-        {renderConnections()}
-        {nodes.map(node => renderNode(node))}
+
+      <svg
+        ref={svgRef}
+        width="100%"
+        height="100%"
+        className="cursor-grab active:cursor-grabbing"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onMouseDown={handleCanvasMouseDown}
+        onWheel={handleWheel}
+      >
+        <g transform={`translate(${translateX}, ${translateY}) scale(${scale})`}>
+            {renderConnections()}
+            {nodes.map(node => renderNode(node))}
+        </g>
       </svg>
 
       <div className="absolute bottom-4 right-4 z-10 bg-white dark:bg-slate-700 rounded-lg shadow-md p-3">
@@ -487,7 +611,9 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic }) => 
         }
       `}</style>
     </div>
+    </TooltipProvider>
   );
 };
 
 export default AIMindMapDisplay;
+
