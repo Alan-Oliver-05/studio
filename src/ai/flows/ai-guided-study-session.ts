@@ -81,7 +81,6 @@ const AIGuidedStudySessionOutputSchema = z.object({
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
 
-
 const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isAiLearningAssistantChat: z.boolean().optional(),
     isHomeworkHelp: z.boolean().optional(),
@@ -412,7 +411,7 @@ Remember: You are not just creating visuals—you are creating learning experien
     4. Ask a relevant MCQ based on that "retrieved" info.
     5. Suggest official/reputable resources.
   - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
-\`;`;
+\`;
 
 const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
@@ -486,30 +485,31 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
 
     if (output && output.response && Array.isArray(output.suggestions)) {
         if (output.visualElement === undefined) {
-          // If visualElement is undefined from AI, explicitly set to null
-          // unless it's a textual mind map request in AI Learning Assistant Chat
           if (promptInput.isAiLearningAssistantChat && input.question.toLowerCase().includes("mind map")) {
               output.visualElement = null;
           } else {
               output.visualElement = null;
           }
         } else if (output.visualElement && promptInput.isVisualLearningMindMaps) {
-            // Ensure type is correct for interactive mind map canvas
             if (output.visualElement.type !== 'interactive_mind_map_canvas') {
                  output.visualElement.type = 'interactive_mind_map_canvas';
             }
-            // Ensure content is an object and has initialTopic if not already an object
             if (typeof output.visualElement.content !== 'object' || output.visualElement.content === null) {
                 const defaultInitialTopic = input.photoDataUri ? "Analysis of Uploaded Content" : (input.question || "My Ideas");
                 output.visualElement.content = { initialTopic: defaultInitialTopic };
+            } else {
+                // Ensure initialTopic exists if content is an object but doesn't have it
+                if (!('initialTopic' in output.visualElement.content) || output.visualElement.content.initialTopic === undefined) {
+                    output.visualElement.content.initialTopic = input.photoDataUri ? "Analysis of Uploaded Content" : (input.question || "My Ideas");
+                }
             }
-            // Ensure initialNodes is an array if it exists, otherwise it should be undefined (not null).
+
             if ('initialNodes' in output.visualElement.content && output.visualElement.content.initialNodes !== undefined) {
                 if (!Array.isArray(output.visualElement.content.initialNodes)) {
                     console.warn("AI provided initialNodes but not as an array. Clearing initialNodes.");
                     output.visualElement.content.initialNodes = undefined;
                 }
-            } else {
+            } else if (typeof output.visualElement.content === 'object' && output.visualElement.content !== null) {
                  output.visualElement.content.initialNodes = undefined;
             }
         }
@@ -522,7 +522,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
                                (input.subject || input.lesson);
 
         if (shouldHaveMCQ && !output.response.match(/\b([A-D])\)\s/i) && !output.response.match(/\b[A-D]\.\s/i)) {
-          console.warn(`MCQ expected for topic "${specificTopicFromInput}" but not found in response: "${output.response.substring(0,100)}..."`);
+          console.warn(\`MCQ expected for topic "\${specificTopicFromInput}" but not found in response: "\${output.response.substring(0,100)}..."\`);
         }
         return output;
     }
