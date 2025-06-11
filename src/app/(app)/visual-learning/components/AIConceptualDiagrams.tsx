@@ -9,6 +9,7 @@ import {
   Zap, 
   Eye, 
   EyeOff, 
+  RotateCcw as ResetIcon,
   Share2,
   Sun,
   Leaf,
@@ -20,8 +21,7 @@ import {
   Loader2,
   ZoomIn,
   ZoomOut,
-  RotateCcw as ResetIcon,
-  Camera as ImageIconLucide, // Renamed from Image to avoid conflict
+  Camera as ImageIconLucide, 
   FileText,
   Plus
 } from 'lucide-react';
@@ -31,20 +31,6 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { InitialNodeData } from '@/types';
 
-
-// Node interface internal to this component
-interface Node {
-  id: string;
-  text: string;
-  x: number;
-  y: number;
-  type: 'root' | 'leaf' | 'detail';
-  color: string;
-  aiGenerated: boolean;
-  parentId?: string;
-  confidence?: number;
-  aiType?: string; 
-}
 
 interface DiagramElement {
   id: string;
@@ -73,21 +59,9 @@ interface Diagram {
   aiConfidence?: number;
 }
 
-const MANUAL_NODE_COLOR = 'hsl(var(--primary))'; 
-const AI_NODE_COLOR = 'hsl(var(--chart-3))'; 
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 3.0;
 const ZOOM_SENSITIVITY = 0.001;
-
-const DEFAULT_ROOT_NODE_DIAGRAM_COMPONENT: Node = { // Renamed to avoid conflict with other default root nodes
-  id: 'root',
-  text: 'AI Learning Map',
-  x: 100,
-  y: 150,
-  type: 'root',
-  color: MANUAL_NODE_COLOR,
-  aiGenerated: false
-};
 
 
 const AIConceptualDiagrams = () => {
@@ -100,13 +74,9 @@ const AIConceptualDiagrams = () => {
   const canvasRef = useRef<SVGSVGElement>(null);
   
   const [scale, setScale] = useState(1);
-  const [translateX, setTranslateX] = useState(250); 
-  const [translateY, setTranslateY] = useState(150);
-
-  const [nodes, setNodes] = useState<Node[]>([DEFAULT_ROOT_NODE_DIAGRAM_COMPONENT]); // For AIMindMapDisplay if integrated, not directly used here
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null); // For AIMindMapDisplay
-  const [editingNodeId, setEditingNodeId] = useState<string | null>(null); // For AIMindMapDisplay
-  const [dragInfo, setDragInfo] = useState<{ type: 'node' | 'canvas', id?: string, offset: { x: number, y: number }, startCoords: { x: number, y: number }} | null>(null); // For AIMindMapDisplay
+  const [translateX, setTranslateX] = useState(0); 
+  const [translateY, setTranslateY] = useState(0);
+  const [dragInfo, setDragInfo] = useState<{ type: 'node' | 'canvas', id?: string, offset: { x: number, y: number }, startCoords: { x: number, y: number }} | null>(null);
 
 
   const diagramTemplates: Record<string, Diagram> = {
@@ -165,6 +135,24 @@ const AIConceptualDiagrams = () => {
     }
   };
 
+  useEffect(() => { // Center diagram on initial load or when diagram changes
+    if (canvasRef.current && currentDiagram) {
+      const svg = canvasRef.current;
+      const { width, height } = svg.getBoundingClientRect();
+      // Basic centering logic, can be improved
+      const initialViewBox = "0 0 800 600"; // Match this with SVG viewBox if set
+      const vbParts = initialViewBox.split(" ").map(Number);
+      setTranslateX((width - vbParts[2] * scale) / 2);
+      setTranslateY((height - vbParts[3] * scale) / 2);
+    } else if (canvasRef.current) {
+      const svg = canvasRef.current;
+      const { width, height } = svg.getBoundingClientRect();
+      setTranslateX(width / 2 - 400 * scale); // Approx center if no diagram (assuming 800x600 viewBox)
+      setTranslateY(height / 2 - 300 * scale);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDiagram, scale]); // Recalculate on scale change too if desired
+
   const analyzeQuery = (inputQuery: string): string | null => {
     const q = inputQuery.toLowerCase();
     const patterns: Record<string, string[]> = {
@@ -186,7 +174,7 @@ const AIConceptualDiagrams = () => {
 
   const generateCustomDiagram = (userQuery: string): Diagram => {
     return {
-      title: `AI Generated: ${userQuery.substring(0,25)}${userQuery.length > 25 ? '...' : ''}`,
+      title: `AI Diagram: ${userQuery.substring(0,20)}${userQuery.length > 20 ? '...' : ''}`,
       type: "custom",
       elements: [
         { id: 'main', type: 'concept', x: 300, y: 200, label: 'Main Concept', color: 'hsl(var(--chart-3))' },
@@ -243,6 +231,7 @@ const AIConceptualDiagrams = () => {
             onMouseEnter={() => setHoveredElement(element.id)}
             onMouseLeave={() => setHoveredElement(null)}
             className="cursor-pointer"
+            onMouseDown={(e) => handleNodeMouseDown(e, element)}
           >
             <circle
               cx={element.x}
@@ -296,8 +285,8 @@ const AIConceptualDiagrams = () => {
 
     const startX = fromEl.x + Math.cos(angle) * (fromRadius + 2);
     const startY = fromEl.y + Math.sin(angle) * (fromRadius + 2);
-    const endX = toEl.x - Math.cos(angle) * (toRadius + 5);
-    const endY = toEl.y - Math.sin(angle) * (toRadius + 5);
+    const endX = toEl.x - Math.cos(angle) * (toRadius + 5); // Increased offset for arrow
+    const endY = toEl.y - Math.sin(angle) * (toRadius + 5); // Increased offset for arrow
     
     const arrowColor = 'hsl(var(--muted-foreground))';
 
@@ -332,11 +321,6 @@ const AIConceptualDiagrams = () => {
     if (!svg) return;
     const CTM = svg.getScreenCTM();
     if (!CTM) return;
-
-    const transformedPoint = {
-        x: (e.clientX - CTM.e) / CTM.a,
-        y: (e.clientY - CTM.f) / CTM.d
-    };
     
     setDragInfo({
       type: 'canvas',
@@ -345,28 +329,26 @@ const AIConceptualDiagrams = () => {
     });
   };
   
-  const handleNodeMouseDown = (e: React.MouseEvent<SVGGElement>, node: DiagramElement) => { // Changed Node to DiagramElement
+  const handleNodeMouseDown = (e: React.MouseEvent<SVGGElement>, node: DiagramElement) => {
     e.stopPropagation(); 
-    if (editingNodeId) return; // Assuming editingNodeId is for text input, not relevant here directly but good practice
     const svg = canvasRef.current;
     if (!svg) return;
     const CTM = svg.getScreenCTM();
-     if (!CTM) return;
+    if (!CTM) return;
 
-    const transformedPoint = {
-        x: (e.clientX - CTM.e) / CTM.a,
-        y: (e.clientY - CTM.f) / CTM.d
-    };
-
+    // Convert screen coords to SVG coords considering CTM for drag offset calculation
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgP = pt.matrixTransform(CTM.inverse());
+    
     setDragInfo({
       type: 'node',
       id: node.id,
-      offset: { x: transformedPoint.x - node.x, y: transformedPoint.y - node.y },
-      startCoords: { x: transformedPoint.x, y: transformedPoint.y }
+      offset: { x: svgP.x - node.x, y: svgP.y - node.y }, // Offset is in scaled SVG coords
+      startCoords: { x: e.clientX, y: e.clientY } // Store initial screen coords for canvas movement
     });
-    // setSelectedNodeId(node.id); // Assuming setSelectedNodeId still relevant for other interactions
   };
-
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!dragInfo) return;
@@ -377,24 +359,26 @@ const AIConceptualDiagrams = () => {
     const CTM = svg.getScreenCTM();
     if (!CTM) return;
 
-    const transformedPoint = {
-        x: (e.clientX - CTM.e) / CTM.a,
-        y: (e.clientY - CTM.f) / CTM.d
-    };
-
-
     if (dragInfo.type === 'node' && dragInfo.id && currentDiagram) {
-      const newX = transformedPoint.x - dragInfo.offset.x;
-      const newY = transformedPoint.y - dragInfo.offset.y;
+      // Convert current mouse screen coords to SVG coords
+      const pt = svg.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      const svgP = pt.matrixTransform(CTM.inverse());
+
+      const newX = svgP.x - dragInfo.offset.x;
+      const newY = svgP.y - dragInfo.offset.y;
+      
       setCurrentDiagram(prevDiagram => prevDiagram ? ({
         ...prevDiagram,
         elements: prevDiagram.elements.map(el => el.id === dragInfo.id ? { ...el, x: newX, y: newY } : el)
       }) : null);
+
     } else if (dragInfo.type === 'canvas') {
       const dx = e.clientX - dragInfo.startCoords.x;
       const dy = e.clientY - dragInfo.startCoords.y;
-      setTranslateX(prev => prev + dx / scale); // Adjust translation by scaled delta
-      setTranslateY(prev => prev + dy / scale);
+      setTranslateX(prev => prev + dx); 
+      setTranslateY(prev => prev + dy);
       setDragInfo(prev => prev ? { ...prev, startCoords: { x: e.clientX, y: e.clientY }} : null);
     }
   };
@@ -409,13 +393,14 @@ const AIConceptualDiagrams = () => {
 
     const svg = canvasRef.current;
     const rect = svg.getBoundingClientRect();
-    const mouseX = (e.clientX - rect.left - translateX) / scale; // Mouse position relative to current view
-    const mouseY = (e.clientY - rect.top - translateY) / scale;
+    const mouseX = e.clientX - rect.left; // Mouse X relative to SVG container
+    const mouseY = e.clientY - rect.top;  // Mouse Y relative to SVG container
 
     const newScale = Math.min(Math.max(scale - e.deltaY * ZOOM_SENSITIVITY * scale, MIN_SCALE), MAX_SCALE);
     
-    const newTranslateX = translateX - (mouseX * (newScale - scale));
-    const newTranslateY = translateY - (mouseY * (newScale - scale));
+    // Adjust translation to zoom towards mouse pointer
+    const newTranslateX = mouseX - (mouseX - translateX) * (newScale / scale);
+    const newTranslateY = mouseY - (mouseY - translateY) * (newScale / scale);
 
     setScale(newScale);
     setTranslateX(newTranslateX);
@@ -426,29 +411,38 @@ const AIConceptualDiagrams = () => {
      if (!canvasRef.current) return;
      const svg = canvasRef.current;
      const rect = svg.getBoundingClientRect();
-     const centerX = (rect.width / 2 - translateX) / scale; // Center of the viewport relative to current view
-     const centerY = (rect.height / 2 - translateY) / scale;
+     // Zoom towards center of SVG container
+     const centerX = rect.width / 2; 
+     const centerY = rect.height / 2;
 
      const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
-     setTranslateX(translateX - (centerX * (newScale - scale)));
-     setTranslateY(translateY - (centerY * (newScale - scale)));
+     setTranslateX(centerX - (centerX - translateX) * (newScale / scale));
+     setTranslateY(centerY - (centerY - translateY) * (newScale / scale));
      setScale(newScale);
   };
 
   const resetView = () => {
     setScale(1);
-    setTranslateX(250); 
-    setTranslateY(150);
+    if (canvasRef.current) {
+        const svg = canvasRef.current;
+        const { width, height } = svg.getBoundingClientRect();
+        const vbParts = (svg.getAttribute('viewBox') || "0 0 800 600").split(" ").map(Number);
+        setTranslateX((width - vbParts[2]) / 2);
+        setTranslateY((height - vbParts[3]) / 2);
+    } else {
+        setTranslateX(0); 
+        setTranslateY(0);
+    }
   };
-
 
   return (
     <div className="w-full h-full flex flex-col bg-background text-foreground">
       <TooltipProvider>
-      <div className="bg-card border-b border-border shadow-sm p-4">
+      {/* Header Panel */}
+      <div className="bg-card border-b border-border shadow-sm p-3 sm:p-4">
         <div className="flex flex-col sm:flex-row items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
-            <Brain className="w-7 h-7 text-purple-500" />
+            <Brain className="w-7 h-7 text-purple-600" />
             <div>
               <h1 className="text-lg font-bold text-foreground">AI Conceptual Diagrams</h1>
               <p className="text-xs text-muted-foreground">Generate educational diagrams with AI</p>
@@ -459,7 +453,7 @@ const AIConceptualDiagrams = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" onClick={() => setShowLabels(!showLabels)} 
-                          className={cn("w-9 h-9 rounded-lg", showLabels ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}>
+                          className={cn("w-9 h-9 rounded-lg", showLabels ? "bg-blue-100 text-blue-600 dark:bg-blue-800/30 dark:text-blue-400" : "text-muted-foreground hover:bg-muted")}>
                     {showLabels ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                   </Button>
                 </TooltipTrigger>
@@ -467,7 +461,7 @@ const AIConceptualDiagrams = () => {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-green-600">
+                  <Button variant="ghost" size="icon" className="w-9 h-9 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-800/30 dark:text-green-400 dark:hover:bg-green-700/40">
                     <Download className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
@@ -475,7 +469,7 @@ const AIConceptualDiagrams = () => {
               </Tooltip>
                <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-purple-600">
+                  <Button variant="ghost" size="icon" className="w-9 h-9 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 dark:bg-purple-800/30 dark:text-purple-400 dark:hover:bg-purple-700/40">
                     <Share2 className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
@@ -484,23 +478,23 @@ const AIConceptualDiagrams = () => {
           </div>
         </div>
 
+        {/* Query Input */}
         <div className="flex flex-col sm:flex-row items-center gap-2">
           <div className="relative flex-grow w-full sm:w-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && query.trim()) { handleGenerateDiagram(); } }}
               placeholder="E.g., 'Diagram photosynthesis with legible labels'"
-              className="w-full pl-10 pr-4 py-2 text-sm h-10 rounded-lg border-input focus-visible:ring-purple-500 bg-background" 
+              className="w-full pl-4 pr-10 py-2 text-sm h-10 rounded-lg border-input focus-visible:ring-purple-500 bg-background" 
             />
+             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           </div>
           <Button
             onClick={handleGenerateDiagram}
             disabled={isGenerating || !query.trim()}
-            style={{ backgroundColor: 'hsl(var(--chart-3))' }} 
-            className="w-full sm:w-auto text-primary-foreground rounded-lg h-10 px-6 text-sm hover:opacity-90" 
+            className="w-full sm:w-auto text-white rounded-lg h-10 px-5 text-sm hover:bg-purple-700 bg-purple-600" 
           >
             {isGenerating ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -511,6 +505,7 @@ const AIConceptualDiagrams = () => {
           </Button>
         </div>
         
+        {/* Example Queries */}
         <div className="mt-3 flex flex-wrap gap-2">
           {exampleQueries.map((example, index) => (
             <Button
@@ -518,7 +513,7 @@ const AIConceptualDiagrams = () => {
               variant="outline"
               size="sm"
               onClick={() => {setQuery(example); handleGenerateDiagram();}}
-              className="text-xs px-3 py-1 h-auto rounded-full border-border hover:border-primary/70 hover:bg-primary/5 hover:text-primary text-muted-foreground"
+              className="text-xs px-3 py-1 h-auto rounded-full border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-600"
             >
               {example}
             </Button>
@@ -528,12 +523,14 @@ const AIConceptualDiagrams = () => {
       </TooltipProvider>
 
       {/* Main Canvas */}
-      <div className="flex-grow overflow-auto p-2 sm:p-4 relative">
+      <div className="flex-grow overflow-hidden p-2 sm:p-4 relative">
         <svg 
             ref={canvasRef} 
             width="100%" 
             height="100%" 
-            className="bg-muted/30 dark:bg-slate-800/30 rounded-lg border border-border shadow-inner min-h-[400px] sm:min-h-[500px]"
+            className="bg-muted/30 dark:bg-slate-800/30 rounded-lg border border-border shadow-inner min-h-[400px] sm:min-h-[500px] cursor-grab active:cursor-grabbing"
+            viewBox="0 0 800 600" // Added viewBox for consistent coordinate system
+            preserveAspectRatio="xMidYMid meet" // Ensure diagram scales nicely
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp} 
@@ -562,18 +559,18 @@ const AIConceptualDiagrams = () => {
             </>
           )}
           {!currentDiagram && !isGenerating && (
-            <text x="50%" y="50%" textAnchor="middle" dy=".3em" className="fill-muted-foreground text-base select-none pointer-events-none">
+            <text x="400" y="300" textAnchor="middle" dy=".3em" className="fill-muted-foreground text-base select-none pointer-events-none">
               Enter a query above to generate a diagram. Try: "Photosynthesis"
             </text>
           )}
           {isGenerating && (
-             <text x="50%" y="50%" textAnchor="middle" dy=".3em" style={{fill: 'hsl(var(--chart-3))'}} className="text-base select-none animate-pulse pointer-events-none">
+             <text x="400" y="300" textAnchor="middle" dy=".3em" style={{fill: 'hsl(var(--chart-3))'}} className="text-base select-none animate-pulse pointer-events-none">
                 🤖 AI is thinking... Please wait.
             </text>
           )}
           </g>
         </svg>
-         {/* Zoom Controls & Download */}
+         {/* Zoom Controls */}
        <div className="absolute bottom-6 left-6 z-10 flex flex-col gap-2">
          <TooltipProvider>
          <Tooltip>
@@ -625,21 +622,3 @@ const AIConceptualDiagrams = () => {
 };
 
 export default AIConceptualDiagrams;
-
-// Styles for scrollbar (can be in globals.css or a <style jsx global> tag if preferred)
-// .scrollbar-thin {
-//   scrollbar-width: thin;
-//   scrollbar-color: hsl(var(--border)) hsl(var(--background));
-// }
-// .scrollbar-thin::-webkit-scrollbar {
-//   width: 6px;
-// }
-// .scrollbar-thin::-webkit-scrollbar-track {
-//   background: hsl(var(--background));
-// }
-// .scrollbar-thin::-webkit-scrollbar-thumb {
-//   background-color: hsl(var(--border));
-//   border-radius: 3px;
-// }
-
-    
