@@ -2,7 +2,7 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, PieChartIcon, BarChart3, LayoutGrid, BrainCircuit, RotateCcw, Sparkles } from "lucide-react";
+import { Loader2, AlertTriangle, PieChartIcon, BarChart3, LayoutGrid, BrainCircuit, RotateCcw, Sparkles, PanelLeftOpen, PanelRightOpen, Columns2, Maximize2, Minimize2 } from "lucide-react"; // Added more icons
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
@@ -11,7 +11,9 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
-import type { UserProfile, InitialNodeData } from "@/types"; // Added InitialNodeData
+import type { UserProfile, InitialNodeData } from "@/types"; 
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -76,6 +78,7 @@ export default function VisualLearningPage() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(Date.now().toString());
   const [mindMapConfig, setMindMapConfig] = useState<{ initialTopic?: string; initialNodes?: InitialNodeData[] } | null>(null);
+  const [canvasPanelGrow, setCanvasPanelGrow] = useState(7); // Canvas takes 7/10, chat 3/10 by default
 
   const getStorageTopicForMode = (mode: VisualLearningMode): string => {
     return visualModes.find(m => m.id === mode)?.storageTopic || "Visual Learning - General";
@@ -90,9 +93,10 @@ export default function VisualLearningPage() {
       setCurrentConversationId(newId);
       setChatKey(newId);
       if (mode !== "mindmaps") {
-        setMindMapConfig(null); // Reset mind map config if not in mindmap mode
-      } else if (!searchParams.get('sessionId')) { // Only reset if it's truly a new mindmap session
+        setMindMapConfig(null); 
+      } else if (!searchParams.get('sessionId')) { 
         setMindMapConfig(null);
+        setCanvasPanelGrow(7); // Reset panel grow for new mindmap session
       }
       router.push(`/visual-learning?mode=${mode}`, { scroll: false });
     }
@@ -113,7 +117,6 @@ export default function VisualLearningPage() {
         setCurrentConversationId(sessionIdFromQuery);
         setChatKey(sessionIdFromQuery);
         
-        // If it's a mindmap session being restored, find the latest mindmap config from messages
         if (targetMode === 'mindmaps') {
           const lastMindMapMsg = [...conversation.messages].reverse().find(
             msg => msg.sender === 'ai' && msg.visualElement?.type === 'interactive_mind_map_canvas'
@@ -124,8 +127,6 @@ export default function VisualLearningPage() {
               initialNodes: lastMindMapMsg.visualElement.content?.initialNodes,
             });
           } else {
-            // If no mindmap visual element found in history, but it's a mindmap session,
-            // maybe initialize with the first user query as topic if available.
             const firstUserMessage = conversation.messages.find(m => m.sender === 'user');
             setMindMapConfig({ initialTopic: firstUserMessage?.text || "My Restored Ideas" });
           }
@@ -166,6 +167,27 @@ export default function VisualLearningPage() {
   const handleMindMapConfigChange = (config: { initialTopic?: string; initialNodes?: InitialNodeData[] } | null) => {
     setMindMapConfig(config);
   };
+  
+  const handlePanelResize = (action: 'wider-canvas' | 'wider-chat' | 'reset' | 'maximize-canvas' | 'maximize-chat') => {
+    switch (action) {
+      case 'wider-canvas':
+        setCanvasPanelGrow(prev => Math.min(9, prev + 1)); // Max 9 to leave some space for chat
+        break;
+      case 'wider-chat':
+        setCanvasPanelGrow(prev => Math.max(1, prev - 1)); // Min 1 to leave some space for canvas
+        break;
+      case 'reset':
+        setCanvasPanelGrow(7); // Reset to 70/30 split
+        break;
+      case 'maximize-canvas':
+        setCanvasPanelGrow(9); // 90% canvas, 10% chat
+        break;
+      case 'maximize-chat':
+        setCanvasPanelGrow(1); // 10% canvas, 90% chat
+        break;
+    }
+  };
+
 
   const activeModeConfig = visualModes.find(m => m.id === activeMode) || visualModes[0];
 
@@ -207,7 +229,7 @@ export default function VisualLearningPage() {
      if (modeConfig.id === 'mindmaps' && currentConversationId && searchParams.get('sessionId')) {
         const conversation = getConversationById(currentConversationId);
         const firstUserMessage = conversation?.messages.find(m => m.sender === 'user');
-        if(firstUserMessage?.text && (firstUserMessage.text.length < 100)) { // Check length to avoid very long topics in sys message
+        if(firstUserMessage?.text && (firstUserMessage.text.length < 100)) { 
              initialMessage = initialMessage.replace("what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'", `the canvas is ready for your topic: "${firstUserMessage.text}". You can add nodes or upload a document.`);
         } else if (mindMapConfig?.initialTopic) {
              initialMessage = initialMessage.replace("what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'", `the canvas is ready for your topic: "${mindMapConfig.initialTopic}".`);
@@ -215,6 +237,10 @@ export default function VisualLearningPage() {
     }
     return initialMessage;
   };
+
+  const canvasPanelStyle = { flexGrow: canvasPanelGrow, flexBasis: '0%', minWidth: '0px' }; // flexBasis and minWidth for true flex behavior
+  const chatPanelStyle = { flexGrow: 10 - canvasPanelGrow, flexBasis: '0%', minWidth: '0px' };
+
 
   return (
     <div className="min-h-full flex flex-col pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
@@ -277,9 +303,19 @@ export default function VisualLearningPage() {
         {profile && currentConversationId && chatKey && activeModeConfig && (
           <>
             {activeMode === "mindmaps" ? (
-              <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden"> {/* Main container for the two columns */}
+             <TooltipProvider>
+              <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative"> {/* Added relative for panel controls */}
+                {/* Panel Resize Controls */}
+                <div className="absolute top-1 right-1 z-20 flex gap-1 bg-background/70 p-1 rounded-md shadow-md border border-border">
+                  <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-canvas')} className="h-7 w-7 p-1"><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Canvas</p></TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-canvas')} className="h-7 w-7 p-1"><PanelRightOpen className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Make Canvas Wider</p></TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('reset')} className="h-7 w-7 p-1"><Columns2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reset Layout (70/30)</p></TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-chat')} className="h-7 w-7 p-1"><PanelLeftOpen className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Make Chat Wider</p></TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-chat')} className="h-7 w-7 p-1"><Minimize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Chat</p></TooltipContent></Tooltip>
+                </div>
+
                 {/* Left Column: Mind Map */}
-                <div className="md:w-2/3 flex flex-col overflow-hidden border rounded-lg shadow-md bg-card"> 
+                <div className="flex flex-col overflow-hidden border rounded-lg shadow-md bg-card" style={canvasPanelStyle}> 
                   <AIMindMapDisplay
                     key={chatKey} 
                     initialTopic={mindMapConfig?.initialTopic}
@@ -287,7 +323,7 @@ export default function VisualLearningPage() {
                   />
                 </div>
                 {/* Right Column: Chat */}
-                <div className="md:w-1/3 flex flex-col overflow-hidden"> 
+                <div className="flex flex-col overflow-hidden" style={chatPanelStyle}> 
                   <DynamicChatInterface
                     key={`${chatKey}-chat`}
                     userProfile={profile}
@@ -300,6 +336,7 @@ export default function VisualLearningPage() {
                   />
                 </div>
               </div>
+             </TooltipProvider>
             ) : (
               // For other modes, display chat interface full width
               <div className="max-w-4xl mx-auto h-full">
