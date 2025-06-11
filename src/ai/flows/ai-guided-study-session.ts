@@ -26,6 +26,7 @@ const AIGuidedStudySessionInputSchema = z.object({
       boardExam: z.object({
         board: z.string().optional().describe('The board exam name (e.g., CBSE, State Board Name).'),
         standard: z.string().optional().describe("The student's current standard (e.g., 10th, 12th)."),
+        subjectSegment: z.string().optional().describe("The student's subject segment or stream for 11th/12th (e.g., Science, Commerce, Arts)."),
       }).optional(),
       competitiveExam: z.object({
         examType: z.string().optional().describe('The type of competitive exam (e.g., JEE, NEET, UPSC).'),
@@ -92,7 +93,8 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isCurriculumSpecificMode: z.boolean().optional(),
 });
 
-const aiGuidedStudySessionPromptText = `
+const aiGuidedStudySessionPromptText = 
+`
 You are EduAI Tutor, an expert AI Learning Assistant. Your main task is to provide a personalized, supportive, and effective study session for a student based on their detailed profile and specific query.
 Always maintain a supportive, encouraging, and patient tone. When explaining concepts, break them down into simple, understandable steps. Strive for clarity and conciseness in your responses.
 Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, preferred language, and learning style.
@@ -112,7 +114,8 @@ Educational Context:
   Studying for: Board Exam
   Board: {{{boardExam.board}}}
   {{#if boardExam.standard}}Standard/Grade: {{{boardExam.standard}}}{{/if}}
-  Curriculum Focus: Material relevant to the {{{boardExam.board}}} syllabus{{#if boardExam.standard}} for {{{boardExam.standard}}} standard{{/if}} in {{{studentProfile.country}}}.
+  {{#if boardExam.subjectSegment}}Segment/Stream: {{{boardExam.subjectSegment}}}{{/if}}
+  Curriculum Focus: Material relevant to the {{{boardExam.board}}} syllabus{{#if boardExam.standard}} for {{{boardExam.standard}}} standard{{/if}}{{#if boardExam.subjectSegment}} ({{{boardExam.subjectSegment}}}){{/if}} in {{{studentProfile.country}}}.
   {{/if}}
   {{#if competitiveExam.examType}}
   Preparing for: Competitive Exam
@@ -228,7 +231,7 @@ If the student explicitly requests a 'mind map' (or similar terms like 'visual o
 
 Proactive Greeting/Offering:
 If the student's question is a greeting or general (and not a specific request like "create a mind map"): Provide a welcoming response. Then, *proactively offer assistance related to their specific educational context and curriculum*. For example:
-    {{#if studentProfile.educationQualification.boardExam.board}} "Hello {{{studentProfile.name}}}! I see you're preparing for your {{{studentProfile.educationQualification.boardExam.board}}} exams in {{{studentProfile.educationQualification.boardExam.standard}}} standard. How can I assist you with a topic from your Math, Science, or another core subject syllabus today? We can find official curriculum details if you like."
+    {{#if studentProfile.educationQualification.boardExam.board}} "Hello {{{studentProfile.name}}}! I see you're preparing for your {{{studentProfile.educationQualification.boardExam.board}}} exams in {{{studentProfile.educationQualification.boardExam.standard}}} standard{{#if studentProfile.educationQualification.boardExam.subjectSegment}} ({{{studentProfile.educationQualification.boardExam.subjectSegment}}}){{/if}}. How can I assist you with a topic from your Math, Science, or another core subject syllabus today? We can find official curriculum details if you like."
     {{else if studentProfile.educationQualification.competitiveExam.examType}} "Hello {{{studentProfile.name}}}! I'm here to help you prepare for your {{{studentProfile.educationQualification.competitiveExam.examType}}} exam ({{{studentProfile.educationQualification.competitiveExam.specificExam}}}).{{#if studentProfile.educationQualification.competitiveExam.examDate}} I see your exam is on {{{studentProfile.educationQualification.competitiveExam.examDate}}}. Let's make sure you're well-prepared!{{/if}} Is there a particular section of the syllabus you'd like to focus on? We can look up key topics or discuss study strategies."
     {{else if studentProfile.educationQualification.universityExam.universityName}} "Hello {{{studentProfile.name}}}! Welcome! I can help you with your studies for {{{studentProfile.educationQualification.universityExam.course}}} at {{{studentProfile.educationQualification.universityExam.universityName}}}. What topic from your curriculum can I assist with? We can also explore typical learning objectives for this course."
     {{else}} "Hello {{{studentProfile.name}}}! How can I assist you with your learning goals today? I can help with general academic queries, or we can focus on something specific if you have it in mind."{{/if}}
@@ -346,7 +349,7 @@ Remember: You are not just creating visuals—you are creating learning experien
         *   It MUST also contain a key 'initialNodes' which is an array of node objects.
         *   Each node object in 'initialNodes' MUST have an 'id' (string), 'text' (string).
         *   Optionally, nodes can have 'parentId' (string, linking to another node's 'id'), 'type' (string, e.g., 'root' or 'leaf'), and 'aiGenerated' (boolean, true if you generated it).
-        *   Describe how to structure each node object for 'initialNodes'. For example, state that each node should be 'an object with keys: id (string), text (string), parentId (string, optional), type (string, e.g., "root", "leaf", optional), aiGenerated (boolean, optional)'. Provide a simple example of ONE node in string format, e.g., 'A sample node: \'{"id": "node1", "text": "Extracted Idea 1", "parentId": "root", "type": "leaf", "aiGenerated": true}\''. Clarify 'initialNodes' is a valid JSON array of such node objects.
+        *   Describe how to structure each node object for 'initialNodes'. For example, state that each node should be 'an object with keys: id (string), text (string), parentId (string, optional), type (string, e.g., "root", "leaf", optional), aiGenerated (boolean, optional)'. Provide a simple example of ONE node in string format, e.g., 'A sample node: {"id": "node1", "text": "Sample Text"}'. Clarify 'initialNodes' is a valid JSON array of such node objects.
         *   Ensure you define a 'root' node. Its 'text' can be based on the student's '{{{question}}}' (if provided and relevant, e.g., "Analysis of uploaded document about {{{question}}}"), or a generic title like "Key Points from Uploaded Content". Set 'id' to 'root', 'type' to 'root', 'aiGenerated' to true.
         *   For each extracted key concept/step from the uploaded document, create a child node. Its 'text' should be the concept. Set 'id' uniquely (e.g., 'node1', 'node2'), 'parentId' to 'root', 'type' to 'leaf', 'aiGenerated' to true.
     3.  **Response**: Your main 'response' text (the field named 'response' in your output JSON) should inform the user: "I've analyzed your uploaded content and created an initial mind map structure on the canvas below. You can modify it, add more nodes, or ask me questions about the content."
@@ -367,8 +370,7 @@ Remember: You are not just creating visuals—you are creating learning experien
     {{/if}}
     Do NOT attempt to generate a textual mind map outline or an image prompt here when `isVisualLearningMindMaps` is true. The user will use the interactive tool.
 
-  {{else}}
-    {{! Fallback for general Visual Learning Focus if no specific sub-mode is identified by flags (e.g. specificTopic is just "Visual Learning Focus") }}
+  {{else}} {{! Fallback for general Visual Learning Focus if no specific sub-mode is identified by flags (e.g. specificTopic is just "Visual Learning Focus") }}
     You are the Visual Learning Studio AI Agent. The user is in the Visual Learning section but hasn't specified a particular type (Graphs, Diagrams, Mind Maps / Flowcharts) or their query is general.
     Your 'response' should gently guide them. For example: "I can help you create Graphs & Charts, Conceptual Diagrams, or launch an interactive Mind Map/Flowchart canvas. What kind of visual would best help you understand your topic: '{{{question}}}'?" Or, if their query is specific enough, interpret it as one of these types and proceed accordingly.
     The 'visualElement' should be null unless you are confidently proceeding with a diagram or chart suggestion based on a very clear implicit request.
@@ -411,7 +413,9 @@ Remember: You are not just creating visuals—you are creating learning experien
     4. Ask a relevant MCQ based on that "retrieved" info.
     5. Suggest official/reputable resources.
   - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
-`;
+`
+;
+
 
 const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
@@ -464,7 +468,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
         ...studentProfile,
         learningStyle: studentProfile.learningStyle || 'balanced',
         educationQualification: {
-          boardExam: educationQualification.boardExam || {},
+          boardExam: educationQualification.boardExam || {subjectSegment: ""},
           competitiveExam: educationQualification.competitiveExam || { examType: undefined, specificExam: undefined, stage: undefined, examDate: undefined },
           universityExam: educationQualification.universityExam || {},
         },
