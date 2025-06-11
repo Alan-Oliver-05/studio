@@ -92,7 +92,7 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isCurriculumSpecificMode: z.boolean().optional(),
 });
 
-const aiGuidedStudySessionPromptText = \`
+const aiGuidedStudySessionPromptText = `
 You are EduAI Tutor, an expert AI Learning Assistant. Your main task is to provide a personalized, supportive, and effective study session for a student based on their detailed profile and specific query.
 Always maintain a supportive, encouraging, and patient tone. When explaining concepts, break them down into simple, understandable steps. Strive for clarity and conciseness in your responses.
 Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, preferred language, and learning style.
@@ -411,7 +411,7 @@ Remember: You are not just creating visuals—you are creating learning experien
     4. Ask a relevant MCQ based on that "retrieved" info.
     5. Suggest official/reputable resources.
   - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
-\`;
+`;
 
 const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
@@ -498,18 +498,17 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
                 const defaultInitialTopic = input.photoDataUri ? "Analysis of Uploaded Content" : (input.question || "My Ideas");
                 output.visualElement.content = { initialTopic: defaultInitialTopic };
             } else {
-                // Ensure initialTopic exists if content is an object but doesn't have it
                 if (!('initialTopic' in output.visualElement.content) || output.visualElement.content.initialTopic === undefined) {
                     output.visualElement.content.initialTopic = input.photoDataUri ? "Analysis of Uploaded Content" : (input.question || "My Ideas");
                 }
             }
 
-            if ('initialNodes' in output.visualElement.content && output.visualElement.content.initialNodes !== undefined) {
+            if (output.visualElement.content && 'initialNodes' in output.visualElement.content && output.visualElement.content.initialNodes !== undefined) {
                 if (!Array.isArray(output.visualElement.content.initialNodes)) {
                     console.warn("AI provided initialNodes but not as an array. Clearing initialNodes.");
                     output.visualElement.content.initialNodes = undefined;
                 }
-            } else if (typeof output.visualElement.content === 'object' && output.visualElement.content !== null) {
+            } else if (typeof output.visualElement.content === 'object' && output.visualElement.content !== null && !('initialNodes' in output.visualElement.content)) {
                  output.visualElement.content.initialNodes = undefined;
             }
         }
@@ -522,12 +521,12 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
                                (input.subject || input.lesson);
 
         if (shouldHaveMCQ && !output.response.match(/\b([A-D])\)\s/i) && !output.response.match(/\b[A-D]\.\s/i)) {
-          console.warn(\`MCQ expected for topic "\${specificTopicFromInput}" but not found in response: "\${output.response.substring(0,100)}..."\`);
+          console.warn(`MCQ expected for topic "${specificTopicFromInput}" but not found in response: "${output.response.substring(0,100)}..."`);
         }
         return output;
     }
 
-    console.warn("AI output was malformed or missing. Input was:", JSON.stringify(promptInput));
+    console.warn(`AI output was malformed or missing for topic: "${specificTopicFromInput}". Input was:`, JSON.stringify(promptInput));
     return {
         response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else? Please ensure your question is clear and any uploaded image is relevant.",
         suggestions: [],
