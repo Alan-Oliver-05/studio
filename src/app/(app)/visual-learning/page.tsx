@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from "react"; // Added useCallback
+import { useEffect, useState, useCallback } from "react"; 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
@@ -25,7 +25,7 @@ const DynamicChatInterface = dynamic(() =>
 
 const AIMindMapDisplay = dynamic(
   () => import('./components/AIMindMapDisplay').then(mod => mod.default),
-  {
+  { 
     ssr: false,
     loading: () => <div className="flex justify-center items-center p-4 h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /> Loading Interactive Canvas...</div>
   }
@@ -91,7 +91,7 @@ export default function VisualLearningPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [activeMode, setActiveMode] = useState<VisualLearningMode>(visualModes[0].id); // Default to first mode
+  const [activeMode, setActiveMode] = useState<VisualLearningMode>(visualModes[0].id); 
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(Date.now().toString());
   const [mindMapConfig, setMindMapConfig] = useState<{ initialTopic?: string; initialNodes?: InitialNodeData[] } | null>(null);
@@ -117,8 +117,6 @@ export default function VisualLearningPage() {
       } else {
         setMindMapConfig(null);
       }
-      // Update URL to reflect the new mode and implicitly trigger useEffect for session loading logic IF NEEDED by URL structure
-      // However, primary state setting is now direct.
       if (searchParams.get('mode') !== mode || !searchParams.get('sessionId')) {
         router.push(`/visual-learning?mode=${mode}`, { scroll: false });
       }
@@ -131,12 +129,13 @@ export default function VisualLearningPage() {
 
     const modeFromQuery = searchParams.get('mode') as VisualLearningMode | null;
     const sessionIdFromQuery = searchParams.get('sessionId');
+    let targetMode = modeFromQuery || activeMode;
 
     if (sessionIdFromQuery) {
       const conversation = getConversationById(sessionIdFromQuery);
       if (conversation) {
         const foundModeConfig = visualModes.find(m => m.storageTopic === conversation.topic);
-        const conversationMode = foundModeConfig ? foundModeConfig.id : (modeFromQuery || visualModes[0].id);
+        const conversationMode = foundModeConfig ? foundModeConfig.id : targetMode;
 
         setActiveMode(conversationMode);
         setCurrentConversationId(sessionIdFromQuery);
@@ -158,40 +157,33 @@ export default function VisualLearningPage() {
         } else {
           setMindMapConfig(null);
         }
-        // If URL mode mismatches conversation's authoritative mode, correct URL
         if (modeFromQuery !== conversationMode) {
             router.replace(`/visual-learning?sessionId=${sessionIdFromQuery}&mode=${conversationMode}`, { scroll: false });
         }
-        return; // Session loaded.
+        return;
       } else {
-        // Invalid sessionId in URL, treat as new session for the mode in URL (or default)
-        const targetMode = modeFromQuery || visualModes[0].id;
-        setActiveMode(targetMode); // Set mode first
-        initializeNewSession(targetMode); // Then init session which updates URL
+        setActiveMode(targetMode); 
+        initializeNewSession(targetMode); 
         return;
       }
     }
 
-    // No sessionId in URL
-    const targetMode = modeFromQuery || activeMode || visualModes[0].id; // Use URL mode, or current, or default
     if (activeMode !== targetMode) {
         setActiveMode(targetMode);
     }
-    // If no currentConversationId, or if mode in query doesn't match current active setup, initialize.
-    // This handles direct navigation to /visual-learning?mode=xyz or just /visual-learning
     if (!currentConversationId || (modeFromQuery && activeModeConfig && activeModeConfig.id !== modeFromQuery)) {
         initializeNewSession(targetMode);
     }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, profile, profileLoading, router, initializeNewSession, getStorageTopicForMode]); // activeMode is not here, initializeNewSession uses arg
-
+  }, [searchParams, profile, profileLoading, router, initializeNewSession]); 
+  
   const activeModeConfig = visualModes.find(m => m.id === activeMode) || visualModes[0];
 
 
   const handleModeChange = useCallback((newMode: VisualLearningMode) => {
-    setActiveMode(newMode); // Set active mode immediately
-    initializeNewSession(newMode); // Initialize session for the new mode
+    setActiveMode(newMode); 
+    initializeNewSession(newMode); 
   }, [initializeNewSession]);
 
 
@@ -215,10 +207,10 @@ export default function VisualLearningPage() {
         setCanvasPanelGrow(7);
         break;
       case 'maximize-canvas':
-        setCanvasPanelGrow(9);
+        setCanvasPanelGrow(10); // Maximize canvas
         break;
       case 'maximize-chat':
-        setCanvasPanelGrow(1);
+        setCanvasPanelGrow(0); // Minimize canvas, maximize chat
         break;
     }
   };
@@ -271,8 +263,8 @@ export default function VisualLearningPage() {
     return initialMessage;
   };
 
-  const canvasPanelStyle = { flexGrow: canvasPanelGrow, flexBasis: '0%', minWidth: '0px' };
-  const chatPanelStyle = { flexGrow: 10 - canvasPanelGrow, flexBasis: '0%', minWidth: '0px' };
+  const canvasPanelStyle = { flexGrow: canvasPanelGrow, flexBasis: '0%', minWidth: canvasPanelGrow === 0 ? '0px' : '300px', display: canvasPanelGrow === 0 ? 'none' : 'flex' };
+  const chatPanelStyle = { flexGrow: 10 - canvasPanelGrow, flexBasis: '0%', minWidth: canvasPanelGrow === 10 ? '0px' : '300px', display: canvasPanelGrow === 10 ? 'none' : 'flex' };
 
 
   return (
@@ -340,7 +332,7 @@ export default function VisualLearningPage() {
                     <AIGraphsAndCharts />
                 </div>
             ) : activeMode === "diagrams" ? (
-                <div className="flex-1 flex flex-col min-h-0 w-full">
+                <div className="flex-1 flex flex-col min-h-0 w-full max-w-6xl mx-auto">
                     <AIConceptualDiagrams
                         userProfile={profile}
                         conversationId={currentConversationId}
@@ -349,24 +341,26 @@ export default function VisualLearningPage() {
             ) : activeMode === "mindmaps" ? (
              <TooltipProvider>
               <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative h-full">
-                <div className="absolute top-1 right-1 z-20 flex gap-1 bg-background/70 dark:bg-slate-800/70 p-1 rounded-md shadow-md border border-border dark:border-slate-700">
-                  <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-canvas')} className="h-7 w-7 p-1"><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Canvas</p></TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-canvas')} className="h-7 w-7 p-1"><PanelRightOpen className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Make Canvas Wider</p></TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('reset')} className="h-7 w-7 p-1"><Columns2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reset Layout (70/30)</p></TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-chat')} className="h-7 w-7 p-1"><PanelLeftOpen className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Make Chat Wider</p></TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-chat')} className="h-7 w-7 p-1"><Minimize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Chat</p></TooltipContent></Tooltip>
-                </div>
+                {(canvasPanelGrow > 0 || chatPanelGrow > 0) && (
+                    <div className="absolute top-1 right-1 z-20 flex gap-1 bg-background/70 dark:bg-slate-800/70 p-1 rounded-md shadow-md border border-border dark:border-slate-700">
+                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-canvas')} className="h-7 w-7 p-1"><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Canvas</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-canvas')} className="h-7 w-7 p-1"><PanelRightOpen className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Make Canvas Wider</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('reset')} className="h-7 w-7 p-1"><Columns2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reset Layout (70/30)</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-chat')} className="h-7 w-7 p-1"><PanelLeftOpen className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Make Chat Wider</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-chat')} className="h-7 w-7 p-1"><Minimize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Chat</p></TooltipContent></Tooltip>
+                    </div>
+                )}
 
                 <div className="flex flex-col overflow-hidden border rounded-lg shadow-md bg-card dark:bg-slate-800 h-full" style={canvasPanelStyle}>
                   <AIMindMapDisplay
-                    key={chatKey}
+                    key={chatKey} // Ensure re-render on new session
                     initialTopic={mindMapConfig?.initialTopic}
                     initialNodes={mindMapConfig?.initialNodes}
                   />
                 </div>
                 <div className="flex flex-col overflow-hidden h-full" style={chatPanelStyle}>
                   <DynamicChatInterface
-                    key={`${chatKey}-chat`}
+                    key={`${chatKey}-chat`} // Ensure re-render on new session
                     userProfile={profile}
                     topic={activeModeConfig.storageTopic}
                     conversationId={currentConversationId}
@@ -379,6 +373,7 @@ export default function VisualLearningPage() {
               </div>
              </TooltipProvider>
             ) : (
+              // Fallback for any other mode (shouldn't happen if modes are exhaustive)
               <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full">
                 <DynamicChatInterface
                   key={chatKey}
@@ -401,3 +396,5 @@ export default function VisualLearningPage() {
     </div>
   );
 }
+
+    
