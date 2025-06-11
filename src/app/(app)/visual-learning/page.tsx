@@ -31,11 +31,19 @@ const AIMindMapDisplay = dynamic(
   }
 );
 
-const AIGraphsAndCharts = dynamic( // Import the new component
-  () => import('./components/AIGraphsAndCharts').then(mod => mod.default), // Assuming default export
+const AIGraphsAndCharts = dynamic( 
+  () => import('./components/AIGraphsAndCharts').then(mod => mod.default), 
   {
     ssr: false,
     loading: () => <div className="flex justify-center items-center p-4 h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /> Loading Charts...</div>
+  }
+);
+
+const AIConceptualDiagrams = dynamic( // Import the Conceptual Diagrams component
+  () => import('./components/AIConceptualDiagrams').then(mod => mod.default),
+  {
+    ssr: false,
+    loading: () => <div className="flex justify-center items-center p-4 h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /> Loading Diagrams...</div>
   }
 );
 
@@ -66,7 +74,7 @@ const visualModes: ModeConfig[] = [
     storageTopic: "Visual Learning - Conceptual Diagrams",
     initialSystemMessageTemplate: "Hi ${profileName}! For Conceptual Diagrams, tell me the process/system. Ensure text labels are clear. E.g., 'Diagram photosynthesis with legible labels.'",
     placeholderTextTemplate: "E.g., Diagram the water cycle with clear labels...",
-    enableImageUpload: true,
+    enableImageUpload: true, 
   },
   {
     id: "mindmaps", label: "Mind Maps / Flowcharts", icon: BrainCircuit, description: "Organize ideas with an interactive canvas.",
@@ -87,7 +95,7 @@ export default function VisualLearningPage() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(Date.now().toString());
   const [mindMapConfig, setMindMapConfig] = useState<{ initialTopic?: string; initialNodes?: InitialNodeData[] } | null>(null);
-  const [canvasPanelGrow, setCanvasPanelGrow] = useState(7); // Canvas takes 7/10, chat 3/10 by default
+  const [canvasPanelGrow, setCanvasPanelGrow] = useState(7); 
 
   const getStorageTopicForMode = (mode: VisualLearningMode): string => {
     return visualModes.find(m => m.id === mode)?.storageTopic || "Visual Learning - General";
@@ -104,8 +112,8 @@ export default function VisualLearningPage() {
       if (mode !== "mindmaps") {
         setMindMapConfig(null); 
       } else if (!searchParams.get('sessionId')) { 
-        setMindMapConfig({ initialTopic: "My New Mind Map"}); // Set a default topic for new mindmap sessions
-        setCanvasPanelGrow(7); // Reset panel grow for new mindmap session
+        setMindMapConfig({ initialTopic: "My New Mind Map"}); 
+        setCanvasPanelGrow(7); 
       }
       router.push(`/visual-learning?mode=${mode}`, { scroll: false });
     }
@@ -308,17 +316,20 @@ export default function VisualLearningPage() {
         })}
       </div>
       
-      <div className="flex-1 flex flex-col min-h-0 w-full"> {/* Ensures this div can shrink and its children can take height */}
+      <div className="flex-1 flex flex-col min-h-0 w-full"> 
         {profile && currentConversationId && chatKey && activeModeConfig && (
           <>
             {activeMode === "graphs" ? (
                 <div className="flex-1 flex flex-col min-h-0 w-full">
                     <AIGraphsAndCharts />
                 </div>
+            ) : activeMode === "diagrams" ? ( // Added explicit condition for diagrams
+                <div className="flex-1 flex flex-col min-h-0 w-full">
+                    <AIConceptualDiagrams />
+                </div>
             ) : activeMode === "mindmaps" ? (
              <TooltipProvider>
               <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative h-full"> 
-                {/* Panel Resize Controls */}
                 <div className="absolute top-1 right-1 z-20 flex gap-1 bg-background/70 dark:bg-slate-800/70 p-1 rounded-md shadow-md border border-border dark:border-slate-700">
                   <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-canvas')} className="h-7 w-7 p-1"><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Canvas</p></TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-canvas')} className="h-7 w-7 p-1"><PanelRightOpen className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Make Canvas Wider</p></TooltipContent></Tooltip>
@@ -327,7 +338,6 @@ export default function VisualLearningPage() {
                   <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-chat')} className="h-7 w-7 p-1"><Minimize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Chat</p></TooltipContent></Tooltip>
                 </div>
 
-                {/* Left Column: Mind Map */}
                 <div className="flex flex-col overflow-hidden border rounded-lg shadow-md bg-card dark:bg-slate-800 h-full" style={canvasPanelStyle}> 
                   <AIMindMapDisplay
                     key={chatKey} 
@@ -335,7 +345,6 @@ export default function VisualLearningPage() {
                     initialNodes={mindMapConfig?.initialNodes}
                   />
                 </div>
-                {/* Right Column: Chat */}
                 <div className="flex flex-col overflow-hidden h-full" style={chatPanelStyle}> 
                   <DynamicChatInterface
                     key={`${chatKey}-chat`}
@@ -351,7 +360,7 @@ export default function VisualLearningPage() {
               </div>
              </TooltipProvider>
             ) : ( 
-              // For "diagrams" mode
+              // Fallback for any other mode (or if diagrams wasn't explicitly handled before)
               <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full">
                 <DynamicChatInterface
                   key={chatKey}
