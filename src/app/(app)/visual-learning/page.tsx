@@ -243,7 +243,7 @@ export default function VisualLearningPage() {
 
 
   return (
-    <div className="min-h-full flex flex-col pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
+    <div className="h-full flex flex-col pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 pt-0 mt-0">
         <div className="text-center sm:text-left">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
@@ -299,7 +299,7 @@ export default function VisualLearningPage() {
         })}
       </div>
       
-      <div className="flex flex-col flex-grow min-h-0 w-full"> {/* ADDED flex flex-col here */}
+      <div className="flex-1 flex flex-col min-h-0 w-full"> {/* Ensures this div can shrink and its children can take height */}
         {profile && currentConversationId && chatKey && activeModeConfig && (
           <>
             {activeMode === "mindmaps" ? (
@@ -339,7 +339,7 @@ export default function VisualLearningPage() {
              </TooltipProvider>
             ) : (
               // For other modes, display chat interface full width
-              <div className="max-w-4xl mx-auto h-full">
+              <div className="max-w-4xl mx-auto h-full flex flex-col"> {/* Added flex flex-col */}
                 <DynamicChatInterface
                   key={chatKey}
                   userProfile={profile}
@@ -363,3 +363,5 @@ export default function VisualLearningPage() {
 }
     
 
+
+    
