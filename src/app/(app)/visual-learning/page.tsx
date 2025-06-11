@@ -299,7 +299,7 @@ export default function VisualLearningPage() {
         })}
       </div>
       
-      <div className="flex-grow min-h-0 w-full">
+      <div className="flex flex-col flex-grow min-h-0 w-full"> {/* ADDED flex flex-col here */}
         {profile && currentConversationId && chatKey && activeModeConfig && (
           <>
             {activeMode === "mindmaps" ? (
@@ -362,3 +362,4 @@ export default function VisualLearningPage() {
   );
 }
     
+
