@@ -93,7 +93,7 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isCurriculumSpecificMode: z.boolean().optional(),
 });
 
-const aiGuidedStudySessionPromptText = `
+const aiGuidedStudySessionPromptText = \`
 You are EduAI Tutor, an expert AI Learning Assistant. Your main task is to provide a personalized, supportive, and effective study session for a student based on their detailed profile and specific query.
 Always maintain a supportive, encouraging, and patient tone. When explaining concepts, break them down into simple, understandable steps. Strive for clarity and conciseness in your responses.
 Tailor your explanations, examples, and suggestions to their educational level, curriculum (e.g., specific board, standard, exam syllabus, or university course), country, preferred language, and learning style.
@@ -412,8 +412,7 @@ Remember: You are not just creating visuals—you are creating learning experien
     4. Ask a relevant MCQ based on that "retrieved" info.
     5. Suggest official/reputable resources.
   - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
-`;
-
+\`;
 
 const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
