@@ -277,15 +277,17 @@ export default function VisualLearningPage() {
         {profile && currentConversationId && chatKey && activeModeConfig && (
           <>
             {activeMode === "mindmaps" ? (
-              <div className="flex-grow flex flex-col md:flex-row gap-4 min-h-[calc(100vh-20rem)] md:min-h-[calc(100vh-18rem)]"> {/* Ensure parent has defined height */}
-                <div className="md:w-2/3 h-full flex flex-col border rounded-lg shadow-md bg-card overflow-hidden">
+              <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden"> {/* Main container for the two columns */}
+                {/* Left Column: Mind Map */}
+                <div className="md:w-2/3 flex flex-col overflow-hidden border rounded-lg shadow-md bg-card"> 
                   <AIMindMapDisplay
-                    key={chatKey} // Re-mount if chatKey (session) changes
+                    key={chatKey} 
                     initialTopic={mindMapConfig?.initialTopic}
                     initialNodes={mindMapConfig?.initialNodes}
                   />
                 </div>
-                <div className="md:w-1/3 h-full flex flex-col">
+                {/* Right Column: Chat */}
+                <div className="md:w-1/3 flex flex-col overflow-hidden"> 
                   <DynamicChatInterface
                     key={`${chatKey}-chat`}
                     userProfile={profile}
