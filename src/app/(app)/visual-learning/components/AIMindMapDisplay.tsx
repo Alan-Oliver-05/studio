@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Plus, Edit2, Trash2, Upload, FileText, Image as ImageIconLucide, Brain, Loader2, Camera, ZoomIn, ZoomOut, RotateCcw as ResetIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, Upload, FileText, Image as ImageIconLucide, Brain, Loader2, Camera, ZoomIn, ZoomOut, RotateCcw as ResetIcon, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -469,6 +469,36 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
     setTranslateY(50);
   };
 
+  const handleDownloadSVG = () => {
+    if (!svgRef.current) return;
+
+    const svgElement = svgRef.current;
+    const serializer = new XMLSerializer();
+    let source = serializer.serializeToString(svgElement);
+
+    // Add name spaces.
+    if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
+      source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    if(!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/)){
+      source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+    }
+
+    // Add XML declaration
+    source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+
+    const url = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(source);
+
+    const downloadLink = document.createElement("a");
+    downloadLink.href = url;
+    const rootNode = nodes.find(n => n.type === 'root');
+    const filenameTopic = rootNode ? rootNode.text : initialTopic || 'mindmap';
+    downloadLink.download = `${filenameTopic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.svg`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+  };
+
 
   const renderConnections = () => {
     return nodes.map(node => {
@@ -678,7 +708,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
         </div>
       )}
       
-      {/* Zoom Controls */}
+      {/* Zoom Controls & Download */}
        <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1.5">
          <Tooltip>
             <TooltipTrigger asChild>
@@ -697,6 +727,14 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
                 <Button variant="outline" size="icon" onClick={resetView} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9 border-border"><ResetIcon className="h-4 w-4 text-foreground" /></Button>
             </TooltipTrigger>
             <TooltipContent side="right"><p>Reset View</p></TooltipContent>
+        </Tooltip>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={handleDownloadSVG} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9 border-border">
+                    <Download className="h-4 w-4 text-foreground" />
+                </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right"><p>Download as SVG</p></TooltipContent>
         </Tooltip>
       </div>
 
@@ -734,7 +772,8 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
             {nodes.map(node => renderNode(node))}
         </g>
       </svg>
-       <style jsx global>{`
+      {/*
+      <style jsx global>{`
         .scrollbar-thin {
           scrollbar-width: thin;
           scrollbar-color: hsl(var(--border)) hsl(var(--background));
@@ -750,6 +789,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
           border-radius: 5px;
         }
       `}</style>
+      */}
     </div>
     </TooltipProvider>
   );
