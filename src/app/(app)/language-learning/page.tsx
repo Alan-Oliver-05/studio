@@ -2,15 +2,17 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Languages, RotateCcw, Type as TypeIcon, Mic, MessagesSquare, Camera as CameraIcon } from "lucide-react";
+import { Loader2, AlertTriangle, Languages, RotateCcw, Type as TypeIcon, Mic, MessagesSquare, Camera as CameraIcon, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
+import type { UserProfile } from "@/types";
+
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -35,27 +37,44 @@ interface ModeConfig {
   label: string;
   icon: React.ElementType;
   description: string;
-  storageTopic: string;
-  initialMessage?: string;
-  enableImageUpload?: boolean;
+  storageTopic: string; // This will be the `specificTopic` for the AI flow
+  initialSystemMessageTemplate: string;
+  placeholderTextTemplate: string;
+  enableImageUpload: boolean;
 }
 
 const modes: ModeConfig[] = [
   {
-    id: "text", label: "Text", icon: TypeIcon, description: "Translate typed text and get contextual explanations.", storageTopic: "Language Text Translation",
-    initialMessage: "Welcome to Text Translator! Type text and specify target language (e.g., 'Translate hello to Spanish'). I can also explain grammar or usage.", enableImageUpload: false
+    id: "text", label: "Text Translator", icon: TypeIcon, 
+    description: "Translate typed text. Ask for grammar explanations or usage context.", 
+    storageTopic: "Language Text Translation",
+    initialSystemMessageTemplate: "Hello ${profileName}! I'm ready for text translation. Type your text and specify the target language (e.g., 'Translate 'hello' to Spanish'). You can also ask for grammar help!",
+    placeholderTextTemplate: "E.g., Translate 'How are you?' to German, or explain this French phrase...",
+    enableImageUpload: false
   },
   {
-    id: "voice", label: "Voice", icon: Mic, description: "Speak and get instant voice translations.", storageTopic: "Language Voice Translation"
-    // VoiceTranslatorInterface handles its own initial setup
+    id: "voice", label: "Voice Translator", icon: Mic, 
+    description: "Speak and get instant voice translations. Supports multiple languages.", 
+    storageTopic: "Language Voice Translation", // Will use LanguageTranslatorMode in AI Flow
+    initialSystemMessageTemplate: "Hi ${profileName}! Use the mic to speak. I'll translate your words.", // Not directly used by VoiceTranslatorInterface
+    placeholderTextTemplate: "Click mic and start speaking...", // Not directly used
+    enableImageUpload: false
   },
   {
-    id: "conversation", label: "Conversation", icon: MessagesSquare, description: "Practice bilingual dialogues with an AI partner.", storageTopic: "Language Conversation Practice",
-    initialMessage: "Let's practice a conversation! Tell me the scenario, your role/language, and my role/language. For example: 'I want to order food. I'll be the customer in English, and you be the waiter in French.'", enableImageUpload: false
+    id: "conversation", label: "Conversation Practice", icon: MessagesSquare, 
+    description: "Practice bilingual dialogues with an AI partner in various scenarios.", 
+    storageTopic: "Language Conversation Practice",
+    initialSystemMessageTemplate: "Hi ${profileName}! Let's practice a conversation. Tell me the scenario, your role & language, and my role & language. E.g., 'I'm a tourist (English) asking for directions from a local (French).'",
+    placeholderTextTemplate: "Describe the conversation scenario here...",
+    enableImageUpload: false
   },
   {
-    id: "camera", label: "Camera", icon: CameraIcon, description: "Translate text from images captured or uploaded.", storageTopic: "Language Camera Translation",
-    initialMessage: "Upload an image with text, and I'll do my best to translate it. Please also specify the target language if it's not obvious.", enableImageUpload: true
+    id: "camera", label: "Image Text Translator", icon: CameraIcon, 
+    description: "Translate text from images captured or uploaded from your device.", 
+    storageTopic: "Language Camera Translation", // Will use LanguageTranslatorMode in AI Flow with image
+    initialSystemMessageTemplate: "Hello ${profileName}! Upload an image with text, and I'll translate it. Please also specify the target language if it's not your preferred one.",
+    placeholderTextTemplate: "Upload an image and type target language if needed...",
+    enableImageUpload: true
   },
 ];
 
@@ -64,73 +83,80 @@ export default function LanguageLearningPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [activeMode, setActiveMode] = useState<TranslationMode>("text");
+  const [activeMode, setActiveMode] = useState<TranslationMode>(modes[0].id);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(Date.now().toString());
 
-  const getStorageTopicForMode = (mode: TranslationMode): string => {
-    return modes.find(m => m.id === mode)?.storageTopic || "Language Translator General";
-  };
+  const getStorageTopicForMode = useCallback((mode: TranslationMode): string => {
+    return modes.find(m => m.id === mode)?.storageTopic || "LanguageTranslatorMode"; // Fallback
+  }, []);
 
-  const initializeNewSession = (mode: TranslationMode) => {
+  const initializeNewSession = useCallback((mode: TranslationMode) => {
     if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
       const newTimestamp = Date.now();
-      const newId = `${getStorageTopicForMode(mode).replace(/\s+/g, '-').toLowerCase()}-${profileIdentifier}-${newTimestamp}`;
+      const modeTopic = getStorageTopicForMode(mode);
+      const newId = `${modeTopic.replace(/\s+/g, '-').toLowerCase()}-${profileIdentifier}-${newTimestamp}`;
+
       setCurrentConversationId(newId);
       setChatKey(newId);
-      router.push(`/language-learning?mode=${mode}`, { scroll: false });
+      if (searchParams.get('mode') !== mode || !searchParams.get('sessionId')) {
+        router.push(`/language-learning?mode=${mode}`, { scroll: false });
+      }
     }
-  };
+  }, [profile, getStorageTopicForMode, router, searchParams]);
+
 
   useEffect(() => {
+    if (!profile || profileLoading) return;
+
     const modeFromQuery = searchParams.get('mode') as TranslationMode | null;
     const sessionIdFromQuery = searchParams.get('sessionId');
-    let targetMode = modeFromQuery || activeMode; // Prioritize query, then current state
+    let targetMode = modeFromQuery || activeMode;
 
     if (sessionIdFromQuery) {
       const conversation = getConversationById(sessionIdFromQuery);
       if (conversation) {
         const foundModeConfig = modes.find(m => m.storageTopic === conversation.topic);
-        if (foundModeConfig) {
-            targetMode = foundModeConfig.id; // Mode from stored conversation takes precedence
-        }
+        const conversationMode = foundModeConfig ? foundModeConfig.id : targetMode;
+
+        setActiveMode(conversationMode);
         setCurrentConversationId(sessionIdFromQuery);
         setChatKey(sessionIdFromQuery);
-        // Ensure URL reflects the authoritative mode from conversation if different
-        if (targetMode !== (searchParams.get('mode') || 'text')) {
-            router.replace(`/language-learning?sessionId=${sessionIdFromQuery}&mode=${targetMode}`, { scroll: false });
+        
+        if (modeFromQuery !== conversationMode) {
+            router.replace(`/language-learning?sessionId=${sessionIdFromQuery}&mode=${conversationMode}`, { scroll: false });
         }
+        return;
       } else {
-        // Invalid sessionId, initialize new session for targetMode
-        initializeNewSession(targetMode);
+        setActiveMode(targetMode); 
+        initializeNewSession(targetMode); 
+        return;
       }
-    } else {
-      // No sessionId, initialize new session for targetMode (from URL or default 'text')
-      initializeNewSession(targetMode);
     }
-     if (activeMode !== targetMode) { // Sync local activeMode state if needed
+    
+    if (activeMode !== targetMode) {
         setActiveMode(targetMode);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, profile]); // Removed activeMode from dependencies to avoid loops
-
-  const handleModeChange = (newMode: TranslationMode) => {
-    // Only re-initialize if mode actually changes and there's no active session restoring
-    if (newMode !== activeMode || !searchParams.get('sessionId')) {
-      initializeNewSession(newMode);
-    } else {
-      // If mode is the same but we want to ensure URL reflects it (e.g. after clearing session ID)
-      router.push(`/language-learning?mode=${newMode}`, { scroll: false });
-      setActiveMode(newMode); // Ensure local state is also set
+    if (!currentConversationId || (modeFromQuery && activeModeConfig && activeModeConfig.id !== modeFromQuery)) {
+        initializeNewSession(targetMode);
     }
-  };
-
-  const handleNewSessionClick = () => {
-    initializeNewSession(activeMode);
-  };
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, profile, profileLoading, initializeNewSession]); 
+  
   const activeModeConfig = modes.find(m => m.id === activeMode) || modes[0];
+
+
+  const handleModeChange = useCallback((newMode: TranslationMode) => {
+    setActiveMode(newMode); 
+    initializeNewSession(newMode); 
+  }, [initializeNewSession]);
+
+
+  const handleNewSessionClick = useCallback(() => {
+    initializeNewSession(activeMode);
+  }, [activeMode, initializeNewSession]);
+
 
   if (profileLoading) {
     return (
@@ -156,7 +182,7 @@ export default function LanguageLearningPage() {
     );
   }
 
-   if (!currentConversationId || !chatKey) {
+   if (!currentConversationId || !chatKey || !activeModeConfig) {
      return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -165,97 +191,99 @@ export default function LanguageLearningPage() {
     );
   }
 
-  const getInitialMessageForMode = (modeConfig: ModeConfig) => {
-    return modeConfig.initialMessage?.replace('${profile.name}', profile.name) || `Hello ${profile.name}! Welcome to ${modeConfig.label} Translation.`;
+  const getInitialMessageForMode = (modeConfig: ModeConfig, currentProfile: UserProfile) => {
+    return modeConfig.initialSystemMessageTemplate.replace('${profileName}', currentProfile.name);
   }
 
   return (
-    <div className="h-full flex flex-col pt-0">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 pt-0 mt-0">
+    <div className="h-full flex flex-col pt-0 bg-gradient-to-br from-background via-primary/5 to-background">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 pt-0 mt-0 px-1">
         <div className="text-center sm:text-left">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-                <Languages className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Language Translator
+                <Languages className="mr-3 h-7 w-7 sm:h-8 sm:w-8 text-chart-2"/> Language Studio
             </h1>
-            <p className="text-muted-foreground mt-1">Translate text, voice, conversations, and from images.</p>
+            <p className="text-muted-foreground mt-1">Your AI-powered multilingual assistant.</p>
         </div>
-        <Button onClick={handleNewSessionClick} variant="outline" className="mt-3 sm:mt-0">
+        <Button onClick={handleNewSessionClick} variant="outline" className="mt-3 sm:mt-0 shadow-sm hover:bg-primary/10 hover:border-primary transition-all">
           <RotateCcw className="mr-2 h-4 w-4" /> New Session ({activeModeConfig.label})
         </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {modes.map((mode) => (
-          <Card
-            key={mode.id}
-            onClick={() => handleModeChange(mode.id)}
-            className={cn(
-              "cursor-pointer hover:shadow-lg transition-shadow border-2 flex flex-col",
-              activeMode === mode.id ? "border-primary ring-2 ring-primary/50 bg-primary/5" : "border-border bg-card"
-            )}
-            tabIndex={0}
-            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleModeChange(mode.id)}
-            role="button"
-            aria-pressed={activeMode === mode.id}
-            aria-label={`Switch to ${mode.label} translation mode`}
-          >
-            <CardHeader className="flex flex-col items-center justify-center p-3 sm:p-4 text-center">
-              <mode.icon className={cn("h-6 w-6 sm:h-7 sm:h-7 mb-1.5", activeMode === mode.id ? "text-primary" : "text-muted-foreground")} />
-              <CardTitle className="text-xs sm:text-sm font-semibold">{mode.label}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 pt-0 text-center flex-grow">
-                 <CardDescription className="text-xs">{mode.description}</CardDescription>
-            </CardContent>
-          </Card>
-        ))}
+        {modes.map((mode) => {
+          const Icon = mode.icon;
+          const isActive = activeMode === mode.id;
+          return (
+            <Card
+              key={mode.id}
+              onClick={() => handleModeChange(mode.id)}
+              className={cn(
+                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-1 flex flex-col items-center justify-center text-center group",
+                "bg-card border-2 rounded-xl overflow-hidden shadow-md hover:shadow-lg h-36", // Fixed height
+                isActive
+                  ? "border-primary ring-2 ring-primary/60 bg-primary/5"
+                  : "border-border hover:border-primary/50 dark:bg-slate-800/50 dark:hover:border-primary/70"
+              )}
+              tabIndex={0}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleModeChange(mode.id)}
+              role="button"
+              aria-pressed={isActive}
+              aria-label={`Switch to ${mode.label} mode`}
+            >
+              <CardHeader className="p-3 pt-4">
+                 <div className={cn("p-3 rounded-full mb-1.5 transition-colors duration-300 w-fit mx-auto", 
+                    isActive ? "bg-primary/20" : "bg-muted group-hover:bg-primary/10"
+                 )}>
+                    <Icon className={cn("h-6 w-6 transition-colors duration-300", 
+                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                    )} />
+                 </div>
+                <CardTitle className={cn("text-sm font-semibold transition-colors", 
+                    isActive ? "text-primary" : "text-foreground group-hover:text-primary"
+                )}>
+                    {mode.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-2 pt-0">
+                   <CardDescription className="text-xs leading-snug text-muted-foreground group-hover:text-foreground/80 transition-colors">
+                        {mode.description}
+                    </CardDescription>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
+      <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto bg-card shadow-xl rounded-xl border border-border/60 overflow-hidden">
         {profile && currentConversationId && chatKey && (
           <>
-            {activeMode === "text" && (
-              <DynamicChatInterface
-                key={chatKey}
-                userProfile={profile}
-                topic={getStorageTopicForMode("text")}
-                conversationId={currentConversationId}
-                initialSystemMessage={getInitialMessageForMode(modes.find(m=>m.id==='text')!)}
-                placeholderText="E.g., Translate 'How are you?' to German"
-                enableImageUpload={false}
-              />
-            )}
-            {activeMode === "voice" && (
+            {activeMode === "voice" ? (
               <VoiceTranslatorInterface
                 key={chatKey}
                 userProfile={profile}
                 conversationId={currentConversationId}
-                topic={getStorageTopicForMode("voice")}
+                topic={getStorageTopicForMode("voice")} 
               />
-            )}
-            {activeMode === "conversation" && (
+            ) : ( // For text, conversation, camera
               <DynamicChatInterface
                 key={chatKey}
                 userProfile={profile}
-                topic={getStorageTopicForMode("conversation")}
+                topic={activeModeConfig.storageTopic} 
                 conversationId={currentConversationId}
-                initialSystemMessage={getInitialMessageForMode(modes.find(m=>m.id==='conversation')!)}
-                placeholderText="Start the conversation or give instructions..."
-                enableImageUpload={false}
-              />
-            )}
-            {activeMode === "camera" && (
-              <DynamicChatInterface
-                key={chatKey}
-                userProfile={profile}
-                topic={getStorageTopicForMode("camera")}
-                conversationId={currentConversationId}
-                initialSystemMessage={getInitialMessageForMode(modes.find(m=>m.id==='camera')!)}
-                placeholderText="Upload an image and specify target language..."
-                enableImageUpload={true}
+                initialSystemMessage={getInitialMessageForMode(activeModeConfig, profile)}
+                placeholderText={activeModeConfig.placeholderTextTemplate}
+                enableImageUpload={activeModeConfig.enableImageUpload}
               />
             )}
           </>
         )}
       </div>
+       <div className="text-center mt-6 py-2">
+            <Sparkles className="h-5 w-5 text-accent mx-auto mb-1.5 opacity-80"/>
+            <p className="text-xs text-muted-foreground">
+              {activeModeConfig.label}: {activeModeConfig.description} Your preferred language is {profile.preferredLanguage}.
+            </p>
+        </div>
     </div>
   );
 }

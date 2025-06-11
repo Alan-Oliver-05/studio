@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,25 +18,25 @@ body {
     --popover: 0 0% 100%;
     --popover-foreground: 220 15% 25%;
 
-    /* Primary Colors & Gradients (Calming Blue #64B5F6) */
-    --primary: 207 86% 68%;
+    /* Primary Colors & Gradients (Vibrant Blue for AquaAir) */
+    --primary: 207 90% 54%; /* Vibrant Blue #39A1F4 */
     --primary-foreground: 0 0% 100%; /* White */
-    --primary-gradient-start: 207 86% 68%;
-    --primary-gradient-end: 207 86% 60%; /* Slightly darker blue */
-    --primary-hover-gradient-start: 207 86% 62%;
-    --primary-hover-gradient-end: 207 86% 55%;
+    --primary-gradient-start: 207 90% 54%;
+    --primary-gradient-end: 207 85% 48%; 
+    --primary-hover-gradient-start: 207 85% 50%;
+    --primary-hover-gradient-end: 207 80% 44%;
 
     --secondary: 220 10% 90%; /* Light gray for secondary elements */
     --secondary-foreground: 220 10% 30%;
 
-    --muted: 220 10% 94%; /* Slightly darker than card for subtle contrast */
+    --muted: 220 10% 94%; 
     --muted-foreground: 220 10% 45%;
 
-    /* Accent Colors & Gradients (Soft Green #A5D6A7) */
+    /* Accent Colors & Gradients (Soft Green retained, Aqua for chart) */
     --accent: 122 36% 70%;
-    --accent-foreground: 220 15% 15%; /* Dark text for readability on soft green */
+    --accent-foreground: 220 15% 15%; 
     --accent-gradient-start: 122 36% 70%;
-    --accent-gradient-end: 122 36% 62%; /* Slightly darker green */
+    --accent-gradient-end: 122 36% 62%; 
     --accent-hover-gradient-start: 122 36% 65%;
     --accent-hover-gradient-end: 122 36% 58%;
     
@@ -44,22 +45,22 @@ body {
 
     --border: 220 10% 88%;
     --input: 220 10% 92%;
-    --ring: 207 86% 72%; /* Lighter shade of primary for ring */
+    --ring: 207 90% 60%; 
 
-    --chart-1: hsl(var(--primary));
-    --chart-2: hsl(var(--accent));
+    --chart-1: hsl(var(--primary)); /* Primary Blue */
+    --chart-2: 180 70% 60%; /* Aqua/Cyan for "AquaAir" */
     --chart-3: 270 60% 65%; /* A pleasant lavender */
     --chart-4: 30 90% 50%; /* Vibrant orange/tangerine */
     --chart-5: 0 0% 65%;   /* Medium Gray */
     --radius: 0.75rem;
 
     /* Sidebar specific colors - Light Theme */
-    --sidebar-background: 0 0% 98%; /* Slightly off-white, almost card-like */
+    --sidebar-background: 0 0% 98%; 
     --sidebar-foreground: 220 15% 25%;
     --sidebar-primary: hsl(var(--primary));
     --sidebar-primary-foreground: hsl(var(--primary-foreground));
     --sidebar-accent: hsl(var(--accent));
-    --sidebar-accent-foreground: hsl(var(--accent-foreground)); /* Use main accent foreground for consistency */
+    --sidebar-accent-foreground: hsl(var(--accent-foreground)); 
     --sidebar-border: 220 10% 88%;
     --sidebar-ring: hsl(var(--primary));
   }
@@ -75,12 +76,12 @@ body {
     --popover-foreground: 210 30% 95%;
 
     /* Primary Colors & Gradients - Dark Theme */
-    --primary: 207 80% 60%; /* Calming blue adjusted for dark */
+    --primary: 207 85% 60%; /* Vibrant Blue adjusted for dark */
     --primary-foreground: 0 0% 100%; 
-    --primary-gradient-start: 207 80% 60%;
+    --primary-gradient-start: 207 85% 60%;
     --primary-gradient-end: 207 80% 52%;
     --primary-hover-gradient-start: 207 80% 55%;
-    --primary-hover-gradient-end: 207 80% 48%;
+    --primary-hover-gradient-end: 207 75% 48%;
 
     --secondary: 220 15% 25%; 
     --secondary-foreground: 210 25% 85%;
@@ -89,8 +90,8 @@ body {
     --muted-foreground: 210 20% 65%;
 
     /* Accent Colors & Gradients - Dark Theme */
-    --accent: 122 30% 60%; /* Soft green adjusted for dark */
-    --accent-foreground: 122 90% 10%; /* Very dark green text */
+    --accent: 122 30% 60%; 
+    --accent-foreground: 122 90% 10%; 
     --accent-gradient-start: 122 30% 60%;
     --accent-gradient-end: 122 30% 52%;
     --accent-hover-gradient-start: 122 30% 55%;
@@ -101,21 +102,21 @@ body {
 
     --border: 220 15% 25%;
     --input: 220 15% 22%;
-    --ring: 207 80% 65%; /* Lighter shade of primary for dark ring */
+    --ring: 207 85% 65%; 
     
     --chart-1: hsl(var(--primary));
-    --chart-2: hsl(var(--accent));
+    --chart-2: 180 65% 55%; /* Aqua/Cyan for dark */
     --chart-3: 260 70% 70%; 
     --chart-4: 45 90% 55%; 
     --chart-5: 0 0% 80%;    
 
     /* Sidebar specific colors for dark theme */
-    --sidebar-background: 220 18% 9%; /* Slightly darker than main dark bg */
+    --sidebar-background: 220 18% 9%; 
     --sidebar-foreground: 210 30% 95%;
     --sidebar-primary: hsl(var(--primary));
     --sidebar-primary-foreground: hsl(var(--primary-foreground));
     --sidebar-accent: hsl(var(--accent));
-    --sidebar-accent-foreground: hsl(var(--accent-foreground)); /* Use main accent foreground */
+    --sidebar-accent-foreground: hsl(var(--accent-foreground)); 
     --sidebar-border: 220 15% 25%;
     --sidebar-ring: hsl(var(--primary));
   }
