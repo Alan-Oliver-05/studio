@@ -20,14 +20,14 @@ import {
   Loader2,
   ZoomIn,
   ZoomOut,
-  FileText // Removed Share2 import
+  FileText 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { InitialNodeData } from '@/types';
-
+import type { UserProfile, Message as MessageType } from '@/types'; // Added MessageType
+import { addMessageToConversation } from '@/lib/chat-storage'; // Added import
 
 interface DiagramElement {
   id: string;
@@ -60,8 +60,12 @@ const MIN_SCALE = 0.2;
 const MAX_SCALE = 3.0;
 const ZOOM_SENSITIVITY = 0.001;
 
+interface AIConceptualDiagramsProps {
+  userProfile: UserProfile | null;
+  conversationId: string | null;
+}
 
-const AIConceptualDiagrams = () => {
+const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile, conversationId }) => {
   const [query, setQuery] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentDiagram, setCurrentDiagram] = useState<Diagram | null>(null);
@@ -188,6 +192,17 @@ const AIConceptualDiagrams = () => {
   const handleGenerateDiagram = async () => {
     if (!query.trim()) return;
     setIsGenerating(true);
+    
+    if (userProfile && conversationId) {
+      const userMessage: MessageType = {
+        id: crypto.randomUUID(),
+        sender: "user",
+        text: `Generate diagram for: ${query}`,
+        timestamp: Date.now(),
+      };
+      addMessageToConversation(conversationId, "Visual Learning - Conceptual Diagrams", userMessage, userProfile);
+    }
+
     await new Promise(resolve => setTimeout(resolve, 1500)); 
 
     const diagramKey = analyzeQuery(query);
@@ -206,6 +221,19 @@ const AIConceptualDiagrams = () => {
     setCurrentDiagram(newDiagram);
     setDiagramHistory(prev => [newDiagram, ...prev.slice(0, 4)]);
     setIsGenerating(false);
+
+    if (userProfile && conversationId) {
+      const aiMessageText = `Generated diagram: "${newDiagram.title}". Type: ${newDiagram.type}. AI Confidence: ${Math.round((newDiagram.aiConfidence || 0) * 100)}%.`;
+      const aiMessage: MessageType = {
+        id: crypto.randomUUID(),
+        sender: "ai",
+        text: aiMessageText,
+        timestamp: Date.now(),
+        // We could potentially store a simplified version of 'newDiagram' in visualElement if needed for library
+        // visualElement: { type: 'diagram_data_simplified', content: { title: newDiagram.title, elementsCount: newDiagram.elements.length }, caption: newDiagram.title }
+      };
+      addMessageToConversation(conversationId, "Visual Learning - Conceptual Diagrams", aiMessage, userProfile);
+    }
   };
 
   const renderElement = (element: DiagramElement) => {
@@ -433,24 +461,18 @@ const AIConceptualDiagrams = () => {
 
     const svgElement = canvasRef.current.cloneNode(true) as SVGSVGElement;
     
-    // Create a temporary g element to hold the content to be downloaded
-    // and apply the current transform to it.
-    // This way, the downloaded SVG reflects the current view (pan/zoom).
     const gWrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
     gWrapper.setAttribute("transform", `translate(${translateX}, ${translateY}) scale(${scale})`);
 
-    // Move all children of the original svg's first <g> (which has the transform) into the wrapper
     const originalG = svgElement.querySelector('g');
     if (originalG) {
         while (originalG.firstChild) {
             gWrapper.appendChild(originalG.firstChild);
         }
-        // Replace the original g with our new gWrapper
         svgElement.replaceChild(gWrapper, originalG);
     } else {
-        // Fallback if the structure is different, though less likely with current setup
         while (svgElement.firstChild) {
-          if (svgElement.firstChild.nodeName === 'g') { // target the main group
+          if (svgElement.firstChild.nodeName === 'g') { 
              const mainGroup = svgElement.firstChild as SVGGElement;
              while(mainGroup.firstChild) {
                 gWrapper.appendChild(mainGroup.firstChild);
@@ -458,26 +480,22 @@ const AIConceptualDiagrams = () => {
              mainGroup.appendChild(gWrapper);
              break;
           }
-          svgElement.removeChild(svgElement.firstChild); // Should not happen if g always exists
+          svgElement.removeChild(svgElement.firstChild); 
         }
-        if (!svgElement.querySelector('g')) { // If no g, just append
+        if (!svgElement.querySelector('g')) { 
             svgElement.appendChild(gWrapper);
         }
     }
 
-
-    // Set explicit width and height on the cloned SVG for proper export
     const viewBox = svgElement.getAttribute("viewBox")?.split(" ").map(Number) || [0, 0, 800, 600];
     svgElement.setAttribute("width", viewBox[2].toString());
     svgElement.setAttribute("height", viewBox[3].toString());
     
-    // Ensure all necessary styles are inlined (basic for now, can be expanded)
     const styleEl = document.createElement('style');
     styleEl.textContent = `
         text { font-family: var(--font-geist-sans), Arial, sans-serif; }
     `;
     svgElement.insertBefore(styleEl, svgElement.firstChild);
-
 
     let source = new XMLSerializer().serializeToString(svgElement);
 
@@ -536,15 +554,15 @@ const AIConceptualDiagrams = () => {
 
         <div className="flex flex-col sm:flex-row items-center gap-2">
           <div className="relative flex-grow w-full sm:w-auto">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && query.trim()) { handleGenerateDiagram(); } }}
               placeholder="E.g., 'Diagram photosynthesis with legible labels'"
-              className="w-full pl-10 pr-4 py-2 text-sm h-10 rounded-lg border-input focus-visible:ring-purple-500 bg-background" 
+              className="w-full pl-4 pr-10 py-2 text-sm h-10 rounded-lg border-input focus-visible:ring-purple-500 bg-background" 
             />
+             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           </div>
           <Button
             onClick={handleGenerateDiagram}

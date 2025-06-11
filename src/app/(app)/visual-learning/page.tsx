@@ -39,7 +39,7 @@ const AIGraphsAndCharts = dynamic(
   }
 );
 
-const AIConceptualDiagrams = dynamic( // Import the Conceptual Diagrams component
+const AIConceptualDiagrams = dynamic(
   () => import('./components/AIConceptualDiagrams').then(mod => mod.default),
   {
     ssr: false,
@@ -323,9 +323,12 @@ export default function VisualLearningPage() {
                 <div className="flex-1 flex flex-col min-h-0 w-full">
                     <AIGraphsAndCharts />
                 </div>
-            ) : activeMode === "diagrams" ? ( // Added explicit condition for diagrams
+            ) : activeMode === "diagrams" ? ( 
                 <div className="flex-1 flex flex-col min-h-0 w-full">
-                    <AIConceptualDiagrams />
+                    <AIConceptualDiagrams 
+                        userProfile={profile} 
+                        conversationId={currentConversationId} 
+                    />
                 </div>
             ) : activeMode === "mindmaps" ? (
              <TooltipProvider>
@@ -360,7 +363,6 @@ export default function VisualLearningPage() {
               </div>
              </TooltipProvider>
             ) : ( 
-              // Fallback for any other mode (or if diagrams wasn't explicitly handled before)
               <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full">
                 <DynamicChatInterface
                   key={chatKey}
@@ -385,5 +387,3 @@ export default function VisualLearningPage() {
 }
     
 
-
-    
