@@ -556,40 +556,44 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
         {/* Action buttons: visible when node is selected and not being edited */}
         {isSelected && !isEditing && (
           <g transform={`translate(${node.x + nodeWidth + 5}, ${node.y + 17.5})`} className="cursor-pointer">
-            {/* Add Manual Child Node Button */}
-            <TooltipTrigger asChild>
-              <circle cx={10} cy={0} r={10} fill="hsl(var(--primary))" className="hover:opacity-80" onClick={(e) => { e.stopPropagation(); addNode(node.id); }}>
-                <Plus className="text-primary-foreground w-3 h-3" x={10 - 6} y={0 - 6} />
-              </circle>
-            </TooltipTrigger>
-            <TooltipContent><p>Add child node</p></TooltipContent>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <circle cx={10} cy={0} r={10} fill="hsl(var(--primary))" className="hover:opacity-80" onClick={(e) => { e.stopPropagation(); addNode(node.id); }}>
+                  <Plus className="text-primary-foreground w-3 h-3" x={10 - 6} y={0 - 6} />
+                </circle>
+              </TooltipTrigger>
+              <TooltipContent><p>Add child node</p></TooltipContent>
+            </Tooltip>
             
-            {/* AI Smart Add Button */}
-            <TooltipTrigger asChild>
-              <circle cx={32} cy={0} r={10} fill="hsl(var(--chart-3))" className="hover:opacity-80" onClick={(e) => { e.stopPropagation(); addSmartNode(node.id);}}>
-                <Brain className="text-primary-foreground w-3 h-3"  x={32 - 6} y={0 - 6} />
-              </circle>
-            </TooltipTrigger>
-             <TooltipContent><p>AI Smart Add</p></TooltipContent>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <circle cx={32} cy={0} r={10} fill="hsl(var(--chart-3))" className="hover:opacity-80" onClick={(e) => { e.stopPropagation(); addSmartNode(node.id);}}>
+                  <Brain className="text-primary-foreground w-3 h-3"  x={32 - 6} y={0 - 6} />
+                </circle>
+              </TooltipTrigger>
+               <TooltipContent><p>AI Smart Add</p></TooltipContent>
+            </Tooltip>
           </g>
         )}
         {isSelected && !isEditing && node.id !== 'root' && ( // Edit and Delete buttons for non-root selected nodes
              <g transform={`translate(${node.x - 15}, ${node.y + 17.5})`} className="cursor-pointer">
-                {/* Edit Node Button */}
-                <TooltipTrigger asChild>
-                  <circle cx={0} cy={-9} r={8} fill="hsl(var(--secondary))" className="hover:opacity-80" onClick={(e) => {e.stopPropagation(); setEditingNodeId(node.id);}}>
-                      <Edit2 className="text-secondary-foreground w-2.5 h-2.5" x={0-5} y={-9-5} />
-                  </circle>
-                </TooltipTrigger>
-                <TooltipContent><p>Edit node</p></TooltipContent>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <circle cx={0} cy={-9} r={8} fill="hsl(var(--secondary))" className="hover:opacity-80" onClick={(e) => {e.stopPropagation(); setEditingNodeId(node.id);}}>
+                        <Edit2 className="text-secondary-foreground w-2.5 h-2.5" x={0-5} y={-9-5} />
+                    </circle>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Edit node</p></TooltipContent>
+                </Tooltip>
 
-                {/* Delete Node Button */}
-                <TooltipTrigger asChild>
-                  <circle cx={0} cy={9} r={8} fill="hsl(var(--destructive))" className="hover:opacity-80" onClick={(e) => {e.stopPropagation(); deleteNode(node.id);}}>
-                      <Trash2 className="text-destructive-foreground w-2.5 h-2.5" x={0-5} y={9-5} />
-                  </circle>
-                </TooltipTrigger>
-                <TooltipContent><p>Delete node</p></TooltipContent>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <circle cx={0} cy={9} r={8} fill="hsl(var(--destructive))" className="hover:opacity-80" onClick={(e) => {e.stopPropagation(); deleteNode(node.id);}}>
+                        <Trash2 className="text-destructive-foreground w-2.5 h-2.5" x={0-5} y={9-5} />
+                    </circle>
+                  </TooltipTrigger>
+                  <TooltipContent><p>Delete node</p></TooltipContent>
+                </Tooltip>
             </g>
         )}
       </g>
