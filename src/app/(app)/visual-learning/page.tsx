@@ -95,7 +95,7 @@ export default function VisualLearningPage() {
       if (mode !== "mindmaps") {
         setMindMapConfig(null); 
       } else if (!searchParams.get('sessionId')) { 
-        setMindMapConfig(null);
+        setMindMapConfig({ initialTopic: "My New Mind Map"}); // Set a default topic for new mindmap sessions
         setCanvasPanelGrow(7); // Reset panel grow for new mindmap session
       }
       router.push(`/visual-learning?mode=${mode}`, { scroll: false });
@@ -171,19 +171,19 @@ export default function VisualLearningPage() {
   const handlePanelResize = (action: 'wider-canvas' | 'wider-chat' | 'reset' | 'maximize-canvas' | 'maximize-chat') => {
     switch (action) {
       case 'wider-canvas':
-        setCanvasPanelGrow(prev => Math.min(9, prev + 1)); // Max 9 to leave some space for chat
+        setCanvasPanelGrow(prev => Math.min(9, prev + 1)); 
         break;
       case 'wider-chat':
-        setCanvasPanelGrow(prev => Math.max(1, prev - 1)); // Min 1 to leave some space for canvas
+        setCanvasPanelGrow(prev => Math.max(1, prev - 1)); 
         break;
       case 'reset':
-        setCanvasPanelGrow(7); // Reset to 70/30 split
+        setCanvasPanelGrow(7); 
         break;
       case 'maximize-canvas':
-        setCanvasPanelGrow(9); // 90% canvas, 10% chat
+        setCanvasPanelGrow(9); 
         break;
       case 'maximize-chat':
-        setCanvasPanelGrow(1); // 10% canvas, 90% chat
+        setCanvasPanelGrow(1); 
         break;
     }
   };
@@ -238,7 +238,7 @@ export default function VisualLearningPage() {
     return initialMessage;
   };
 
-  const canvasPanelStyle = { flexGrow: canvasPanelGrow, flexBasis: '0%', minWidth: '0px' }; // flexBasis and minWidth for true flex behavior
+  const canvasPanelStyle = { flexGrow: canvasPanelGrow, flexBasis: '0%', minWidth: '0px' }; 
   const chatPanelStyle = { flexGrow: 10 - canvasPanelGrow, flexBasis: '0%', minWidth: '0px' };
 
 
@@ -304,7 +304,7 @@ export default function VisualLearningPage() {
           <>
             {activeMode === "mindmaps" ? (
              <TooltipProvider>
-              <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative"> {/* Added relative for panel controls */}
+              <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative h-full min-h-[65vh]"> 
                 {/* Panel Resize Controls */}
                 <div className="absolute top-1 right-1 z-20 flex gap-1 bg-background/70 p-1 rounded-md shadow-md border border-border">
                   <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-canvas')} className="h-7 w-7 p-1"><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Canvas</p></TooltipContent></Tooltip>
@@ -315,7 +315,7 @@ export default function VisualLearningPage() {
                 </div>
 
                 {/* Left Column: Mind Map */}
-                <div className="flex flex-col overflow-hidden border rounded-lg shadow-md bg-card" style={canvasPanelStyle}> 
+                <div className="flex flex-col overflow-hidden border rounded-lg shadow-md bg-card h-full" style={canvasPanelStyle}> 
                   <AIMindMapDisplay
                     key={chatKey} 
                     initialTopic={mindMapConfig?.initialTopic}
@@ -323,7 +323,7 @@ export default function VisualLearningPage() {
                   />
                 </div>
                 {/* Right Column: Chat */}
-                <div className="flex flex-col overflow-hidden" style={chatPanelStyle}> 
+                <div className="flex flex-col overflow-hidden h-full" style={chatPanelStyle}> 
                   <DynamicChatInterface
                     key={`${chatKey}-chat`}
                     userProfile={profile}
