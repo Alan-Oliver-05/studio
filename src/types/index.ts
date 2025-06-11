@@ -3,6 +3,7 @@
 export interface BoardExamInfo {
   board?: string;
   standard?: string;
+  subjectSegment?: string; // Added for 11th/12th stream
 }
 
 export interface CompetitiveExamInfo {
@@ -137,7 +138,7 @@ export interface InteractiveQAndAInput {
     preferredLanguage: string;
     learningStyle?: LearningStyle;
     educationQualification?: {
-      boardExam?: { board?: string; standard?: string };
+      boardExam?: { board?: string; standard?: string; subjectSegment?: string }; // Added subjectSegment
       competitiveExam?: { examType?: string; specificExam?: string; stage?: string; examDate?: string; }; // Added examDate
       universityExam?: { universityName?: string; course?: string; currentYear?: string };
     };

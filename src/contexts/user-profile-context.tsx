@@ -28,7 +28,7 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
         const parsedProfile = JSON.parse(storedProfile) as UserProfile;
         
         parsedProfile.educationQualification = {
-          boardExams: parsedProfile.educationQualification?.boardExams || {},
+          boardExams: parsedProfile.educationQualification?.boardExams || {subjectSegment: ""}, // Ensure subjectSegment exists
           competitiveExams: parsedProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "", examDate: undefined}, 
           universityExams: parsedProfile.educationQualification?.universityExams || {},
         };
@@ -36,19 +36,19 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
             if (!('stage' in parsedProfile.educationQualification.competitiveExams)) {
                 parsedProfile.educationQualification.competitiveExams.stage = ""; 
             }
-            // Ensure examDate is handled correctly if it was stored as Date object previously
-            // For new profiles, it will be string or undefined. For old, could be Date.
-             if (parsedProfile.educationQualification.competitiveExams.examDate && 
+            if (parsedProfile.educationQualification.competitiveExams.examDate && 
                 !(typeof parsedProfile.educationQualification.competitiveExams.examDate === 'string' && 
                   isValid(parseISO(parsedProfile.educationQualification.competitiveExams.examDate)))
              ) {
-                 // If it's not a valid ISO string, try to format if it's a date object, else clear
                 try {
                     parsedProfile.educationQualification.competitiveExams.examDate = format(new Date(parsedProfile.educationQualification.competitiveExams.examDate), "yyyy-MM-dd");
                 } catch {
                     parsedProfile.educationQualification.competitiveExams.examDate = undefined;
                 }
             }
+        }
+        if (parsedProfile.educationQualification.boardExams && !('subjectSegment' in parsedProfile.educationQualification.boardExams)) {
+            parsedProfile.educationQualification.boardExams.subjectSegment = "";
         }
         parsedProfile.learningStyle = parsedProfile.learningStyle || 'balanced';
         setProfileState(parsedProfile);
@@ -66,7 +66,7 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
         ...newProfile,
         learningStyle: newProfile.learningStyle || 'balanced', 
         educationQualification: {
-          boardExams: newProfile.educationQualification?.boardExams || {},
+          boardExams: newProfile.educationQualification?.boardExams || {subjectSegment: ""},
           competitiveExams: newProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "", examDate: undefined },
           universityExams: newProfile.educationQualification?.universityExams || {},
         },
@@ -75,10 +75,12 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
         if (!('stage' in profileToSave.educationQualification.competitiveExams)) {
           profileToSave.educationQualification.competitiveExams.stage = ""; 
         }
-         // Ensure examDate is stored as YYYY-MM-DD string if present
         if (profileToSave.educationQualification.competitiveExams.examDate && profileToSave.educationQualification.competitiveExams.examDate instanceof Date) {
             profileToSave.educationQualification.competitiveExams.examDate = format(profileToSave.educationQualification.competitiveExams.examDate, "yyyy-MM-dd");
         }
+      }
+      if (profileToSave.educationQualification.boardExams && !('subjectSegment' in profileToSave.educationQualification.boardExams)) {
+        profileToSave.educationQualification.boardExams.subjectSegment = "";
       }
       setProfileState(profileToSave);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(profileToSave));
@@ -95,7 +97,7 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
       let updatedProfileData = { ...prevProfile, ...updates };
       
       updatedProfileData.educationQualification = {
-        boardExams: updatedProfileData.educationQualification?.boardExams || {},
+        boardExams: updatedProfileData.educationQualification?.boardExams || {subjectSegment: ""},
         competitiveExams: updatedProfileData.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "", examDate: undefined },
         universityExams: updatedProfileData.educationQualification?.universityExams || {},
       };
@@ -106,6 +108,9 @@ export const UserProfileProvider = ({ children }: { children: ReactNode }) => {
         if (updatedProfileData.educationQualification.competitiveExams.examDate && updatedProfileData.educationQualification.competitiveExams.examDate instanceof Date) {
             updatedProfileData.educationQualification.competitiveExams.examDate = format(updatedProfileData.educationQualification.competitiveExams.examDate, "yyyy-MM-dd");
         }
+      }
+      if (updatedProfileData.educationQualification.boardExams && !('subjectSegment' in updatedProfileData.educationQualification.boardExams)) {
+          updatedProfileData.educationQualification.boardExams.subjectSegment = "";
       }
       updatedProfileData.learningStyle = updatedProfileData.learningStyle || 'balanced';
 

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut, BookOpen, ListChecks, PenSquare, Brain, PieChartIcon, User as UserIcon, Palette, Trash2, Star, CalendarDays } from "lucide-react"; 
+import { UserCircle2, Loader2, AlertTriangle, SettingsIcon, GraduationCap, MapPin, LanguagesIcon, Edit3, Bell, KeyRound, LogOut, BookOpen, ListChecks, PenSquare, Brain, PieChartIcon, User as UserIcon, Palette, Trash2, Star, CalendarDays, Sparkles as SparklesIcon } from "lucide-react"; 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -21,7 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, LEARNING_STYLES, PROFESSIONAL_CERTIFICATION_STAGES, PROFESSIONAL_CERTIFICATION_EXAMS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE } from "@/lib/constants"; 
+import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, LEARNING_STYLES, PROFESSIONAL_CERTIFICATION_STAGES, PROFESSIONAL_CERTIFICATION_EXAMS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE, BOARD_STANDARDS } from "@/lib/constants"; 
 import { deleteAllConversations } from "@/lib/chat-storage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -101,6 +101,9 @@ export default function SettingsPage() {
   const countryLabel = COUNTRIES.find(c => c.value === profile.country)?.label || profile.country;
   const languageLabel = LANGUAGES.find(lang => lang.value === profile.preferredLanguage)?.label || profile.preferredLanguage;
   const learningStyleLabel = LEARNING_STYLES.find(ls => ls.value === profile.learningStyle)?.label || "Balanced";
+  const boardStandardLabel = profile.educationQualification?.boardExams?.standard 
+    ? BOARD_STANDARDS.find(s => s.value === profile.educationQualification.boardExams!.standard)?.label || profile.educationQualification.boardExams.standard
+    : "N/A";
 
   const competitiveExam = profile.educationQualification?.competitiveExams;
   let specificExamLabel = competitiveExam?.specificExam || "N/A";
@@ -184,7 +187,10 @@ export default function SettingsPage() {
                 {profile.educationCategory === "board" && profile.educationQualification.boardExams && (
                 <div className="pl-7 space-y-1 text-xs">
                   <DetailItem label="Board" value={profile.educationQualification.boardExams.board} />
-                  <DetailItem label="Standard" value={profile.educationQualification.boardExams.standard} />
+                  <DetailItem label="Standard" value={boardStandardLabel} />
+                  {profile.educationQualification.boardExams.subjectSegment && (
+                    <DetailItem label="Subject Segment" value={profile.educationQualification.boardExams.subjectSegment} icon={<SparklesIcon className="h-3.5 w-3.5 text-accent" />} />
+                  )}
                 </div>
                 )}
                 {profile.educationCategory === "competitive" && competitiveExam && (
