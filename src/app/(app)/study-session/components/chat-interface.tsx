@@ -402,6 +402,16 @@ export function ChatInterface({
       let aiResponseMessage: MessageType;
       
       let aiFlowTopic: string = topic; 
+      
+      let effectivePhotoDataUri: string | null | undefined = imageToSendAsPhotoDataUri;
+
+      if (topic === "Visual Learning - Mind Maps" && !effectivePhotoDataUri) {
+          const currentConversation = getConversationById(conversationId);
+          if (currentConversation?.currentMindMapImageUri) {
+              effectivePhotoDataUri = currentConversation.currentMindMapImageUri;
+          }
+      }
+
 
       if (isInteractiveQAMode) {
         let previousAIQuestionText: string | undefined;
@@ -456,7 +466,7 @@ export function ChatInterface({
           subject: context?.subject || undefined, lesson: context?.lesson || undefined,
           specificTopic: aiFlowTopic, 
           question: userMessage.text.replace(`(Context from uploaded image: ${uploadedImageName})`, '').trim(),
-          photoDataUri: imageToSendAsPhotoDataUri || undefined,
+          photoDataUri: effectivePhotoDataUri || undefined,
         };
         const aiResponse = await aiGuidedStudySession(aiInput);
         if (!aiResponse || !aiResponse.response) throw new Error("AI response was empty or invalid.");

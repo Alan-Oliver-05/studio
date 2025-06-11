@@ -67,6 +67,7 @@ export const addMessageToConversation = (
       messages: [],
       lastUpdatedAt: Date.now(),
       studentProfile: profile,
+      currentMindMapImageUri: null, // Initialize new field
     };
   }
   conversation.messages.push(message);
@@ -80,6 +81,12 @@ export const addMessageToConversation = (
   if (lessonContext && conversation.lessonContext !== lessonContext) {
     conversation.lessonContext = lessonContext;
   }
+
+  // Store image URI if in mind map mode and user uploads an image
+  if (topic === "Visual Learning - Mind Maps" && message.sender === 'user' && message.attachmentPreview) {
+    conversation.currentMindMapImageUri = message.attachmentPreview;
+  }
+  
   saveConversation(conversation);
   return conversation;
 };
@@ -126,4 +133,3 @@ export const updateConversationCustomTitle = (id: string, customTitle: string): 
     console.warn(`Conversation with ID ${id} not found for renaming.`);
   }
 };
-

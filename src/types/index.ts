@@ -106,6 +106,7 @@ export interface Conversation {
   messages: Message[];
   summary?: string;
   lastUpdatedAt: number;
+  currentMindMapImageUri?: string | null; // Added for sticky image context in mind map mode
 }
 
 export type TaskPriority = "Low" | "Medium" | "High";
