@@ -31,6 +31,15 @@ const AIMindMapDisplay = dynamic(
   }
 );
 
+const AIGraphsAndCharts = dynamic( // Import the new component
+  () => import('./components/AIGraphsAndCharts').then(mod => mod.default), // Assuming default export
+  {
+    ssr: false,
+    loading: () => <div className="flex justify-center items-center p-4 h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /> Loading Charts...</div>
+  }
+);
+
+
 type VisualLearningMode = "graphs" | "diagrams" | "mindmaps";
 
 interface ModeConfig {
@@ -302,11 +311,15 @@ export default function VisualLearningPage() {
       <div className="flex-1 flex flex-col min-h-0 w-full"> {/* Ensures this div can shrink and its children can take height */}
         {profile && currentConversationId && chatKey && activeModeConfig && (
           <>
-            {activeMode === "mindmaps" ? (
+            {activeMode === "graphs" ? (
+                <div className="flex-1 flex flex-col min-h-0 w-full">
+                    <AIGraphsAndCharts />
+                </div>
+            ) : activeMode === "mindmaps" ? (
              <TooltipProvider>
               <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative h-full"> 
                 {/* Panel Resize Controls */}
-                <div className="absolute top-1 right-1 z-20 flex gap-1 bg-background/70 p-1 rounded-md shadow-md border border-border">
+                <div className="absolute top-1 right-1 z-20 flex gap-1 bg-background/70 dark:bg-slate-800/70 p-1 rounded-md shadow-md border border-border dark:border-slate-700">
                   <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-canvas')} className="h-7 w-7 p-1"><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Canvas</p></TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-canvas')} className="h-7 w-7 p-1"><PanelRightOpen className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Make Canvas Wider</p></TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('reset')} className="h-7 w-7 p-1"><Columns2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reset Layout (70/30)</p></TooltipContent></Tooltip>
@@ -315,7 +328,7 @@ export default function VisualLearningPage() {
                 </div>
 
                 {/* Left Column: Mind Map */}
-                <div className="flex flex-col overflow-hidden border rounded-lg shadow-md bg-card h-full" style={canvasPanelStyle}> 
+                <div className="flex flex-col overflow-hidden border rounded-lg shadow-md bg-card dark:bg-slate-800 h-full" style={canvasPanelStyle}> 
                   <AIMindMapDisplay
                     key={chatKey} 
                     initialTopic={mindMapConfig?.initialTopic}
@@ -337,9 +350,9 @@ export default function VisualLearningPage() {
                 </div>
               </div>
              </TooltipProvider>
-            ) : (
-              // For other modes, display chat interface full width
-              <div className="max-w-4xl mx-auto h-full flex flex-col"> {/* Added flex flex-col */}
+            ) : ( 
+              // For "diagrams" mode
+              <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full">
                 <DynamicChatInterface
                   key={chatKey}
                   userProfile={profile}
