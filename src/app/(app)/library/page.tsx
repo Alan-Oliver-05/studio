@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2, PieChartIcon, Sparkles, ChevronDown, ChevronUp, Type as TypeIcon, Mic, MessagesSquare as MessagesSquareIcon, Camera as CameraIcon } from "lucide-react";
+import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2, PieChartIcon, Sparkles, ChevronDown, ChevronUp, Type as TypeIcon, Mic, MessagesSquare as MessagesSquareIcon, Camera as CameraIcon, BrainCircuit } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -61,13 +61,16 @@ export default function LibraryPage() {
     if (topic === "Language Voice Translation") return "voice";
     if (topic === "Language Conversation Practice") return "conversation";
     if (topic === "Language Camera Translation") return "camera";
+    if (topic === "Visual Learning - Graphs & Charts") return "graphs";
+    if (topic === "Visual Learning - Conceptual Diagrams") return "diagrams";
+    if (topic === "Visual Learning - Mind Maps") return "mindmaps";
     return undefined;
   }
 
   const getGroupNameForConvo = useCallback((convo: Conversation): string => {
     if (convo.topic === "AI Learning Assistant Chat") return "General AI Tutor";
     if (convo.topic === "Homework Help") return "Homework Helper";
-    if (convo.topic === "Visual Learning Focus" || convo.topic === "Visual Learning") return "Visual Learning";
+    if (convo.topic?.startsWith("Visual Learning")) return "Visual Learning";
     if (convo.topic === "Language Text Translation") return "Text Translator";
     if (convo.topic === "Language Voice Translation") return "Voice Translator";
     if (convo.topic === "Language Conversation Practice") return "Conversation Translator";
@@ -203,18 +206,23 @@ export default function LibraryPage() {
   }
 
   const getRevisitLink = (convo: Conversation) => {
-    let baseHref = "/language-learning"; 
+    let baseHref = ""; 
     const queryParams = new URLSearchParams({ sessionId: convo.id });
-    const mode = getModeFromTopic(convo.topic);
+    const modeFromTopic = getModeFromTopic(convo.topic);
     
-    if (mode) {
-      queryParams.set("mode", mode);
-    } else if (convo.topic === "Homework Help") baseHref = "/homework-assistant";
-    else if (convo.topic === "AI Learning Assistant Chat") baseHref = "/general-tutor";
-    else if (convo.topic === "Visual Learning" || convo.topic === "Visual Learning Focus") baseHref = "/visual-learning";
-    else if (convo.subjectContext && convo.lessonContext && convo.topic) {
+    if (convo.topic?.startsWith("Language ")) {
+        baseHref = "/language-learning";
+        if (modeFromTopic) queryParams.set("mode", modeFromTopic);
+    } else if (convo.topic?.startsWith("Visual Learning")) {
+        baseHref = "/visual-learning";
+        if (modeFromTopic) queryParams.set("mode", modeFromTopic);
+    } else if (convo.topic === "Homework Help") {
+        baseHref = "/homework-assistant";
+    } else if (convo.topic === "AI Learning Assistant Chat") {
+        baseHref = "/general-tutor";
+    } else if (convo.subjectContext && convo.lessonContext && convo.topic) {
       baseHref = `/study-session/${encodeURIComponent(convo.subjectContext)}`;
-    } else {
+    } else { // Fallback for older or uncategorized study sessions
         baseHref = `/study-session/${encodeURIComponent(convo.subjectContext || convo.topic || 'general')}`;
     }
     return `${baseHref}?${queryParams.toString()}`;
@@ -256,7 +264,12 @@ export default function LibraryPage() {
     if (groupName === "Camera Translator") return `Camera Session ${dateSuffix}`;
     if (groupName === "General AI Tutor") return `General Chat ${dateSuffix}`;
     if (groupName === "Homework Helper") return `Homework Session ${dateSuffix}`;
-    if (groupName === "Visual Learning") return `Visual Session ${dateSuffix}`;
+    if (groupName === "Visual Learning") {
+        if (convo.topic === "Visual Learning - Mind Maps") return `Mind Map Session ${dateSuffix}`;
+        if (convo.topic === "Visual Learning - Graphs & Charts") return `Graphs/Charts Session ${dateSuffix}`;
+        if (convo.topic === "Visual Learning - Conceptual Diagrams") return `Diagram Session ${dateSuffix}`;
+        return `Visual Session ${dateSuffix}`;
+    }
     
     if (firstUserMessage && !["Text Translator", "Voice Translator", "Conversation Translator", "Camera Translator", "General AI Tutor", "Homework Helper", "Visual Learning"].includes(groupName)) {
       return `${firstUserMessage}... ${dateSuffix}`;
@@ -341,8 +354,9 @@ export default function LibraryPage() {
                                     <span className="flex items-center"><BookCopy className="mr-1 h-3 w-3"/>L: {convo.lessonContext}</span>
                                 )}
                                 {convo.topic && 
-                                 !convo.topic.startsWith("Language ") && // Specific check for language modes
-                                 !["AI Learning Assistant Chat", "Homework Help", "Visual Learning Focus", "Visual Learning"].includes(convo.topic) && // Other general modes
+                                 !convo.topic.startsWith("Language ") && 
+                                 !convo.topic.startsWith("Visual Learning") &&
+                                 !["AI Learning Assistant Chat", "Homework Help"].includes(convo.topic) &&
                                  convo.topic !== groupName && 
                                  convo.topic !== convo.subjectContext && 
                                  convo.topic !== convo.lessonContext && (
