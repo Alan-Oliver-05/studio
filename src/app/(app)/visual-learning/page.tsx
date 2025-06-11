@@ -2,16 +2,16 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, PieChartIcon, BarChart3, LayoutGrid, BrainCircuit, RotateCcw, Sparkles, PanelLeftOpen, PanelRightOpen, Columns2, Maximize2, Minimize2 } from "lucide-react"; // Added more icons
+import { Loader2, AlertTriangle, PieChartIcon, BarChart3, LayoutGrid, BrainCircuit, RotateCcw, Sparkles, PanelLeftOpen, PanelRightOpen, Columns2, Maximize2, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react"; // Added useCallback
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
-import type { UserProfile, InitialNodeData } from "@/types"; 
+import type { UserProfile, InitialNodeData } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
@@ -25,14 +25,14 @@ const DynamicChatInterface = dynamic(() =>
 
 const AIMindMapDisplay = dynamic(
   () => import('./components/AIMindMapDisplay').then(mod => mod.default),
-  { 
+  {
     ssr: false,
     loading: () => <div className="flex justify-center items-center p-4 h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /> Loading Interactive Canvas...</div>
   }
 );
 
-const AIGraphsAndCharts = dynamic( 
-  () => import('./components/AIGraphsAndCharts').then(mod => mod.default), 
+const AIGraphsAndCharts = dynamic(
+  () => import('./components/AIGraphsAndCharts').then(mod => mod.default),
   {
     ssr: false,
     loading: () => <div className="flex justify-center items-center p-4 h-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /> Loading Charts...</div>
@@ -74,14 +74,14 @@ const visualModes: ModeConfig[] = [
     storageTopic: "Visual Learning - Conceptual Diagrams",
     initialSystemMessageTemplate: "Hi ${profileName}! For Conceptual Diagrams, tell me the process/system. Ensure text labels are clear. E.g., 'Diagram photosynthesis with legible labels.'",
     placeholderTextTemplate: "E.g., Diagram the water cycle with clear labels...",
-    enableImageUpload: true, 
+    enableImageUpload: true,
   },
   {
     id: "mindmaps", label: "Mind Maps / Flowcharts", icon: BrainCircuit, description: "Organize ideas with an interactive canvas.",
     storageTopic: "Visual Learning - Mind Maps",
     initialSystemMessageTemplate: "Welcome ${profileName}! For the interactive canvas, what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.' You can also upload a document to auto-generate initial nodes.",
     placeholderTextTemplate: "E.g., Type your central idea for the canvas...",
-    enableImageUpload: true, 
+    enableImageUpload: true,
   },
 ];
 
@@ -91,50 +91,58 @@ export default function VisualLearningPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [activeMode, setActiveMode] = useState<VisualLearningMode>("graphs");
+  const [activeMode, setActiveMode] = useState<VisualLearningMode>(visualModes[0].id); // Default to first mode
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(Date.now().toString());
   const [mindMapConfig, setMindMapConfig] = useState<{ initialTopic?: string; initialNodes?: InitialNodeData[] } | null>(null);
-  const [canvasPanelGrow, setCanvasPanelGrow] = useState(7); 
+  const [canvasPanelGrow, setCanvasPanelGrow] = useState(7);
 
-  const getStorageTopicForMode = (mode: VisualLearningMode): string => {
+  const getStorageTopicForMode = useCallback((mode: VisualLearningMode): string => {
     return visualModes.find(m => m.id === mode)?.storageTopic || "Visual Learning - General";
-  };
+  }, []);
 
-  const initializeNewSession = (mode: VisualLearningMode) => {
+  const initializeNewSession = useCallback((mode: VisualLearningMode) => {
     if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
       const newTimestamp = Date.now();
       const modeTopic = getStorageTopicForMode(mode);
       const newId = `${modeTopic.replace(/\s+/g, '-').toLowerCase()}-${profileIdentifier}-${newTimestamp}`;
+
       setCurrentConversationId(newId);
       setChatKey(newId);
-      if (mode !== "mindmaps") {
-        setMindMapConfig(null); 
-      } else if (!searchParams.get('sessionId')) { 
-        setMindMapConfig({ initialTopic: "My New Mind Map"}); 
-        setCanvasPanelGrow(7); 
+
+      if (mode === "mindmaps") {
+        setMindMapConfig({ initialTopic: "My New Mind Map", initialNodes: [] });
+        setCanvasPanelGrow(7);
+      } else {
+        setMindMapConfig(null);
       }
-      router.push(`/visual-learning?mode=${mode}`, { scroll: false });
+      // Update URL to reflect the new mode and implicitly trigger useEffect for session loading logic IF NEEDED by URL structure
+      // However, primary state setting is now direct.
+      if (searchParams.get('mode') !== mode || !searchParams.get('sessionId')) {
+        router.push(`/visual-learning?mode=${mode}`, { scroll: false });
+      }
     }
-  };
+  }, [profile, getStorageTopicForMode, router, searchParams]);
+
 
   useEffect(() => {
+    if (!profile || profileLoading) return;
+
     const modeFromQuery = searchParams.get('mode') as VisualLearningMode | null;
     const sessionIdFromQuery = searchParams.get('sessionId');
-    let targetMode = modeFromQuery || activeMode;
 
     if (sessionIdFromQuery) {
       const conversation = getConversationById(sessionIdFromQuery);
       if (conversation) {
         const foundModeConfig = visualModes.find(m => m.storageTopic === conversation.topic);
-        if (foundModeConfig) {
-            targetMode = foundModeConfig.id;
-        }
+        const conversationMode = foundModeConfig ? foundModeConfig.id : (modeFromQuery || visualModes[0].id);
+
+        setActiveMode(conversationMode);
         setCurrentConversationId(sessionIdFromQuery);
         setChatKey(sessionIdFromQuery);
-        
-        if (targetMode === 'mindmaps') {
+
+        if (conversationMode === 'mindmaps') {
           const lastMindMapMsg = [...conversation.messages].reverse().find(
             msg => msg.sender === 'ai' && msg.visualElement?.type === 'interactive_mind_map_canvas'
           );
@@ -144,69 +152,77 @@ export default function VisualLearningPage() {
               initialNodes: lastMindMapMsg.visualElement.content?.initialNodes,
             });
           } else {
-            const firstUserMessage = conversation.messages.find(m => m.sender === 'user');
-            setMindMapConfig({ initialTopic: firstUserMessage?.text || "My Restored Ideas" });
+            const firstUserMessageText = conversation.messages.find(m => m.sender === 'user')?.text;
+            setMindMapConfig({ initialTopic: firstUserMessageText || "Restored Mind Map", initialNodes: [] });
           }
+        } else {
+          setMindMapConfig(null);
         }
-
-        if (targetMode !== (searchParams.get('mode') || visualModes[0].id)) {
-            router.replace(`/visual-learning?sessionId=${sessionIdFromQuery}&mode=${targetMode}`, { scroll: false });
+        // If URL mode mismatches conversation's authoritative mode, correct URL
+        if (modeFromQuery !== conversationMode) {
+            router.replace(`/visual-learning?sessionId=${sessionIdFromQuery}&mode=${conversationMode}`, { scroll: false });
         }
+        return; // Session loaded.
       } else {
-        initializeNewSession(targetMode);
+        // Invalid sessionId in URL, treat as new session for the mode in URL (or default)
+        const targetMode = modeFromQuery || visualModes[0].id;
+        setActiveMode(targetMode); // Set mode first
+        initializeNewSession(targetMode); // Then init session which updates URL
+        return;
       }
-    } else {
-      initializeNewSession(targetMode);
     }
+
+    // No sessionId in URL
+    const targetMode = modeFromQuery || activeMode || visualModes[0].id; // Use URL mode, or current, or default
     if (activeMode !== targetMode) {
         setActiveMode(targetMode);
     }
+    // If no currentConversationId, or if mode in query doesn't match current active setup, initialize.
+    // This handles direct navigation to /visual-learning?mode=xyz or just /visual-learning
+    if (!currentConversationId || (modeFromQuery && activeModeConfig && activeModeConfig.id !== modeFromQuery)) {
+        initializeNewSession(targetMode);
+    }
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, profile]);
+  }, [searchParams, profile, profileLoading, router, initializeNewSession, getStorageTopicForMode]); // activeMode is not here, initializeNewSession uses arg
+
+  const activeModeConfig = visualModes.find(m => m.id === activeMode) || visualModes[0];
 
 
-  const handleModeChange = (newMode: VisualLearningMode) => {
-    if (newMode !== activeMode || !searchParams.get('sessionId')) {
-      initializeNewSession(newMode);
-    } else {
-      router.push(`/visual-learning?mode=${newMode}`, { scroll: false });
-      setActiveMode(newMode);
-    }
-    if (newMode !== "mindmaps") {
-        setMindMapConfig(null);
-    }
-  };
+  const handleModeChange = useCallback((newMode: VisualLearningMode) => {
+    setActiveMode(newMode); // Set active mode immediately
+    initializeNewSession(newMode); // Initialize session for the new mode
+  }, [initializeNewSession]);
 
-  const handleNewSessionClick = () => {
+
+  const handleNewSessionClick = useCallback(() => {
     initializeNewSession(activeMode);
-  };
+  }, [activeMode, initializeNewSession]);
 
-  const handleMindMapConfigChange = (config: { initialTopic?: string; initialNodes?: InitialNodeData[] } | null) => {
+  const handleMindMapConfigChange = useCallback((config: { initialTopic?: string; initialNodes?: InitialNodeData[] } | null) => {
     setMindMapConfig(config);
-  };
-  
+  }, []);
+
   const handlePanelResize = (action: 'wider-canvas' | 'wider-chat' | 'reset' | 'maximize-canvas' | 'maximize-chat') => {
     switch (action) {
       case 'wider-canvas':
-        setCanvasPanelGrow(prev => Math.min(9, prev + 1)); 
+        setCanvasPanelGrow(prev => Math.min(9, prev + 1));
         break;
       case 'wider-chat':
-        setCanvasPanelGrow(prev => Math.max(1, prev - 1)); 
+        setCanvasPanelGrow(prev => Math.max(1, prev - 1));
         break;
       case 'reset':
-        setCanvasPanelGrow(7); 
+        setCanvasPanelGrow(7);
         break;
       case 'maximize-canvas':
-        setCanvasPanelGrow(9); 
+        setCanvasPanelGrow(9);
         break;
       case 'maximize-chat':
-        setCanvasPanelGrow(1); 
+        setCanvasPanelGrow(1);
         break;
     }
   };
 
-
-  const activeModeConfig = visualModes.find(m => m.id === activeMode) || visualModes[0];
 
   if (profileLoading) {
     return (
@@ -232,7 +248,7 @@ export default function VisualLearningPage() {
     );
   }
 
-   if (!currentConversationId || !chatKey) {
+   if (!currentConversationId || !chatKey || !activeModeConfig) {
      return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -246,7 +262,7 @@ export default function VisualLearningPage() {
      if (modeConfig.id === 'mindmaps' && currentConversationId && searchParams.get('sessionId')) {
         const conversation = getConversationById(currentConversationId);
         const firstUserMessage = conversation?.messages.find(m => m.sender === 'user');
-        if(firstUserMessage?.text && (firstUserMessage.text.length < 100)) { 
+        if(firstUserMessage?.text && (firstUserMessage.text.length < 100)) {
              initialMessage = initialMessage.replace("what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'", `the canvas is ready for your topic: "${firstUserMessage.text}". You can add nodes or upload a document.`);
         } else if (mindMapConfig?.initialTopic) {
              initialMessage = initialMessage.replace("what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'", `the canvas is ready for your topic: "${mindMapConfig.initialTopic}".`);
@@ -255,7 +271,7 @@ export default function VisualLearningPage() {
     return initialMessage;
   };
 
-  const canvasPanelStyle = { flexGrow: canvasPanelGrow, flexBasis: '0%', minWidth: '0px' }; 
+  const canvasPanelStyle = { flexGrow: canvasPanelGrow, flexBasis: '0%', minWidth: '0px' };
   const chatPanelStyle = { flexGrow: 10 - canvasPanelGrow, flexBasis: '0%', minWidth: '0px' };
 
 
@@ -285,9 +301,9 @@ export default function VisualLearningPage() {
               onClick={() => handleModeChange(mode.id)}
               className={cn(
                 "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col",
-                "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-56 md:w-60 lg:w-64 flex-shrink-0", 
+                "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-56 md:w-60 lg:w-64 flex-shrink-0",
                 isActive
-                  ? "border-primary shadow-xl shadow-primary/25 ring-1 ring-primary/50" 
+                  ? "border-primary shadow-xl shadow-primary/25 ring-1 ring-primary/50"
                   : "border-border hover:border-primary/50 hover:shadow-lg dark:bg-slate-800/70 dark:hover:border-primary/70"
               )}
               tabIndex={0}
@@ -296,17 +312,17 @@ export default function VisualLearningPage() {
               aria-pressed={isActive}
               aria-label={`Switch to ${mode.label} mode`}
             >
-              <CardHeader className="items-center text-center p-2 pb-0.5"> 
+              <CardHeader className="items-center text-center p-2 pb-0.5">
                 <div className={cn(
-                    "p-1.5 rounded-full mb-1 transition-colors", 
+                    "p-1.5 rounded-full mb-1 transition-colors",
                     isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                 )}>
-                    <Icon className={cn("h-5 w-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary")} /> 
+                    <Icon className={cn("h-5 w-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary")} />
                 </div>
-                <CardTitle className={cn("text-xs font-medium transition-colors", isActive ? "text-primary" : "text-foreground group-hover:text-primary")}>{mode.label}</CardTitle> 
+                <CardTitle className={cn("text-xs font-medium transition-colors", isActive ? "text-primary" : "text-foreground group-hover:text-primary")}>{mode.label}</CardTitle>
               </CardHeader>
-              <CardContent className="p-2 pt-0.5 text-center flex-grow flex flex-col justify-center"> 
-                   <CardDescription className="text-xs leading-snug text-muted-foreground">{mode.description}</CardDescription> 
+              <CardContent className="p-2 pt-0.5 text-center flex-grow flex flex-col justify-center">
+                   <CardDescription className="text-xs leading-snug text-muted-foreground">{mode.description}</CardDescription>
               </CardContent>
               {isActive && (
                 <div className="w-full h-1 bg-primary mt-auto"></div>
@@ -315,24 +331,24 @@ export default function VisualLearningPage() {
           );
         })}
       </div>
-      
-      <div className="flex-1 flex flex-col min-h-0 w-full"> 
+
+      <div className="flex-1 flex flex-col min-h-0 w-full">
         {profile && currentConversationId && chatKey && activeModeConfig && (
           <>
             {activeMode === "graphs" ? (
                 <div className="flex-1 flex flex-col min-h-0 w-full">
                     <AIGraphsAndCharts />
                 </div>
-            ) : activeMode === "diagrams" ? ( 
+            ) : activeMode === "diagrams" ? (
                 <div className="flex-1 flex flex-col min-h-0 w-full">
-                    <AIConceptualDiagrams 
-                        userProfile={profile} 
-                        conversationId={currentConversationId} 
+                    <AIConceptualDiagrams
+                        userProfile={profile}
+                        conversationId={currentConversationId}
                     />
                 </div>
             ) : activeMode === "mindmaps" ? (
              <TooltipProvider>
-              <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative h-full"> 
+              <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative h-full">
                 <div className="absolute top-1 right-1 z-20 flex gap-1 bg-background/70 dark:bg-slate-800/70 p-1 rounded-md shadow-md border border-border dark:border-slate-700">
                   <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-canvas')} className="h-7 w-7 p-1"><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Canvas</p></TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-canvas')} className="h-7 w-7 p-1"><PanelRightOpen className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Make Canvas Wider</p></TooltipContent></Tooltip>
@@ -341,14 +357,14 @@ export default function VisualLearningPage() {
                   <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-chat')} className="h-7 w-7 p-1"><Minimize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Chat</p></TooltipContent></Tooltip>
                 </div>
 
-                <div className="flex flex-col overflow-hidden border rounded-lg shadow-md bg-card dark:bg-slate-800 h-full" style={canvasPanelStyle}> 
+                <div className="flex flex-col overflow-hidden border rounded-lg shadow-md bg-card dark:bg-slate-800 h-full" style={canvasPanelStyle}>
                   <AIMindMapDisplay
-                    key={chatKey} 
+                    key={chatKey}
                     initialTopic={mindMapConfig?.initialTopic}
                     initialNodes={mindMapConfig?.initialNodes}
                   />
                 </div>
-                <div className="flex flex-col overflow-hidden h-full" style={chatPanelStyle}> 
+                <div className="flex flex-col overflow-hidden h-full" style={chatPanelStyle}>
                   <DynamicChatInterface
                     key={`${chatKey}-chat`}
                     userProfile={profile}
@@ -362,7 +378,7 @@ export default function VisualLearningPage() {
                 </div>
               </div>
              </TooltipProvider>
-            ) : ( 
+            ) : (
               <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full">
                 <DynamicChatInterface
                   key={chatKey}
@@ -385,5 +401,3 @@ export default function VisualLearningPage() {
     </div>
   );
 }
-    
-
