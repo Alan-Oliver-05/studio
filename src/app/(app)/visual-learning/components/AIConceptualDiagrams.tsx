@@ -10,20 +10,17 @@ import {
   Eye, 
   EyeOff, 
   RotateCcw as ResetIcon,
-  Share2,
-  Sun,
+  Lightbulb,
+  BookOpen,
   Leaf,
   Heart,
   Atom,
+  Sun,
   Droplets,
-  Lightbulb,
-  BookOpen,
   Loader2,
   ZoomIn,
   ZoomOut,
-  Camera as ImageIconLucide, 
-  FileText,
-  Plus
+  FileText // Removed Share2 import
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -135,23 +132,21 @@ const AIConceptualDiagrams = () => {
     }
   };
 
-  useEffect(() => { // Center diagram on initial load or when diagram changes
+  useEffect(() => { 
     if (canvasRef.current && currentDiagram) {
       const svg = canvasRef.current;
       const { width, height } = svg.getBoundingClientRect();
-      // Basic centering logic, can be improved
-      const initialViewBox = "0 0 800 600"; // Match this with SVG viewBox if set
+      const initialViewBox = svg.getAttribute('viewBox') || "0 0 800 600";
       const vbParts = initialViewBox.split(" ").map(Number);
       setTranslateX((width - vbParts[2] * scale) / 2);
       setTranslateY((height - vbParts[3] * scale) / 2);
     } else if (canvasRef.current) {
       const svg = canvasRef.current;
       const { width, height } = svg.getBoundingClientRect();
-      setTranslateX(width / 2 - 400 * scale); // Approx center if no diagram (assuming 800x600 viewBox)
+      setTranslateX(width / 2 - 400 * scale); 
       setTranslateY(height / 2 - 300 * scale);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentDiagram, scale]); // Recalculate on scale change too if desired
+  }, [currentDiagram, scale]); 
 
   const analyzeQuery = (inputQuery: string): string | null => {
     const q = inputQuery.toLowerCase();
@@ -285,8 +280,8 @@ const AIConceptualDiagrams = () => {
 
     const startX = fromEl.x + Math.cos(angle) * (fromRadius + 2);
     const startY = fromEl.y + Math.sin(angle) * (fromRadius + 2);
-    const endX = toEl.x - Math.cos(angle) * (toRadius + 5); // Increased offset for arrow
-    const endY = toEl.y - Math.sin(angle) * (toRadius + 5); // Increased offset for arrow
+    const endX = toEl.x - Math.cos(angle) * (toRadius + 5); 
+    const endY = toEl.y - Math.sin(angle) * (toRadius + 5); 
     
     const arrowColor = 'hsl(var(--muted-foreground))';
 
@@ -312,15 +307,17 @@ const AIConceptualDiagrams = () => {
   };
 
   const exampleQueries = [
-    "Diagram photosynthesis with legible labels", "Show heart circulation system", "Create atomic structure diagram", "Explain water cycle process", "Draw digestive system overview"
+    "Diagram photosynthesis with legible labels",
+    "Show heart circulation system",
+    "Create atomic structure diagram",
+    "Explain water cycle process",
+    "Draw digestive system overview"
   ];
   
   const handleCanvasMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     if (e.target !== canvasRef.current) return; 
     const svg = canvasRef.current;
     if (!svg) return;
-    const CTM = svg.getScreenCTM();
-    if (!CTM) return;
     
     setDragInfo({
       type: 'canvas',
@@ -336,7 +333,6 @@ const AIConceptualDiagrams = () => {
     const CTM = svg.getScreenCTM();
     if (!CTM) return;
 
-    // Convert screen coords to SVG coords considering CTM for drag offset calculation
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
@@ -345,8 +341,8 @@ const AIConceptualDiagrams = () => {
     setDragInfo({
       type: 'node',
       id: node.id,
-      offset: { x: svgP.x - node.x, y: svgP.y - node.y }, // Offset is in scaled SVG coords
-      startCoords: { x: e.clientX, y: e.clientY } // Store initial screen coords for canvas movement
+      offset: { x: svgP.x - node.x, y: svgP.y - node.y }, 
+      startCoords: { x: e.clientX, y: e.clientY } 
     });
   };
 
@@ -360,7 +356,6 @@ const AIConceptualDiagrams = () => {
     if (!CTM) return;
 
     if (dragInfo.type === 'node' && dragInfo.id && currentDiagram) {
-      // Convert current mouse screen coords to SVG coords
       const pt = svg.createSVGPoint();
       pt.x = e.clientX;
       pt.y = e.clientY;
@@ -393,12 +388,11 @@ const AIConceptualDiagrams = () => {
 
     const svg = canvasRef.current;
     const rect = svg.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left; // Mouse X relative to SVG container
-    const mouseY = e.clientY - rect.top;  // Mouse Y relative to SVG container
+    const mouseX = e.clientX - rect.left; 
+    const mouseY = e.clientY - rect.top;  
 
     const newScale = Math.min(Math.max(scale - e.deltaY * ZOOM_SENSITIVITY * scale, MIN_SCALE), MAX_SCALE);
     
-    // Adjust translation to zoom towards mouse pointer
     const newTranslateX = mouseX - (mouseX - translateX) * (newScale / scale);
     const newTranslateY = mouseY - (mouseY - translateY) * (newScale / scale);
 
@@ -411,7 +405,6 @@ const AIConceptualDiagrams = () => {
      if (!canvasRef.current) return;
      const svg = canvasRef.current;
      const rect = svg.getBoundingClientRect();
-     // Zoom towards center of SVG container
      const centerX = rect.width / 2; 
      const centerY = rect.height / 2;
 
@@ -435,10 +428,80 @@ const AIConceptualDiagrams = () => {
     }
   };
 
+  const handleDownloadSVG = () => {
+    if (!canvasRef.current || !currentDiagram) return;
+
+    const svgElement = canvasRef.current.cloneNode(true) as SVGSVGElement;
+    
+    // Create a temporary g element to hold the content to be downloaded
+    // and apply the current transform to it.
+    // This way, the downloaded SVG reflects the current view (pan/zoom).
+    const gWrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    gWrapper.setAttribute("transform", `translate(${translateX}, ${translateY}) scale(${scale})`);
+
+    // Move all children of the original svg's first <g> (which has the transform) into the wrapper
+    const originalG = svgElement.querySelector('g');
+    if (originalG) {
+        while (originalG.firstChild) {
+            gWrapper.appendChild(originalG.firstChild);
+        }
+        // Replace the original g with our new gWrapper
+        svgElement.replaceChild(gWrapper, originalG);
+    } else {
+        // Fallback if the structure is different, though less likely with current setup
+        while (svgElement.firstChild) {
+          if (svgElement.firstChild.nodeName === 'g') { // target the main group
+             const mainGroup = svgElement.firstChild as SVGGElement;
+             while(mainGroup.firstChild) {
+                gWrapper.appendChild(mainGroup.firstChild);
+             }
+             mainGroup.appendChild(gWrapper);
+             break;
+          }
+          svgElement.removeChild(svgElement.firstChild); // Should not happen if g always exists
+        }
+        if (!svgElement.querySelector('g')) { // If no g, just append
+            svgElement.appendChild(gWrapper);
+        }
+    }
+
+
+    // Set explicit width and height on the cloned SVG for proper export
+    const viewBox = svgElement.getAttribute("viewBox")?.split(" ").map(Number) || [0, 0, 800, 600];
+    svgElement.setAttribute("width", viewBox[2].toString());
+    svgElement.setAttribute("height", viewBox[3].toString());
+    
+    // Ensure all necessary styles are inlined (basic for now, can be expanded)
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `
+        text { font-family: var(--font-geist-sans), Arial, sans-serif; }
+    `;
+    svgElement.insertBefore(styleEl, svgElement.firstChild);
+
+
+    let source = new XMLSerializer().serializeToString(svgElement);
+
+    if (!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+      source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    if (!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/)) {
+      source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+    }
+    source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
+
+    const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(source);
+    const downloadLink = document.createElement("a");
+    downloadLink.href = url;
+    const filename = (currentDiagram.title || "conceptual_diagram").replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    downloadLink.download = `${filename}.svg`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+  };
+
   return (
     <div className="w-full h-full flex flex-col bg-background text-foreground">
       <TooltipProvider>
-      {/* Header Panel */}
       <div className="bg-card border-b border-border shadow-sm p-3 sm:p-4">
         <div className="flex flex-col sm:flex-row items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
@@ -453,7 +516,7 @@ const AIConceptualDiagrams = () => {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" onClick={() => setShowLabels(!showLabels)} 
-                          className={cn("w-9 h-9 rounded-lg", showLabels ? "bg-blue-100 text-blue-600 dark:bg-blue-800/30 dark:text-blue-400" : "text-muted-foreground hover:bg-muted")}>
+                          className={cn("w-9 h-9 rounded-lg", showLabels ? "bg-blue-100 text-blue-600 dark:bg-primary/20 dark:text-primary" : "text-muted-foreground hover:bg-muted")}>
                     {showLabels ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                   </Button>
                 </TooltipTrigger>
@@ -461,40 +524,33 @@ const AIConceptualDiagrams = () => {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-9 h-9 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-800/30 dark:text-green-400 dark:hover:bg-green-700/40">
+                  <Button variant="ghost" size="icon" onClick={handleDownloadSVG} disabled={!currentDiagram}
+                          className="w-9 h-9 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-500/20 dark:text-green-500 dark:hover:bg-green-500/30 disabled:opacity-50">
                     <Download className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent><p>Download Diagram (SVG)</p></TooltipContent>
               </Tooltip>
-               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-9 h-9 rounded-lg bg-purple-100 text-purple-600 hover:bg-purple-200 dark:bg-purple-800/30 dark:text-purple-400 dark:hover:bg-purple-700/40">
-                    <Share2 className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Share Diagram</p></TooltipContent>
-              </Tooltip>
           </div>
         </div>
 
-        {/* Query Input */}
         <div className="flex flex-col sm:flex-row items-center gap-2">
           <div className="relative flex-grow w-full sm:w-auto">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && query.trim()) { handleGenerateDiagram(); } }}
               placeholder="E.g., 'Diagram photosynthesis with legible labels'"
-              className="w-full pl-4 pr-10 py-2 text-sm h-10 rounded-lg border-input focus-visible:ring-purple-500 bg-background" 
+              className="w-full pl-10 pr-4 py-2 text-sm h-10 rounded-lg border-input focus-visible:ring-purple-500 bg-background" 
             />
-             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           </div>
           <Button
             onClick={handleGenerateDiagram}
             disabled={isGenerating || !query.trim()}
             className="w-full sm:w-auto text-white rounded-lg h-10 px-5 text-sm hover:bg-purple-700 bg-purple-600" 
+            style={{backgroundColor: 'hsl(var(--chart-3))'}}
           >
             {isGenerating ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -505,7 +561,6 @@ const AIConceptualDiagrams = () => {
           </Button>
         </div>
         
-        {/* Example Queries */}
         <div className="mt-3 flex flex-wrap gap-2">
           {exampleQueries.map((example, index) => (
             <Button
@@ -522,15 +577,14 @@ const AIConceptualDiagrams = () => {
       </div>
       </TooltipProvider>
 
-      {/* Main Canvas */}
       <div className="flex-grow overflow-hidden p-2 sm:p-4 relative">
         <svg 
             ref={canvasRef} 
             width="100%" 
             height="100%" 
             className="bg-muted/30 dark:bg-slate-800/30 rounded-lg border border-border shadow-inner min-h-[400px] sm:min-h-[500px] cursor-grab active:cursor-grabbing"
-            viewBox="0 0 800 600" // Added viewBox for consistent coordinate system
-            preserveAspectRatio="xMidYMid meet" // Ensure diagram scales nicely
+            viewBox="0 0 800 600" 
+            preserveAspectRatio="xMidYMid meet" 
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp} 
@@ -570,7 +624,6 @@ const AIConceptualDiagrams = () => {
           )}
           </g>
         </svg>
-         {/* Zoom Controls */}
        <div className="absolute bottom-6 left-6 z-10 flex flex-col gap-2">
          <TooltipProvider>
          <Tooltip>
@@ -622,3 +675,5 @@ const AIConceptualDiagrams = () => {
 };
 
 export default AIConceptualDiagrams;
+
+        
