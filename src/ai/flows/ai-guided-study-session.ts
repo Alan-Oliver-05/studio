@@ -229,8 +229,7 @@ If the student explicitly requests a 'mind map' (or similar terms like 'visual o
 5.  **General AI Tutor Role Resumption**: For all other requests that are NOT explicitly for a textual mind map, continue to act as the general AI Learning Assistant as described in the "Teaching Methodology" and other sections below. In those cases, you MAY suggest other visual elements (like diagrams or image prompts for charts if appropriate for explanation), populating the 'visualElement' field accordingly. Do not ask the user if they want an image prompt created for textual mind maps.
 
 ## Teaching Methodology
-(Teaching methodology, Response Structure, Specialized Act Prompts, Response Guidelines, Question Response Protocol, Personalization Triggers, Sample Interaction Framework, Proactive Greeting remains as before)
-... [Omitted for brevity, no changes from previous version for these subsections] ...
+{{! ... (Omitted for brevity, no changes from previous version for these subsections) ... }}
 
 Proactive Greeting/Offering:
 If the student's question is a greeting or general (and not a specific request like "create a mind map"): Provide a welcoming response. Then, *proactively offer assistance related to their specific educational context and curriculum*. For example:
@@ -407,6 +406,7 @@ The 'visualElement' output field is generally not used in this mode for general 
           *   For flowcharts/diagrams (that are not text-based mind maps): 'visualElement.type' = 'image_generation_prompt'. 'visualElement.content' = descriptive prompt for image generation. 'visualElement.caption' = "Illustration".
       *   Ensure any data or prompts in 'visualElement' are curriculum-aligned.
       *   Interactive Mind Maps/Flowcharts are handled by the Visual Learning Page mode (isVisualLearningMindMaps). Textual mind maps are handled by AI Learning Assistant Chat.
+
 {{/if}}
 
   General Principles:
@@ -418,7 +418,6 @@ The 'visualElement' output field is generally not used in this mode for general 
     5. Suggest official/reputable resources.
   - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
 `;
-
 
 const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
@@ -485,8 +484,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
       isAiLearningAssistantChat: specificTopicFromInput === "AI Learning Assistant Chat" || specificTopicFromInput === "General Discussion",
       isHomeworkHelp: specificTopicFromInput === "Homework Help",
       
-      // Language Modes
-      isLanguageTranslatorMode: isBaseLanguageTranslatorMode, // Fallback mode if no specific language topic is hit
+      isLanguageTranslatorMode: isBaseLanguageTranslatorMode, 
       isLanguageTextTranslationMode: specificTopicFromInput === "Language Text Translation",
       isLanguageConversationMode: specificTopicFromInput === "Language Conversation Practice",
       isLanguageCameraMode: specificTopicFromInput === "Language Camera Translation",
