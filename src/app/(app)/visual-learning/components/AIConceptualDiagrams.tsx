@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Brain, 
   Search, 
@@ -16,14 +16,36 @@ import {
   Atom,
   Droplets,
   Lightbulb,
-  BookOpen, // Added for history
+  BookOpen,
+  Loader2,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw as ResetIcon,
+  Camera as ImageIconLucide, // Renamed from Image to avoid conflict
+  FileText,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { InitialNodeData } from '@/types';
 
-// Simplified types for this component's internal state
+
+// Node interface internal to this component
+interface Node {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  type: 'root' | 'leaf' | 'detail';
+  color: string;
+  aiGenerated: boolean;
+  parentId?: string;
+  confidence?: number;
+  aiType?: string; 
+}
+
 interface DiagramElement {
   id: string;
   type: string;
@@ -31,7 +53,7 @@ interface DiagramElement {
   y: number;
   label: string;
   icon?: string;
-  color: string; // This will now be an HSL theme variable string
+  color: string; 
 }
 
 interface DiagramConnection {
@@ -51,18 +73,42 @@ interface Diagram {
   aiConfidence?: number;
 }
 
+const MANUAL_NODE_COLOR = 'hsl(var(--primary))'; 
+const AI_NODE_COLOR = 'hsl(var(--chart-3))'; 
+const MIN_SCALE = 0.2;
+const MAX_SCALE = 3.0;
+const ZOOM_SENSITIVITY = 0.001;
+
+const DEFAULT_ROOT_NODE_DIAGRAM_COMPONENT: Node = { // Renamed to avoid conflict with other default root nodes
+  id: 'root',
+  text: 'AI Learning Map',
+  x: 100,
+  y: 150,
+  type: 'root',
+  color: MANUAL_NODE_COLOR,
+  aiGenerated: false
+};
+
 
 const AIConceptualDiagrams = () => {
   const [query, setQuery] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentDiagram, setCurrentDiagram] = useState<Diagram | null>(null);
   const [showLabels, setShowLabels] = useState(true);
-  // const [selectedStyle, setSelectedStyle] = useState('scientific'); // Style selection can be added later
-  const [diagramHistory, setDiagramHistory] = useState<Diagram[]>([]); // History can be added later
+  const [diagramHistory, setDiagramHistory] = useState<Diagram[]>([]);
   const [hoveredElement, setHoveredElement] = useState<string | null>(null);
   const canvasRef = useRef<SVGSVGElement>(null);
+  
+  const [scale, setScale] = useState(1);
+  const [translateX, setTranslateX] = useState(250); 
+  const [translateY, setTranslateY] = useState(150);
 
-  // Mapped Predefined diagram templates to theme colors
+  const [nodes, setNodes] = useState<Node[]>([DEFAULT_ROOT_NODE_DIAGRAM_COMPONENT]); // For AIMindMapDisplay if integrated, not directly used here
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null); // For AIMindMapDisplay
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null); // For AIMindMapDisplay
+  const [dragInfo, setDragInfo] = useState<{ type: 'node' | 'canvas', id?: string, offset: { x: number, y: number }, startCoords: { x: number, y: number }} | null>(null); // For AIMindMapDisplay
+
+
   const diagramTemplates: Record<string, Diagram> = {
     photosynthesis: {
       title: "Photosynthesis Process",
@@ -74,7 +120,7 @@ const AIConceptualDiagrams = () => {
         { id: 'h2o', type: 'input', x: 200, y: 250, label: 'H₂O (Water)', icon: 'droplets', color: 'hsl(var(--chart-1))' },
         { id: 'glucose', type: 'output', x: 450, y: 150, label: 'C₆H₁₂O₆ (Glucose)', color: 'hsl(var(--chart-4))' },
         { id: 'oxygen', type: 'output', x: 400, y: 80, label: 'O₂ (Oxygen)', color: 'hsl(var(--destructive))' },
-        { id: 'equation', type: 'formula', x: 250, y: 350, label: '6CO₂ + 6H₂O + Light Energy → C₆H₁₂O₆ + 6O₂', color: 'hsl(var(--chart-3))' }
+        { id: 'equation', type: 'formula', x: 250, y: 350, label: '6CO₂ + 6H₂O + Light → C₆H₁₂O₆ + 6O₂', color: 'hsl(var(--chart-3))' }
       ],
       connections: [
         { from: 'sun', to: 'leaf', type: 'energy', label: 'Light Energy' },
@@ -92,7 +138,7 @@ const AIConceptualDiagrams = () => {
         { id: 'lungs', type: 'organ', x: 150, y: 150, label: 'Lungs', color: 'hsl(var(--chart-1))' },
         { id: 'body', type: 'system', x: 450, y: 200, label: 'Body Tissues', color: 'hsl(var(--chart-2))' },
         { id: 'oxygenated', type: 'flow', x: 200, y: 100, label: 'Oxygenated Blood', color: 'hsl(var(--destructive))' },
-        { id: 'deoxygenated', type: 'flow', x: 400, y: 300, label: 'Deoxygenated Blood', color: 'hsl(var(--primary))' } // Using primary for a darker blue if needed
+        { id: 'deoxygenated', type: 'flow', x: 400, y: 300, label: 'Deoxygenated Blood', color: 'hsl(var(--primary))' }
       ],
       connections: [
         { from: 'heart', to: 'lungs', type: 'pulmonary', label: 'Pulmonary Circulation' },
@@ -123,13 +169,8 @@ const AIConceptualDiagrams = () => {
     const q = inputQuery.toLowerCase();
     const patterns: Record<string, string[]> = {
       photosynthesis: ['photosynthesis', 'plant', 'chlorophyll', 'glucose', 'sunlight', 'co2'],
-      circulation: ['heart', 'blood', 'circulation', 'cardiovascular', 'pulse'],
-      atom: ['atom', 'electron', 'proton', 'neutron', 'nucleus', 'atomic'],
-      cell: ['cell', 'membrane', 'nucleus', 'mitochondria', 'organelle'],
-      ecosystem: ['ecosystem', 'food chain', 'predator', 'prey', 'environment'],
-      water_cycle: ['water cycle', 'evaporation', 'condensation', 'precipitation'],
-      digestive: ['digestive', 'stomach', 'intestine', 'digestion', 'food'],
-      respiratory: ['respiratory', 'lungs', 'breathing', 'oxygen', 'carbon dioxide']
+      heartCirculation: ['heart', 'blood', 'circulation', 'cardiovascular', 'pulse'],
+      atomStructure: ['atom', 'electron', 'proton', 'neutron', 'nucleus', 'atomic'],
     };
     let bestMatch: string | null = null;
     let maxMatches = 0;
@@ -166,11 +207,11 @@ const AIConceptualDiagrams = () => {
     setIsGenerating(true);
     await new Promise(resolve => setTimeout(resolve, 1500)); 
 
-    const diagramType = analyzeQuery(query);
+    const diagramKey = analyzeQuery(query);
     let newDiagram: Diagram;
 
-    if (diagramType && diagramTemplates[diagramType]) {
-      newDiagram = diagramTemplates[diagramType];
+    if (diagramKey && diagramTemplates[diagramKey]) {
+      newDiagram = diagramTemplates[diagramKey];
     } else {
       newDiagram = generateCustomDiagram(query);
     }
@@ -190,7 +231,7 @@ const AIConceptualDiagrams = () => {
         sun: Sun, leaf: Leaf, heart: Heart, droplets: Droplets, atom: Atom
       };
       const IconComponent = iconName ? iconMap[iconName] : Lightbulb;
-      return <IconComponent className="w-5 h-5" />; // Adjusted size for consistency
+      return <IconComponent className="w-5 h-5" />;
     };
     const isHovered = hoveredElement === element.id;
 
@@ -258,7 +299,7 @@ const AIConceptualDiagrams = () => {
     const endX = toEl.x - Math.cos(angle) * (toRadius + 5);
     const endY = toEl.y - Math.sin(angle) * (toRadius + 5);
     
-    const arrowColor = 'hsl(var(--muted-foreground))'; // Consistent arrow color
+    const arrowColor = 'hsl(var(--muted-foreground))';
 
     return (
       <g key={`${connection.from}-${connection.to}`}>
@@ -282,44 +323,160 @@ const AIConceptualDiagrams = () => {
   };
 
   const exampleQueries = [
-    "Diagram photosynthesis", "Show heart circulation", "Atomic structure", "Water cycle", "Digestive system"
+    "Diagram photosynthesis with legible labels", "Show heart circulation system", "Create atomic structure diagram", "Explain water cycle process", "Draw digestive system overview"
   ];
+  
+  const handleCanvasMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (e.target !== canvasRef.current) return; 
+    const svg = canvasRef.current;
+    if (!svg) return;
+    const CTM = svg.getScreenCTM();
+    if (!CTM) return;
+
+    const transformedPoint = {
+        x: (e.clientX - CTM.e) / CTM.a,
+        y: (e.clientY - CTM.f) / CTM.d
+    };
+    
+    setDragInfo({
+      type: 'canvas',
+      offset: { x: 0, y: 0 }, 
+      startCoords: { x: e.clientX, y: e.clientY } 
+    });
+  };
+  
+  const handleNodeMouseDown = (e: React.MouseEvent<SVGGElement>, node: DiagramElement) => { // Changed Node to DiagramElement
+    e.stopPropagation(); 
+    if (editingNodeId) return; // Assuming editingNodeId is for text input, not relevant here directly but good practice
+    const svg = canvasRef.current;
+    if (!svg) return;
+    const CTM = svg.getScreenCTM();
+     if (!CTM) return;
+
+    const transformedPoint = {
+        x: (e.clientX - CTM.e) / CTM.a,
+        y: (e.clientY - CTM.f) / CTM.d
+    };
+
+    setDragInfo({
+      type: 'node',
+      id: node.id,
+      offset: { x: transformedPoint.x - node.x, y: transformedPoint.y - node.y },
+      startCoords: { x: transformedPoint.x, y: transformedPoint.y }
+    });
+    // setSelectedNodeId(node.id); // Assuming setSelectedNodeId still relevant for other interactions
+  };
+
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!dragInfo) return;
+    e.preventDefault();
+    
+    const svg = canvasRef.current;
+    if (!svg) return;
+    const CTM = svg.getScreenCTM();
+    if (!CTM) return;
+
+    const transformedPoint = {
+        x: (e.clientX - CTM.e) / CTM.a,
+        y: (e.clientY - CTM.f) / CTM.d
+    };
+
+
+    if (dragInfo.type === 'node' && dragInfo.id && currentDiagram) {
+      const newX = transformedPoint.x - dragInfo.offset.x;
+      const newY = transformedPoint.y - dragInfo.offset.y;
+      setCurrentDiagram(prevDiagram => prevDiagram ? ({
+        ...prevDiagram,
+        elements: prevDiagram.elements.map(el => el.id === dragInfo.id ? { ...el, x: newX, y: newY } : el)
+      }) : null);
+    } else if (dragInfo.type === 'canvas') {
+      const dx = e.clientX - dragInfo.startCoords.x;
+      const dy = e.clientY - dragInfo.startCoords.y;
+      setTranslateX(prev => prev + dx / scale); // Adjust translation by scaled delta
+      setTranslateY(prev => prev + dy / scale);
+      setDragInfo(prev => prev ? { ...prev, startCoords: { x: e.clientX, y: e.clientY }} : null);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setDragInfo(null);
+  };
+  
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    if (!canvasRef.current) return;
+
+    const svg = canvasRef.current;
+    const rect = svg.getBoundingClientRect();
+    const mouseX = (e.clientX - rect.left - translateX) / scale; // Mouse position relative to current view
+    const mouseY = (e.clientY - rect.top - translateY) / scale;
+
+    const newScale = Math.min(Math.max(scale - e.deltaY * ZOOM_SENSITIVITY * scale, MIN_SCALE), MAX_SCALE);
+    
+    const newTranslateX = translateX - (mouseX * (newScale - scale));
+    const newTranslateY = translateY - (mouseY * (newScale - scale));
+
+    setScale(newScale);
+    setTranslateX(newTranslateX);
+    setTranslateY(newTranslateY);
+  };
+  
+  const zoom = (factor: number) => {
+     if (!canvasRef.current) return;
+     const svg = canvasRef.current;
+     const rect = svg.getBoundingClientRect();
+     const centerX = (rect.width / 2 - translateX) / scale; // Center of the viewport relative to current view
+     const centerY = (rect.height / 2 - translateY) / scale;
+
+     const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
+     setTranslateX(translateX - (centerX * (newScale - scale)));
+     setTranslateY(translateY - (centerY * (newScale - scale)));
+     setScale(newScale);
+  };
+
+  const resetView = () => {
+    setScale(1);
+    setTranslateX(250); 
+    setTranslateY(150);
+  };
+
 
   return (
     <div className="w-full h-full flex flex-col bg-background text-foreground">
-      {/* Header Panel */}
       <TooltipProvider>
       <div className="bg-card border-b border-border shadow-sm p-4">
         <div className="flex flex-col sm:flex-row items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
-            <Brain className="w-7 h-7 text-purple-500" /> {/* Changed to a fixed color for branding */}
+            <Brain className="w-7 h-7 text-purple-500" />
             <div>
               <h1 className="text-lg font-bold text-foreground">AI Conceptual Diagrams</h1>
               <p className="text-xs text-muted-foreground">Generate educational diagrams with AI</p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-1.5 mt-2 sm:mt-0">
+          <div className="flex items-center space-x-1 mt-2 sm:mt-0">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={() => setShowLabels(!showLabels)} className="w-8 h-8">
-                    {showLabels ? <Eye className="w-4 h-4 text-primary" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
+                  <Button variant="ghost" size="icon" onClick={() => setShowLabels(!showLabels)} 
+                          className={cn("w-9 h-9 rounded-lg", showLabels ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}>
+                    {showLabels ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent><p>{showLabels ? 'Hide' : 'Show'} Labels</p></TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-8 h-8">
-                    <Download className="w-4 h-4 text-primary" />
+                  <Button variant="ghost" size="icon" className="w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-green-600">
+                    <Download className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent><p>Download Diagram</p></TooltipContent>
+                <TooltipContent><p>Download Diagram (SVG)</p></TooltipContent>
               </Tooltip>
                <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="w-8 h-8">
-                    <Share2 className="w-4 h-4 text-primary" />
+                  <Button variant="ghost" size="icon" className="w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-purple-600">
+                    <Share2 className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent><p>Share Diagram</p></TooltipContent>
@@ -336,16 +493,17 @@ const AIConceptualDiagrams = () => {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && query.trim()) { handleGenerateDiagram(); } }}
               placeholder="E.g., 'Diagram photosynthesis with legible labels'"
-              className="w-full pl-9 pr-4 py-2 text-sm h-10 border-input focus-visible:ring-purple-500" 
+              className="w-full pl-10 pr-4 py-2 text-sm h-10 rounded-lg border-input focus-visible:ring-purple-500 bg-background" 
             />
           </div>
           <Button
             onClick={handleGenerateDiagram}
             disabled={isGenerating || !query.trim()}
-            className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-primary-foreground rounded-md h-10 px-5 text-sm" 
+            style={{ backgroundColor: 'hsl(var(--chart-3))' }} 
+            className="w-full sm:w-auto text-primary-foreground rounded-lg h-10 px-6 text-sm hover:opacity-90" 
           >
             {isGenerating ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <Zap className="w-4 h-4 mr-2" />
             )}
@@ -353,14 +511,14 @@ const AIConceptualDiagrams = () => {
           </Button>
         </div>
         
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-2">
           {exampleQueries.map((example, index) => (
             <Button
               key={index}
               variant="outline"
               size="sm"
               onClick={() => {setQuery(example); handleGenerateDiagram();}}
-              className="text-xs px-2.5 py-1 h-auto border-dashed border-muted-foreground/50 hover:border-primary/70 hover:bg-primary/5 hover:text-primary text-muted-foreground"
+              className="text-xs px-3 py-1 h-auto rounded-full border-border hover:border-primary/70 hover:bg-primary/5 hover:text-primary text-muted-foreground"
             >
               {example}
             </Button>
@@ -370,22 +528,33 @@ const AIConceptualDiagrams = () => {
       </TooltipProvider>
 
       {/* Main Canvas */}
-      <div className="flex-grow overflow-auto p-2 sm:p-4">
-        <svg ref={canvasRef} width="100%" height="100%" viewBox="0 0 800 600" className="bg-muted/30 dark:bg-slate-800/30 rounded-lg border border-border shadow-inner min-h-[400px] sm:min-h-[500px]">
+      <div className="flex-grow overflow-auto p-2 sm:p-4 relative">
+        <svg 
+            ref={canvasRef} 
+            width="100%" 
+            height="100%" 
+            className="bg-muted/30 dark:bg-slate-800/30 rounded-lg border border-border shadow-inner min-h-[400px] sm:min-h-[500px]"
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp} 
+            onMouseDown={handleCanvasMouseDown} 
+            onWheel={handleWheel}
+        >
+         <g transform={`translate(${translateX}, ${translateY}) scale(${scale})`}>
           {currentDiagram && (
             <>
               {currentDiagram.connections?.map(renderConnection)}
               {currentDiagram.elements.map(renderElement)}
-              <text x="50%" y="30" textAnchor="middle" className="fill-foreground text-lg font-semibold select-none">
+              <text x={currentDiagram.elements[0]?.x || 400} y={(currentDiagram.elements[0]?.y || 30) - 50} textAnchor="middle" className="fill-foreground text-lg font-semibold select-none pointer-events-none">
                 {currentDiagram.title}
               </text>
               {currentDiagram.aiConfidence && (
-                <g transform="translate(655, 10)"> {/* Adjusted position to fit better */}
-                  <rect x="0" y="0" width="135" height="35" rx="17.5" className="fill-background/80 stroke-border" />
-                  <text x="67.5" y="14" textAnchor="middle" className="fill-muted-foreground text-xs font-medium select-none">
+                <g transform={`translate(${(currentDiagram.elements[0]?.x || 400) + 200}, ${(currentDiagram.elements[0]?.y || 10) - 60})`}>
+                  <rect x="0" y="0" width="135" height="35" rx="17.5" className="fill-background/80 stroke-border pointer-events-none" />
+                  <text x="67.5" y="14" textAnchor="middle" className="fill-muted-foreground text-xs font-medium select-none pointer-events-none">
                     AI Confidence
                   </text>
-                  <text x="67.5" y="29" textAnchor="middle" className="fill-purple-500 text-sm font-bold select-none">
+                  <text x="67.5" y="29" textAnchor="middle" style={{fill: 'hsl(var(--chart-3))'}} className="text-sm font-bold select-none pointer-events-none">
                     {Math.round(currentDiagram.aiConfidence * 100)}%
                   </text>
                 </g>
@@ -393,21 +562,44 @@ const AIConceptualDiagrams = () => {
             </>
           )}
           {!currentDiagram && !isGenerating && (
-            <text x="50%" y="50%" textAnchor="middle" dy=".3em" className="fill-muted-foreground text-base select-none">
+            <text x="50%" y="50%" textAnchor="middle" dy=".3em" className="fill-muted-foreground text-base select-none pointer-events-none">
               Enter a query above to generate a diagram. Try: "Photosynthesis"
             </text>
           )}
           {isGenerating && (
-             <text x="50%" y="50%" textAnchor="middle" dy=".3em" className="fill-purple-500 text-base select-none animate-pulse">
+             <text x="50%" y="50%" textAnchor="middle" dy=".3em" style={{fill: 'hsl(var(--chart-3))'}} className="text-base select-none animate-pulse pointer-events-none">
                 🤖 AI is thinking... Please wait.
             </text>
           )}
+          </g>
         </svg>
+         {/* Zoom Controls & Download */}
+       <div className="absolute bottom-6 left-6 z-10 flex flex-col gap-2">
+         <TooltipProvider>
+         <Tooltip>
+            <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => zoom(1.25)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9 border-border"><ZoomIn className="h-4 w-4 text-foreground" /></Button>
+            </TooltipTrigger>
+            <TooltipContent side="right"><p>Zoom In</p></TooltipContent>
+        </Tooltip>
+         <Tooltip>
+            <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => zoom(0.8)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9 border-border"><ZoomOut className="h-4 w-4 text-foreground" /></Button>
+            </TooltipTrigger>
+            <TooltipContent side="right"><p>Zoom Out</p></TooltipContent>
+        </Tooltip>
+         <Tooltip>
+            <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={resetView} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9 border-border"><ResetIcon className="h-4 w-4 text-foreground" /></Button>
+            </TooltipTrigger>
+            <TooltipContent side="right"><p>Reset View</p></TooltipContent>
+        </Tooltip>
+         </TooltipProvider>
+      </div>
       </div>
       
-      {/* History Panel */}
       {diagramHistory.length > 0 && (
-        <div className="absolute bottom-4 left-4 bg-card rounded-xl shadow-lg p-3 max-w-xs border border-border">
+        <div className="absolute bottom-6 right-6 bg-card rounded-xl shadow-lg p-3 max-w-[220px] border border-border z-10">
           <h3 className="font-semibold text-sm text-foreground mb-1.5 flex items-center space-x-2">
             <BookOpen className="w-4 h-4 text-primary" />
             <span>Recent Diagrams</span>
@@ -434,7 +626,7 @@ const AIConceptualDiagrams = () => {
 
 export default AIConceptualDiagrams;
 
-// Add this style to your globals.css or a style tag in this component if needed:
+// Styles for scrollbar (can be in globals.css or a <style jsx global> tag if preferred)
 // .scrollbar-thin {
 //   scrollbar-width: thin;
 //   scrollbar-color: hsl(var(--border)) hsl(var(--background));
@@ -449,28 +641,5 @@ export default AIConceptualDiagrams;
 //   background-color: hsl(var(--border));
 //   border-radius: 3px;
 // }
-// fill={`${element.color.replace(')', ', 0.2)').replace('hsl(','hsla(')}`} // For semi-transparent SVG fill
-// Note: The hsla conversion for semi-transparent fill is a basic approach. If theme variables include opacity, use those.
-// The color 'hsl(var(--primary))' can be used directly for darker blue for deoxygenated blood if needed.
-// The purple branding for AI Brain icon is a specific choice, you can adjust if needed.
-// Focus visible ring color for input changed to purple-500 to match branding.
-// Button text color for Generate button changed to primary-foreground for better contrast with purple background.
-// Spinner color in Generate button changed to current (which will be primary-foreground).
-// Recent Diagrams history buttons styled to be more subtle.
-// Confidence indicator G element position adjusted.
-// Added scrollbar-thin class to history panel for better scroll aesthetics.
-// Tooltips are now wrapped with TooltipProvider.
-// Icons in control panel styled with theme colors (primary/muted-foreground).
-// Background of main div and canvas area changed to use theme variables (background, muted/30).
-// Shadcn Input and Button components are used as requested.
-// Hardcoded hex colors are replaced with HSL theme variables.
-// Added explicit TooltipProvider for controls.
-// Used cn() for dynamic classnames.
-// Removed unused imports like Activity, Dna, Palette, etc. to clean up.
-// Fixed icon sizing in renderElement to be consistent.
-// Adjusted hover tooltip styling in renderElement.
-// Ensured consistent arrow color for connections.
-// Standardized colors for icons in top panel with Tooltips.
-// Used theme colors for text within SVG diagram for better theme adherence.
-// Adjusted fill for SVG circle to use hsla for opacity with theme colors.
-// Ensured all interactive elements like buttons in history panel are actual <Button> components.
+
+    
