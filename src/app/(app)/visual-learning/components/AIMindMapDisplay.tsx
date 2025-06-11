@@ -57,49 +57,87 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
   const [showUploadPanel, setShowUploadPanel] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const initialNodesProcessedRef = useRef(false); // Ref to track if initialNodes have been processed
+  const initialNodesProcessedRef = useRef(false); 
 
   const [scale, setScale] = useState(1);
   const [translateX, setTranslateX] = useState(50); 
   const [translateY, setTranslateY] = useState(50); 
 
   useEffect(() => {
-    if (initialTopic && (!initialNodes || initialNodes.length === 0) && !initialNodesProcessedRef.current) {
-      setNodes(prevNodes => {
-        const rootExists = prevNodes.some(n => n.id === 'root');
-        if (rootExists) {
-          return prevNodes.map(node =>
-            node.id === 'root' ? { ...node, text: initialTopic, color: MANUAL_NODE_COLOR } : node
-          );
+    // This effect handles updates to initialTopic and initialNodes AFTER the component has mounted
+    // and initialNodesProcessedRef has been set. This is for dynamic updates from parent.
+    if (initialNodesProcessedRef.current) { // Only run if initial processing is done
+        let newNodes: Node[] = [];
+        let rootNodeExists = false;
+
+        if (initialNodes && initialNodes.length > 0) {
+            const rootData = initialNodes.find(n => n.type === 'root' || n.id === 'root');
+            if (rootData) {
+                 newNodes.push({
+                    id: rootData.id, text: rootData.text,
+                    x: rootData.x !== undefined ? rootData.x : 50, 
+                    y: rootData.y !== undefined ? rootData.y : 150,
+                    type: 'root', color: rootData.aiGenerated ? AI_NODE_COLOR : MANUAL_NODE_COLOR,
+                    aiGenerated: rootData.aiGenerated || false, parentId: undefined
+                });
+                rootNodeExists = true;
+            }
+            
+            const rootIdToUse = rootNodeExists ? newNodes[0].id : (initialTopic ? 'root' : DEFAULT_ROOT_NODE.id);
+            
+            initialNodes.filter(n => n.id !== newNodes[0]?.id).forEach((nodeData, index) => {
+                const parentNode = newNodes.find(pn => pn.id === nodeData.parentId) || (rootNodeExists ? newNodes[0] : null);
+                const xSpacing = 220; const ySpacing = 50;
+                newNodes.push({
+                    id: nodeData.id, text: nodeData.text,
+                    x: nodeData.x !== undefined ? nodeData.x : (parentNode ? parentNode.x + xSpacing : 50 + xSpacing * (index + 1)),
+                    y: nodeData.y !== undefined ? nodeData.y : (parentNode ? parentNode.y + (index - (initialNodes.filter(n=>n.parentId === nodeData.parentId).length-1)/2) * ySpacing : 150 + index * ySpacing),
+                    type: nodeData.type || 'leaf', color: nodeData.aiGenerated ? AI_NODE_COLOR : MANUAL_NODE_COLOR,
+                    aiGenerated: nodeData.aiGenerated || false, parentId: nodeData.parentId || (rootNodeExists ? newNodes[0].id : undefined)
+                });
+            });
         }
-        return [{ ...DEFAULT_ROOT_NODE, text: initialTopic }];
-      });
+        
+        if (!rootNodeExists) { // If no root from initialNodes, create/update one
+            const existingRootIndex = nodes.findIndex(n => n.id === 'root');
+            const rootText = initialTopic || (newNodes.length > 0 ? newNodes[0].text : DEFAULT_ROOT_NODE.text);
+            if (existingRootIndex > -1 && newNodes.length === 0) { // Keep old root if no new nodes and just topic change
+                newNodes = [{...nodes[existingRootIndex], text: rootText }];
+            } else if (newNodes.length === 0) { // Brand new root
+                 newNodes.push({ ...DEFAULT_ROOT_NODE, text: rootText, x:50, y:150 });
+            } else if (newNodes.length > 0 && newNodes[0].id !== 'root') { // If new nodes don't define a root, make one
+                 const newRootNode = { ...DEFAULT_ROOT_NODE, text: rootText, x:50, y:150 };
+                 newNodes = [newRootNode, ...newNodes.map(n => ({...n, parentId: n.parentId || newRootNode.id}))];
+            }
+        }
+        setNodes(newNodes);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTopic, initialNodes]);
 
 
   useEffect(() => {
+    // This effect is specifically for the very first load / initial processing
     if (initialNodes && initialNodes.length > 0 && !initialNodesProcessedRef.current) {
       const transformedInitialNodes: Node[] = [];
-      let currentY = 50; // Initial Y for root
+      let currentY = 150; 
       const xSpacing = 220;
       const ySpacing = 50;
       let rootNodePresent = false;
 
-      // Find or create root node
       const rootData = initialNodes.find(n => n.type === 'root' || n.id === 'root');
       if (rootData) {
         transformedInitialNodes.push({
           id: rootData.id,
           text: rootData.text,
-          x: 50, // Fixed position for root
-          y: currentY,
+          x: rootData.x !== undefined ? rootData.x : 50, 
+          y: rootData.y !== undefined ? rootData.y : currentY,
           type: 'root',
-          color: rootData.aiGenerated ? AI_NODE_COLOR : MANUAL_NODE_COLOR,
+          color: rootData.aiGenerated ? AI_NODE_COLOR : (rootData.color || MANUAL_NODE_COLOR),
           aiGenerated: rootData.aiGenerated || false,
           parentId: undefined
         });
-        currentY += ySpacing * 2;
+        currentY = transformedInitialNodes[0].y + ySpacing * 2;
         rootNodePresent = true;
       } else if (initialTopic) {
          transformedInitialNodes.push({ ...DEFAULT_ROOT_NODE, text: initialTopic, x:50, y: currentY });
@@ -113,42 +151,30 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
       
       const rootId = transformedInitialNodes[0].id;
 
-      // Add children of the root
-      initialNodes.filter(n => n.parentId === rootId && n.id !== rootId).forEach((nodeData, index) => {
+      initialNodes.filter(n => n.id !== rootId).forEach((nodeData, index) => { // Process all non-root nodes
+        const parentNode = transformedInitialNodes.find(pn => pn.id === nodeData.parentId) || (rootNodePresent ? transformedInitialNodes[0] : null);
         transformedInitialNodes.push({
           id: nodeData.id,
           text: nodeData.text,
-          x: 50 + xSpacing,
-          y: transformedInitialNodes[0].y + (index * ySpacing) - (initialNodes.filter(n => n.parentId === rootId).length -1) * ySpacing / 2,
+          x: nodeData.x !== undefined ? nodeData.x : (parentNode ? parentNode.x + xSpacing : 50 + xSpacing * (index + 1)),
+          y: nodeData.y !== undefined ? nodeData.y : (parentNode ? parentNode.y + (initialNodes.filter(nSib => nSib.parentId === nodeData.parentId).findIndex(s => s.id === nodeData.id) - (initialNodes.filter(nSib => nSib.parentId === nodeData.parentId).length -1)/2) * ySpacing : currentY + index * ySpacing),
           type: nodeData.type || 'leaf',
-          color: nodeData.aiGenerated ? AI_NODE_COLOR : MANUAL_NODE_COLOR,
+          color: nodeData.aiGenerated ? AI_NODE_COLOR : (nodeData.color || MANUAL_NODE_COLOR),
           aiGenerated: nodeData.aiGenerated || false,
-          parentId: rootId
+          parentId: nodeData.parentId || (rootNodePresent ? rootId : undefined)
         });
       });
-      
-      // Add other nodes (grand-children, etc.), very simple layout
-      initialNodes.filter(n => n.parentId && n.parentId !== rootId && !transformedInitialNodes.find(tn => tn.id === n.id)).forEach(nodeData => {
-          const parentNode = transformedInitialNodes.find(pn => pn.id === nodeData.parentId);
-          if (parentNode) {
-              const siblings = initialNodes.filter(s => s.parentId === nodeData.parentId);
-              const siblingIndex = siblings.findIndex(s => s.id === nodeData.id);
-               transformedInitialNodes.push({
-                  id: nodeData.id,
-                  text: nodeData.text,
-                  x: parentNode.x + xSpacing,
-                  y: parentNode.y + (siblingIndex * ySpacing) - (siblings.length -1) * ySpacing / 2,
-                  type: nodeData.type || 'leaf',
-                  color: nodeData.aiGenerated ? AI_NODE_COLOR : MANUAL_NODE_COLOR,
-                  aiGenerated: nodeData.aiGenerated || false,
-                  parentId: nodeData.parentId
-              });
-          }
-      });
-
 
       setNodes(transformedInitialNodes);
-      initialNodesProcessedRef.current = true; // Mark as processed
+      initialNodesProcessedRef.current = true; 
+    } else if (!initialNodes && initialTopic && !initialNodesProcessedRef.current) {
+        // Handle case where only initialTopic is provided, no initialNodes
+        setNodes([{...DEFAULT_ROOT_NODE, text: initialTopic, x: 50, y: 150}]);
+        initialNodesProcessedRef.current = true;
+    } else if (!initialNodesProcessedRef.current && (!initialNodes || initialNodes.length === 0) && !initialTopic) {
+        // Default setup if nothing is provided initially
+        setNodes([{...DEFAULT_ROOT_NODE, x: 50, y: 150}]);
+        initialNodesProcessedRef.current = true;
     }
   }, [initialNodes, initialTopic]);
 
@@ -160,7 +186,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
     point.x = screenX;
     point.y = screenY;
     const ctm = svg.getScreenCTM();
-    if (!ctm) return {x: 0, y: 0}; // Guard against null CTM
+    if (!ctm) return {x: 0, y: 0}; 
     const transformedPoint = point.matrixTransform(ctm.inverse());
     return {
         x: (transformedPoint.x - translateX) / scale,
@@ -264,7 +290,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
       const analysisSuggestions = await analyzeContent(file);
       generateNodesFromAnalysis(analysisSuggestions, selectedNodeId || 'root');
     }
-     event.target.value = ''; // Reset file input
+     event.target.value = ''; 
   }, [analyzeContent, generateNodesFromAnalysis, selectedNodeId]);
 
   const getSmartSuggestions = (nodeText: string): string[] => {
@@ -282,8 +308,8 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
   };
 
   const addNode = (parentId: string | undefined, text = 'New Idea') => {
-    if (!parentId && nodes.length > 0) parentId = nodes[0].id; // Default to first node if no parentId and nodes exist
-    else if (!parentId && nodes.length === 0) { // Edge case: adding first node if canvas is empty
+    if (!parentId && nodes.length > 0) parentId = nodes[0].id; 
+    else if (!parentId && nodes.length === 0) { 
         const newNode: Node = {
             id: Date.now().toString() + Math.random().toString(36).substr(2,5),
             text, x: 50, y: 50, type: 'root', color: MANUAL_NODE_COLOR, aiGenerated: false
@@ -340,18 +366,18 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
   };
 
   const deleteNode = (id: string) => {
-    if (id === 'root' && nodes.find(n=>n.id === 'root')?.type === 'root') return; // Prevent deleting the main root if it's the only root
+    if (id === 'root' && nodes.find(n=>n.id === 'root')?.type === 'root') return; 
     
     const childrenIdsToDelete: string[] = [];
     const findChildrenRecursive = (currentParentId: string) => {
         nodes.forEach(node => {
             if (node.parentId === currentParentId) {
                 childrenIdsToDelete.push(node.id);
-                findChildrenRecursive(node.id); // Recursively find children of children
+                findChildrenRecursive(node.id); 
             }
         });
     };
-    findChildrenRecursive(id); // Find all descendants of the node to be deleted
+    findChildrenRecursive(id); 
 
     setNodes(prevNodes => prevNodes.filter(node => node.id !== id && !childrenIdsToDelete.includes(node.id)));
     setSelectedNodeId(null);
@@ -371,11 +397,8 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
   };
   
   const handleCanvasMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
-    // Only pan if clicking directly on svg background, not on nodes or other elements
     if (e.target !== svgRef.current) return; 
-    // Do not deselect node if it was just selected by clicking on it (handleNodeMouseDown sets selectedNodeId)
-    // If the click target is the SVG itself, then deselect.
-    if (e.target === svgRef.current && !dragInfo) { // dragInfo check helps distinguish from node drag end
+    if (e.target === svgRef.current && !dragInfo) { 
         setSelectedNodeId(null);
     }
     const transformedPoint = getTransformedPoint(e.clientX, e.clientY);
@@ -414,13 +437,11 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
 
     const svg = svgRef.current;
     const rect = svg.getBoundingClientRect();
-    // Calculate mouse position relative to the SVG element
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
     const newScale = Math.min(Math.max(scale - e.deltaY * ZOOM_SENSITIVITY * scale, MIN_SCALE), MAX_SCALE);
     
-    // Zoom towards mouse pointer
     const newTranslateX = mouseX - (mouseX - translateX) * (newScale / scale);
     const newTranslateY = mouseY - (mouseY - translateY) * (newScale / scale);
 
@@ -433,7 +454,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
     if (!svgRef.current) return;
     const svg = svgRef.current;
     const rect = svg.getBoundingClientRect();
-    const centerX = rect.width / 2; // Zoom towards center of viewport
+    const centerX = rect.width / 2; 
     const centerY = rect.height / 2;
     
     const newScale = Math.min(Math.max(scale * factor, MIN_SCALE), MAX_SCALE);
@@ -444,7 +465,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
 
   const resetView = () => {
     setScale(1);
-    setTranslateX(50); // Reset to initial pan
+    setTranslateX(50); 
     setTranslateY(50);
   };
 
@@ -455,16 +476,14 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
       const parentNode = nodes.find(n => n.id === node.parentId);
       if (!parentNode) return null;
 
-      const nodeWidth = node.type === 'root' ? 120 : Math.min(Math.max(node.text.length * 7 + 20, 100), 300); // Adjusted width for text
+      const nodeWidth = node.type === 'root' ? 120 : Math.min(Math.max(node.text.length * 7 + 20, 100), 300); 
       const parentNodeWidth = parentNode.type === 'root' ? 120 : Math.min(Math.max(parentNode.text.length * 7 + 20, 100), 300);
       
-      // Calculate connection points from center of right/left edges of the rounded rect
-      const startX = parentNode.x + parentNodeWidth; // Right edge of parent
-      const startY = parentNode.y + 17.5; // Vertical center of parent
-      const endX = node.x; // Left edge of child
-      const endY = node.y + 17.5; // Vertical center of child
+      const startX = parentNode.x + parentNodeWidth; 
+      const startY = parentNode.y + 17.5; 
+      const endX = node.x; 
+      const endY = node.y + 17.5; 
       
-      // Simple Bezier curve calculation
       const controlX1 = startX + Math.max(50, (endX - startX) * 0.4);
       const controlY1 = startY;
       const controlX2 = endX - Math.max(50, (endX - startX) * 0.4);
@@ -487,10 +506,10 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
   const renderNode = (node: Node) => {
     const isSelected = selectedNodeId === node.id;
     const isEditing = editingNodeId === node.id;
-    const nodeWidth = node.type === 'root' ? 120 : Math.min(Math.max(node.text.length * 7 + 30, 100), 300); // Increased min width slightly
+    const nodeWidth = node.type === 'root' ? 120 : Math.min(Math.max(node.text.length * 7 + 30, 100), 300); 
     const nodeFill = node.color;
-    const textColor = 'hsl(var(--primary-foreground))'; // Use primary-foreground for text on colored backgrounds
-    const strokeColor = node.color; // Use node's main color for stroke
+    const textColor = 'hsl(var(--primary-foreground))'; 
+    const strokeColor = node.color; 
     const isAIDerived = node.aiGenerated || node.type === 'detail';
 
 
@@ -500,13 +519,13 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
           x={node.x}
           y={node.y}
           width={nodeWidth}
-          height={35} // Standard height
-          rx={17.5} // Fully rounded ends
+          height={35} 
+          rx={17.5} 
           fill={nodeFill}
           stroke={strokeColor}
           strokeWidth={isSelected ? 3 : 2}
           className={cn("transition-all duration-200", isSelected ? 'drop-shadow-lg' : 'opacity-90 hover:opacity-100')}
-          strokeDasharray={isAIDerived && node.type !== 'root' ? "6,3" : "none"} // Dashed for AI/detail
+          strokeDasharray={isAIDerived && node.type !== 'root' ? "6,3" : "none"} 
         />
         
         {node.confidence && node.aiGenerated && (
@@ -522,16 +541,15 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
         
         {!isEditing ? (
           <text
-            x={node.x + 15} // Padding from left
-            y={node.y + 22.5} // Vertically centered
+            x={node.x + 15} 
+            y={node.y + 22.5} 
             fill={textColor}
             fontSize="11"
             fontWeight={node.type === 'root' ? '600' : '500'}
             className="pointer-events-none select-none"
             onDoubleClick={() => node.type !== 'root' && setEditingNodeId(node.id)}
           >
-            {/* Truncate text if it's too long for the node width */}
-            {node.text.length > ((nodeWidth - (node.aiGenerated && node.confidence ? 45 : 30))/7) // Adjust truncation based on icon presence
+            {node.text.length > ((nodeWidth - (node.aiGenerated && node.confidence ? 45 : 30))/7) 
               ? node.text.substring(0, Math.floor((nodeWidth - (node.aiGenerated && node.confidence ? 45:30))/7 - 3)) + '...' 
               : node.text}
           </text>
@@ -553,7 +571,6 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
           </foreignObject>
         )}
         
-        {/* Action buttons: visible when node is selected and not being edited */}
         {isSelected && !isEditing && (
           <g transform={`translate(${node.x + nodeWidth + 5}, ${node.y + 17.5})`} className="cursor-pointer">
             <Tooltip>
@@ -575,7 +592,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
             </Tooltip>
           </g>
         )}
-        {isSelected && !isEditing && node.id !== 'root' && ( // Edit and Delete buttons for non-root selected nodes
+        {isSelected && !isEditing && node.id !== 'root' && ( 
              <g transform={`translate(${node.x - 15}, ${node.y + 17.5})`} className="cursor-pointer">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -602,7 +619,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
 
   return (
     <TooltipProvider>
-    <div className="w-full h-[70vh] bg-slate-100 dark:bg-slate-900/70 relative overflow-hidden rounded-lg border border-border shadow-inner">
+    <div className="w-full h-full bg-slate-100 dark:bg-slate-900/70 relative overflow-hidden rounded-lg border border-border shadow-inner">
       {/* Control Panel */}
       <div className="absolute top-4 left-4 z-10 bg-background dark:bg-slate-800 rounded-xl shadow-xl p-3 md:p-4 w-60 md:w-64 border border-border">
         <div className="flex items-center space-x-2 mb-3">
@@ -708,9 +725,9 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
         className="cursor-grab active:cursor-grabbing"
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp} // Important to stop drag if mouse leaves SVG
-        onMouseDown={handleCanvasMouseDown} // For canvas panning and deselecting nodes
-        onWheel={handleWheel} // For zoom
+        onMouseLeave={handleMouseUp} 
+        onMouseDown={handleCanvasMouseDown} 
+        onWheel={handleWheel} 
       >
         <g transform={`translate(${translateX}, ${translateY}) scale(${scale})`}>
             {renderConnections()}
@@ -726,7 +743,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
           width: 5px;
         }
         .scrollbar-thin::-webkit-scrollbar-track {
-          background: transparent; /* Or hsl(var(--muted)) if you prefer a visible track */
+          background: transparent; 
         }
         .scrollbar-thin::-webkit-scrollbar-thumb {
           background-color: hsl(var(--border));

@@ -53,6 +53,7 @@ interface ChatInterfaceProps {
   enableImageUpload?: boolean;
   initialQAStage?: QAS_Stage; 
   initialQuestionsInStage?: number; 
+  onMindMapConfigChange?: (config: { initialTopic?: string; initialNodes?: InitialNodeData[] } | null) => void; // New prop
 }
 
 const renderVisualElementContent = (visualElement: VisualElement) => {
@@ -61,7 +62,6 @@ const renderVisualElementContent = (visualElement: VisualElement) => {
     if (typeof visualElement.content === 'string') {
       contentRepresentation = visualElement.content;
     } else if (Array.isArray(visualElement.content) || typeof visualElement.content === 'object') {
-      // For interactive_mind_map_canvas, content can be an object with initialTopic/initialNodes
       if (visualElement.type === 'interactive_mind_map_canvas' && typeof visualElement.content === 'object') {
          if (visualElement.content.initialTopic && visualElement.content.initialNodes) {
             contentRepresentation = `Canvas for "${visualElement.content.initialTopic}" with ${visualElement.content.initialNodes.length} initial nodes.`;
@@ -185,7 +185,8 @@ export function ChatInterface({
   onInitialQueryConsumed,
   enableImageUpload = true, 
   initialQAStage = 'initial_material', 
-  initialQuestionsInStage = 0, 
+  initialQuestionsInStage = 0,
+  onMindMapConfigChange, 
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [input, setInput] = useState("");
@@ -249,10 +250,10 @@ export function ChatInterface({
           setIsTopicSessionCompleted(false);
         }
       }
-    } else if (initialSystemMessage && !isInteractiveQAMode) { 
+    } else if (initialSystemMessage) { 
       const firstAIMessage: MessageType = {
         id: crypto.randomUUID(), sender: "ai", text: initialSystemMessage, timestamp: Date.now(),
-        visualElement: isMindMapMode ? {
+        visualElement: isMindMapMode && !onMindMapConfigChange ? { // Only set default visual for mindmap if parent isn't handling it
             type: 'interactive_mind_map_canvas',
             content: { initialTopic: initialInputQuery || "My Mind Map" }, 
             caption: `Interactive Mind Map for ${initialInputQuery || "My Mind Map"}`
@@ -260,8 +261,16 @@ export function ChatInterface({
       };
       setMessages([firstAIMessage]);
       addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
-    }
-     else { 
+      
+      // If it's a mindmap and parent is handling, notify parent of initial setup
+      if (isMindMapMode && onMindMapConfigChange && firstAIMessage.visualElement) {
+        onMindMapConfigChange({
+            initialTopic: firstAIMessage.visualElement.content?.initialTopic,
+            initialNodes: firstAIMessage.visualElement.content?.initialNodes
+        });
+      }
+
+    } else { 
         setMessages([]);
         if (isInteractiveQAMode) {
             setCurrentClientStage(initialQAStage);
@@ -430,10 +439,6 @@ export function ChatInterface({
             } else if (qAndAResponse.nextStage === prevStageForThisTurn && !qAndAResponse.isStageComplete) {
                 setQuestionsAnsweredInClientStage(prev => prev + 1);
             } else if (qAndAResponse.nextStage === prevStageForThisTurn && qAndAResponse.isStageComplete) {
-                // If stage is complete but nextStage is the same, it means user just answered the last question of this stage
-                // And AI decided to transition to the *same* stage again (which is unusual, but we'll count it)
-                // Or if AI meant to transition *from* this stage, questionsAnswered should be based on next stage.
-                // For now, simple increment, assuming it implies one more question in current stage was handled.
                 setQuestionsAnsweredInClientStage(prev => prev + 1); 
             }
             
@@ -465,6 +470,13 @@ export function ChatInterface({
       addMessageToConversation(
           conversationId, topic, aiResponseMessage, userProfile, context?.subject, context?.lesson
       );
+
+      if (onMindMapConfigChange && aiResponseMessage.visualElement?.type === 'interactive_mind_map_canvas') {
+        onMindMapConfigChange({
+          initialTopic: aiResponseMessage.visualElement.content?.initialTopic,
+          initialNodes: aiResponseMessage.visualElement.content?.initialNodes,
+        });
+      }
 
     } catch (error) {
       console.error("Error getting AI response:", error);
@@ -516,7 +528,7 @@ export function ChatInterface({
 
 
   return (
-    <div className={cn("flex flex-col h-full rounded-lg shadow-xl border border-border/50", isMindMapMode ? "bg-transparent" : "bg-card")}>
+    <div className={cn("flex flex-col h-full rounded-lg shadow-xl border border-border/50", (isMindMapMode && onMindMapConfigChange) ? "bg-transparent" : "bg-card")}>
       {isInteractiveQAMode && currentClientStage !== 'completed' && (
         <div className={cn(
             "text-xs text-center p-2.5 border-b font-medium rounded-t-lg bg-muted/60 text-muted-foreground"
@@ -553,7 +565,7 @@ export function ChatInterface({
                   message.sender === "user"
                     ? "bg-primary text-primary-foreground rounded-br-none"
                     : "bg-muted text-foreground rounded-bl-none border border-border/70",
-                  message.visualElement?.type === 'interactive_mind_map_canvas' ? 'w-full bg-transparent shadow-none border-0 p-0' : 'max-w-[80%] sm:max-w-[70%]'
+                  (message.visualElement?.type === 'interactive_mind_map_canvas' && onMindMapConfigChange) ? 'w-full bg-transparent shadow-none border-0 p-0' : 'max-w-[80%] sm:max-w-[70%]'
                 )}
               >
                 {message.attachmentPreview && message.sender === 'user' && enableImageUpload && (
@@ -597,13 +609,14 @@ export function ChatInterface({
                   <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
                 )}
 
-                {message.sender === "ai" && message.visualElement && message.visualElement.type !== 'interactive_mind_map_canvas' && (
+                {message.sender === "ai" && message.visualElement && !(message.visualElement.type === 'interactive_mind_map_canvas' && onMindMapConfigChange) && (
                   <Card className="mt-3 bg-background/50 border-primary/20 shadow-sm">
                      <CardHeader className="pb-2 pt-3 px-3">
                       <CardTitle className="text-xs sm:text-sm font-semibold text-primary flex items-center">
                         {message.visualElement.type.includes('chart') && <BarChartBig className="h-4 w-4 mr-1.5"/>}
                         {message.visualElement.type.includes('flowchart') && <Zap className="h-4 w-4 mr-1.5"/>}
                         {message.visualElement.type.includes('image') && <ImageIcon className="h-4 w-4 mr-1.5"/>}
+                         {message.visualElement.type.includes('interactive_mind_map_canvas') && <BrainCircuit className="h-4 w-4 mr-1.5"/>}
                         AI Suggested Visual
                       </CardTitle>
                       {message.visualElement.caption && (
@@ -613,6 +626,13 @@ export function ChatInterface({
                     <CardContent className="px-3 pb-3">
                        {message.visualElement.type === 'bar_chart_data' ? (
                           <RenderBarChartVisual visualElement={message.visualElement} />
+                        ) : message.visualElement.type === 'interactive_mind_map_canvas' && !onMindMapConfigChange ? (
+                           <div className="mt-3 border-0 rounded-md bg-transparent p-0">
+                              <AIMindMapDisplay 
+                                  initialTopic={message.visualElement.content?.initialTopic} 
+                                  initialNodes={message.visualElement.content?.initialNodes} 
+                              />
+                            </div>
                         ) : (
                           <>
                             <p className="text-xs mb-1">Type: <span className="font-medium">{message.visualElement.type.replace(/_/g, ' ')}</span></p>
@@ -660,14 +680,6 @@ export function ChatInterface({
                     </CardContent>
                   </Card>
                 )}
-                 {message.sender === "ai" && message.visualElement?.type === 'interactive_mind_map_canvas' && (
-                  <div className="mt-3 border-0 rounded-md bg-transparent p-0">
-                    <AIMindMapDisplay 
-                        initialTopic={message.visualElement.content?.initialTopic} 
-                        initialNodes={message.visualElement.content?.initialNodes} 
-                    />
-                  </div>
-                )}
 
                 {message.sender === "ai" && message.suggestions && message.suggestions.length > 0 && (
                    <div className="mt-3 pt-2.5 border-t border-border/50">
@@ -706,12 +718,12 @@ export function ChatInterface({
                 </Avatar>
                 <div className={cn(
                     "rounded-xl px-4 py-3 text-sm shadow-md bg-muted text-foreground rounded-bl-none border",
-                     topic === "Visual Learning - Mind Maps" && enableImageUpload ? 'w-full bg-transparent shadow-none border-0 p-0' : 'max-w-[70%]' 
+                     (topic === "Visual Learning - Mind Maps" && enableImageUpload && onMindMapConfigChange) ? 'w-full bg-transparent shadow-none border-0 p-0' : 'max-w-[70%]' 
                     )}>
-                    {isMindMapMode && enableImageUpload ? ( // Special loading for mindmap when image might be processing
+                    {(isMindMapMode && enableImageUpload && onMindMapConfigChange) ? ( 
                         <div className="p-4 text-center text-muted-foreground">
                             <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto mb-2" />
-                            Analyzing and preparing canvas...
+                            AI is processing...
                         </div>
                     ) : (
                         <Loader2 className="h-5 w-5 animate-spin text-primary" />
