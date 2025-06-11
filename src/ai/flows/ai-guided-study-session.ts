@@ -368,7 +368,7 @@ Remember: You are not just creating visuals—you are creating learning experien
         *   Set the 'visualElement.caption' field in your output JSON to "Interactive Mind Map / Flowchart Canvas for {{{question}}}".
     4.  **Subsequent Q&A**: If the user asks questions, answer them textually based on the topic '{{{question}}}'.
     {{/if}}
-    Do NOT attempt to generate a textual mind map outline or an image prompt here when \`isVisualLearningMindMaps\` is true. The user will use the interactive tool.
+    Do NOT attempt to generate a textual mind map outline or an image prompt here when `isVisualLearningMindMaps` is true. The user will use the interactive tool.
 
   {{else}} {{! Fallback for general Visual Learning Focus if no specific sub-mode is identified by flags (e.g. specificTopic is just "Visual Learning Focus") }}
     You are the Visual Learning Studio AI Agent. The user is in the Visual Learning section but hasn't specified a particular type (Graphs, Diagrams, Mind Maps / Flowcharts) or their query is general.
@@ -537,3 +537,5 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
+
+    
