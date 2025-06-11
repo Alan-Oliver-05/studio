@@ -651,7 +651,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
     <TooltipProvider>
     <div className="w-full h-full bg-slate-100 dark:bg-slate-900/70 relative overflow-hidden rounded-lg border border-border shadow-inner">
       {/* Control Panel */}
-      <div className="absolute top-4 left-4 z-10 bg-background dark:bg-slate-800 rounded-xl shadow-xl p-3 md:p-4 w-60 md:w-64 border border-border">
+      <div className="absolute top-4 left-4 z-10 bg-background dark:bg-slate-800 rounded-xl shadow-xl p-4 w-72 border border-border">
         <div className="flex items-center space-x-2 mb-3">
           <Brain className="w-6 h-6 text-purple-500 flex-shrink-0" />
           <h2 className="text-base md:text-lg font-semibold text-foreground truncate">AI Mind Map</h2>
@@ -772,24 +772,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
             {nodes.map(node => renderNode(node))}
         </g>
       </svg>
-      {/*
-      <style jsx global>{`
-        .scrollbar-thin {
-          scrollbar-width: thin;
-          scrollbar-color: hsl(var(--border)) hsl(var(--background));
-        }
-        .scrollbar-thin::-webkit-scrollbar {
-          width: 5px;
-        }
-        .scrollbar-thin::-webkit-scrollbar-track {
-          background: transparent; 
-        }
-        .scrollbar-thin::-webkit-scrollbar-thumb {
-          background-color: hsl(var(--border));
-          border-radius: 5px;
-        }
-      `}</style>
-      */}
+      
     </div>
     </TooltipProvider>
   );
