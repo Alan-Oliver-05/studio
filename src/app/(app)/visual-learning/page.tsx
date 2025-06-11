@@ -304,7 +304,7 @@ export default function VisualLearningPage() {
           <>
             {activeMode === "mindmaps" ? (
              <TooltipProvider>
-              <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative h-full min-h-[65vh]"> 
+              <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative h-full"> 
                 {/* Panel Resize Controls */}
                 <div className="absolute top-1 right-1 z-20 flex gap-1 bg-background/70 p-1 rounded-md shadow-md border border-border">
                   <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-canvas')} className="h-7 w-7 p-1"><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Canvas</p></TooltipContent></Tooltip>
@@ -362,4 +362,3 @@ export default function VisualLearningPage() {
   );
 }
     
-
