@@ -209,7 +209,7 @@ export default function LanguageLearningPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="flex flex-wrap justify-center gap-2 mb-6">
         {modes.map((mode) => {
           const Icon = mode.icon;
           const isActive = activeMode === mode.id;
