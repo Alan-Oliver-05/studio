@@ -265,7 +265,7 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
         sun: Sun, leaf: Leaf, heart: Heart, droplets: Droplets, atom: Atom
       };
       const IconComponent = iconName ? iconMap[iconName] : Lightbulb;
-      return <IconComponent className="w-3 h-3 sm:w-4 sm:h-4" />; 
+      return <IconComponent className="w-3 h-3 sm:w-3.5 sm:h-3.5" />; 
     };
     const isHovered = hoveredElement === element.id;
 
@@ -349,7 +349,7 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
           markerEnd={`url(#arrow-${connection.from}-${connection.to})`}
         />
         {showLabels && connection.label && (
-          <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 4} textAnchor="middle" fill={arrowColor} fontSize="6" fontWeight="500" className="pointer-events-none"> 
+          <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 4} textAnchor="middle" fill={arrowColor} fontSize="7" fontWeight="500" className="pointer-events-none select-none"> 
             {connection.label}
           </text>
         )}
@@ -552,9 +552,9 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
       <div className="bg-card border-b border-border shadow-sm p-3">
         <div className="flex flex-col sm:flex-row items-center justify-between mb-2">
           <div className="flex items-center space-x-1.5 mb-2 sm:mb-0">
-            <Brain className="w-5 h-5 sm:w-6 sm:w-6 text-purple-600" />
+            <Brain className="w-6 h-6 text-purple-600" />
             <div>
-              <h1 className="text-sm sm:text-base font-bold text-foreground">AI Conceptual Diagrams</h1>
+              <h1 className="text-base font-bold text-foreground">AI Conceptual Diagrams</h1>
               <p className="text-xs text-muted-foreground">Generate educational diagrams with AI</p>
             </div>
           </div>
@@ -563,8 +563,8 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" onClick={() => setShowLabels(!showLabels)} 
-                          className={cn("w-7 h-7 sm:w-8 sm:h-8 rounded-md", showLabels ? "bg-blue-100 text-blue-600 dark:bg-primary/20 dark:text-primary" : "text-muted-foreground hover:bg-muted")}>
-                    {showLabels ? <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <EyeOff className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+                          className={cn("w-8 h-8 rounded-md", showLabels ? "bg-blue-100 text-blue-600 dark:bg-primary/20 dark:text-primary" : "text-muted-foreground hover:bg-muted")}>
+                    {showLabels ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent><p>{showLabels ? 'Hide' : 'Show'} Labels</p></TooltipContent>
@@ -572,8 +572,8 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon" onClick={handleDownloadSVG} disabled={!currentDiagram}
-                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-500/20 dark:text-green-500 dark:hover:bg-green-500/30 disabled:opacity-50">
-                    <Download className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          className="w-8 h-8 rounded-md bg-green-100 text-green-600 hover:bg-green-200 dark:bg-green-500/20 dark:text-green-500 dark:hover:bg-green-500/30 disabled:opacity-50">
+                    <Download className="w-3.5 h-3.5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent><p>Download Diagram (SVG)</p></TooltipContent>
@@ -589,20 +589,20 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && query.trim()) { handleGenerateDiagram(); } }}
               placeholder="E.g., 'Diagram photosynthesis'"
-              className="w-full pl-3 pr-8 py-1.5 text-xs sm:text-sm h-8 sm:h-9 rounded-md border-input focus-visible:ring-purple-500 bg-background" 
+              className="w-full pl-3 pr-8 py-1.5 text-sm h-9 rounded-md border-input focus-visible:ring-purple-500 bg-background" 
             />
-             <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground" />
+             <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           </div>
           <Button
             onClick={handleGenerateDiagram}
             disabled={isGenerating || !query.trim()}
-            className="w-full sm:w-auto text-white rounded-md h-8 sm:h-9 px-3 sm:px-4 text-xs hover:bg-purple-700 bg-purple-600" 
+            className="w-full sm:w-auto text-white rounded-md h-9 px-4 text-xs hover:bg-purple-700 bg-purple-600" 
             style={{backgroundColor: 'hsl(var(--chart-3))'}}
           >
             {isGenerating ? (
-              <Loader2 className="w-3 h-3 sm:w-3.5 sm:w-3.5 mr-1.5 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
             ) : (
-              <Zap className="w-3 h-3 sm:w-3.5 sm:w-3.5 mr-1.5" />
+              <Zap className="w-3.5 h-3.5 mr-1.5" />
             )}
             Generate
           </Button>
@@ -615,7 +615,7 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
               variant="outline"
               size="xs" 
               onClick={() => {setQuery(example); handleGenerateDiagram();}}
-              className="text-xs px-2 py-0.5 h-auto rounded-full border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-600"
+              className="text-xs px-2.5 py-0.5 h-auto rounded-full border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-600"
             >
               {example}
             </Button>
@@ -624,7 +624,7 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
       </div>
       </TooltipProvider>
 
-      <div className="flex-grow overflow-hidden p-2 relative"> 
+      <div className="flex-grow overflow-hidden p-2 relative max-w-4xl mx-auto w-full"> 
         <svg 
             ref={canvasRef} 
             width="100%" 
@@ -643,7 +643,7 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
             <>
               {currentDiagram.connections?.map(renderConnection)}
               {currentDiagram.elements.map(renderElement)}
-              <text x={currentDiagram.elements[0]?.x || 400} y={(currentDiagram.elements[0]?.y || 30) - 35} textAnchor="middle" className="fill-foreground text-sm sm:text-base font-semibold select-none pointer-events-none"> 
+              <text x={currentDiagram.elements[0]?.x || 400} y={(currentDiagram.elements[0]?.y || 30) - 35} textAnchor="middle" className="fill-foreground text-sm font-semibold select-none pointer-events-none"> 
                 {currentDiagram.title}
               </text>
               {currentDiagram.aiConfidence && (
@@ -660,34 +660,34 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
             </>
           )}
           {!currentDiagram && !isGenerating && (
-            <text x="400" y="300" textAnchor="middle" dy=".3em" className="fill-muted-foreground text-xs sm:text-sm select-none pointer-events-none"> 
+            <text x="400" y="300" textAnchor="middle" dy=".3em" className="fill-muted-foreground text-sm select-none pointer-events-none"> 
               Enter a query to generate a diagram. Try: "Photosynthesis"
             </text>
           )}
           {isGenerating && (
-             <text x="400" y="300" textAnchor="middle" dy=".3em" style={{fill: 'hsl(var(--chart-3))'}} className="text-xs sm:text-sm select-none animate-pulse pointer-events-none"> 
+             <text x="400" y="300" textAnchor="middle" dy=".3em" style={{fill: 'hsl(var(--chart-3))'}} className="text-sm select-none animate-pulse pointer-events-none"> 
                 🤖 AI is thinking... Please wait.
             </text>
           )}
           </g>
         </svg>
-       <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-10 flex flex-col gap-1 sm:gap-1.5"> 
+       <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1.5"> 
          <TooltipProvider>
          <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => zoom(1.25)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-7 w-7 sm:h-8 sm:w-8 border-border"><ZoomIn className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-foreground" /></Button> 
+                <Button variant="outline" size="icon" onClick={() => zoom(1.25)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 border-border"><ZoomIn className="h-3.5 w-3.5 text-foreground" /></Button> 
             </TooltipTrigger>
             <TooltipContent side="right"><p>Zoom In</p></TooltipContent>
         </Tooltip>
          <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => zoom(0.8)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-7 w-7 sm:h-8 sm:w-8 border-border"><ZoomOut className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-foreground" /></Button> 
+                <Button variant="outline" size="icon" onClick={() => zoom(0.8)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 border-border"><ZoomOut className="h-3.5 w-3.5 text-foreground" /></Button> 
             </TooltipTrigger>
             <TooltipContent side="right"><p>Zoom Out</p></TooltipContent>
         </Tooltip>
          <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={resetView} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-7 w-7 sm:h-8 sm:w-8 border-border"><ResetIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-foreground" /></Button> 
+                <Button variant="outline" size="icon" onClick={resetView} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 border-border"><ResetIcon className="h-3.5 w-3.5 text-foreground" /></Button> 
             </TooltipTrigger>
             <TooltipContent side="right"><p>Reset View</p></TooltipContent>
         </Tooltip>
@@ -696,22 +696,22 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
       </div>
       
       {diagramHistory.length > 0 && (
-        <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 bg-card rounded-lg shadow-lg p-1.5 sm:p-2 max-w-[150px] sm:max-w-[180px] border border-border z-10"> 
-          <h3 className="font-semibold text-[10px] sm:text-xs text-foreground mb-1 flex items-center space-x-1"> 
-            <BookOpen className="w-3 h-3 sm:w-3.5 sm:w-3.5 text-primary" />
+        <div className="absolute bottom-4 right-4 bg-card rounded-lg shadow-lg p-2 max-w-[180px] border border-border z-10"> 
+          <h3 className="font-semibold text-xs text-foreground mb-1 flex items-center space-x-1"> 
+            <BookOpen className="w-3.5 h-3.5 text-primary" />
             <span>Recent</span>
           </h3>
-          <div className="space-y-0.5 max-h-20 sm:max-h-24 overflow-y-auto scrollbar-thin"> 
+          <div className="space-y-0.5 max-h-24 overflow-y-auto scrollbar-thin"> 
             {diagramHistory.map((diagram, index) => (
               <Button
                 key={index}
                 variant="ghost"
                 size="xs" 
                 onClick={() => setCurrentDiagram(diagram)}
-                className="w-full text-left justify-start p-0.5 sm:p-1 h-auto bg-muted/50 hover:bg-muted text-[10px] sm:text-xs"
+                className="w-full text-left justify-start p-1 h-auto bg-muted/50 hover:bg-muted text-xs"
               >
                 <div className="text-xs text-foreground truncate flex-grow">{diagram.title}</div>
-                {diagram.query && <div className="text-[9px] sm:text-[10px] text-muted-foreground truncate ml-0.5 sm:ml-1 opacity-70">({diagram.query.substring(0,6)}...)</div>} 
+                {diagram.query && <div className="text-[10px] text-muted-foreground truncate ml-1 opacity-70">({diagram.query.substring(0,6)}...)</div>} 
               </Button>
             ))}
           </div>
@@ -722,3 +722,4 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
 };
 
 export default AIConceptualDiagrams;
+
