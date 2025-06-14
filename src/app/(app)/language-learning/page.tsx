@@ -11,7 +11,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
-import type { UserProfile, InitialNodeData } from "@/types";
+import type { UserProfile, InitialNodeData } from "@/types"; // Assuming InitialNodeData is for mindmaps, but not directly used here
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
@@ -56,9 +56,9 @@ const modes: ModeConfig[] = [
   {
     id: "voice", label: "Voice Translator", icon: Mic, 
     description: "Speak and get instant voice translations. Supports multiple languages.", 
-    storageTopic: "Language Voice Translation", // Will use LanguageTranslatorMode in AI Flow
-    initialSystemMessageTemplate: "Hi ${profileName}! Use the mic to speak. I'll translate your words.", // Not directly used by VoiceTranslatorInterface
-    placeholderTextTemplate: "Click mic and start speaking...", // Not directly used
+    storageTopic: "Language Voice Translation", 
+    initialSystemMessageTemplate: "Hi ${profileName}! Use the mic to speak. I'll translate your words.", 
+    placeholderTextTemplate: "Click mic and start speaking...", 
     enableImageUpload: false
   },
   {
@@ -72,7 +72,7 @@ const modes: ModeConfig[] = [
   {
     id: "camera", label: "Image Text Translator", icon: CameraIcon, 
     description: "Translate text from images captured or uploaded from your device.", 
-    storageTopic: "Language Camera Translation", // Will use LanguageTranslatorMode in AI Flow with image
+    storageTopic: "Language Camera Translation", 
     initialSystemMessageTemplate: "Hello ${profileName}! Upload an image with text, and I'll translate it. Please also specify the target language if it's not your preferred one.",
     placeholderTextTemplate: "Upload an image and type target language if needed...",
     enableImageUpload: true
@@ -87,6 +87,9 @@ export default function LanguageLearningPage() {
   const [activeMode, setActiveMode] = useState<TranslationMode>(modes[0].id);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(Date.now().toString());
+  // mindMapConfig is not used in Language Studio directly, but kept for type consistency from Visual Learning
+  const [mindMapConfig, setMindMapConfig] = useState<{ initialTopic?: string; initialNodes?: InitialNodeData[] } | null>(null);
+
 
   const getStorageTopicForMode = useCallback((mode: TranslationMode): string => {
     return modes.find(m => m.id === mode)?.storageTopic || "LanguageTranslatorMode"; // Fallback
@@ -101,6 +104,10 @@ export default function LanguageLearningPage() {
 
       setCurrentConversationId(newId);
       setChatKey(newId);
+      
+      // Reset mindMapConfig unless the mode is specifically mindmaps (which it isn't here)
+      setMindMapConfig(null); 
+
       if (searchParams.get('mode') !== mode || !searchParams.get('sessionId')) {
         router.push(`/language-learning?mode=${mode}`, { scroll: false });
       }
@@ -124,7 +131,8 @@ export default function LanguageLearningPage() {
         setActiveMode(conversationMode);
         setCurrentConversationId(sessionIdFromQuery);
         setChatKey(sessionIdFromQuery);
-        
+        setMindMapConfig(null); // Not used in Language Studio
+
         if (modeFromQuery !== conversationMode) {
             router.replace(`/language-learning?sessionId=${sessionIdFromQuery}&mode=${conversationMode}`, { scroll: false });
         }
@@ -219,7 +227,7 @@ export default function LanguageLearningPage() {
               key={mode.id}
               onClick={() => handleModeChange(mode.id)}
               className={cn(
-                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col items-center justify-center text-center group",
+                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col",
                 "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-48 md:w-52 lg:w-56 flex-shrink-0 h-36", 
                 isActive
                   ? "border-primary shadow-xl shadow-primary/25 ring-1 ring-primary/50"
@@ -231,7 +239,7 @@ export default function LanguageLearningPage() {
               aria-pressed={isActive}
               aria-label={`Switch to ${mode.label} mode`}
             >
-              <CardHeader className="p-3 pt-4"> 
+              <CardHeader className="items-center text-center p-3 pt-4"> 
                  <div className={cn("p-1.5 rounded-full mb-1 transition-colors duration-300 w-fit mx-auto", 
                     isActive ? "bg-primary/20" : "bg-muted group-hover:bg-primary/10"
                  )}>

@@ -149,7 +149,7 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
     try {
       const aiInput: AIGuidedStudySessionInput = {
         studentProfile: { ...userProfile, age: Number(userProfile.age) },
-        specificTopic: "LanguageTranslatorMode", // Use the generic translator mode for voice
+        specificTopic: "LanguageTranslatorMode", 
         question: `Translate the following spoken text: "${textToTranslate}"`,
       };
       const result = await aiGuidedStudySession(aiInput);
