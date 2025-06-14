@@ -167,7 +167,7 @@ export default function VisualLearningPage() {
         return;
       }
     }
-
+    
     if (activeMode !== targetMode) {
         setActiveMode(targetMode);
     }
@@ -262,7 +262,7 @@ export default function VisualLearningPage() {
     }
     return initialMessage;
   };
-
+  
   const canvasPanelStyle = { flexGrow: canvasPanelGrow, flexBasis: '0%', minWidth: canvasPanelGrow === 0 ? '0px' : '300px', display: canvasPanelGrow === 0 ? 'none' : 'flex' };
   const chatPanelStyle = { flexGrow: 10 - canvasPanelGrow, flexBasis: '0%', minWidth: canvasPanelGrow === 10 ? '0px' : '300px', display: canvasPanelGrow === 10 ? 'none' : 'flex' };
 
@@ -293,7 +293,7 @@ export default function VisualLearningPage() {
               onClick={() => handleModeChange(mode.id)}
               className={cn(
                 "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col",
-                "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-48 md:w-52 lg:w-56 flex-shrink-0", // Adjusted widths
+                "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-48 md:w-52 lg:w-56 flex-shrink-0 h-36", 
                 isActive
                   ? "border-primary shadow-xl shadow-primary/25 ring-1 ring-primary/50"
                   : "border-border hover:border-primary/50 hover:shadow-lg dark:bg-slate-800/70 dark:hover:border-primary/70"
@@ -304,16 +304,21 @@ export default function VisualLearningPage() {
               aria-pressed={isActive}
               aria-label={`Switch to ${mode.label} mode`}
             >
-              <CardHeader className="items-center text-center p-2 pb-0"> {/* Adjusted padding */}
-                <div className={cn(
-                    "p-1.5 rounded-full mb-1 transition-colors", // Adjusted padding for icon container
-                    isActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+              <CardHeader className="items-center text-center p-3 pt-4"> 
+                 <div className={cn("p-1.5 rounded-full mb-1 transition-colors", 
+                    isActive ? "bg-primary/20" : "bg-muted group-hover:bg-primary/10"
+                 )}>
+                    <Icon className={cn("h-4 w-4 transition-colors", 
+                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                    )} />
+                 </div>
+                <CardTitle className={cn("text-xs font-medium transition-colors", 
+                    isActive ? "text-primary" : "text-foreground group-hover:text-primary"
                 )}>
-                    <Icon className={cn("h-4 w-4 transition-colors", isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary")} /> {/* Adjusted icon size */}
-                </div>
-                <CardTitle className={cn("text-xs font-medium transition-colors", isActive ? "text-primary" : "text-foreground group-hover:text-primary")}>{mode.label}</CardTitle>
+                    {mode.label}
+                </CardTitle>
               </CardHeader>
-              <CardContent className="p-1.5 pt-0 text-center flex-grow flex flex-col justify-center"> {/* Adjusted padding */}
+              <CardContent className="p-2 pt-0 text-center flex-grow flex flex-col justify-center"> 
                    <CardDescription className="text-xs leading-snug text-muted-foreground">{mode.description}</CardDescription>
               </CardContent>
               {isActive && (
