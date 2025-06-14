@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from "react"; 
 import { getConversationById } from "@/lib/chat-storage";
+import type { UserProfile } from "@/types";
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -17,6 +18,12 @@ const DynamicChatInterface = dynamic(() =>
     ssr: false 
   }
 );
+
+interface SuggestionChipConfig {
+  label: string;
+  icon: React.ElementType;
+  action?: () => void; // Placeholder for future actions
+}
 
 export default function GeneralTutorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
@@ -33,7 +40,6 @@ export default function GeneralTutorPage() {
       const newId = `general-tutor-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(newId);
       setChatKey(newId); 
-      // If navigating here to start new, ensure URL reflects no specific session
       if (searchParams.get('sessionId')) {
         router.replace('/general-tutor', { scroll: false });
       }
@@ -44,17 +50,14 @@ export default function GeneralTutorPage() {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
       const conversation = getConversationById(sessionIdFromQuery);
-      // Ensure the loaded session is actually a general tutor session
       if (conversation && conversation.topic === "AI Learning Assistant Chat") {
         setCurrentConversationId(sessionIdFromQuery);
         setChatKey(sessionIdFromQuery); 
       } else {
-        // If sessionId is invalid or for a different type, start new session
-        router.replace('/general-tutor'); // Clear invalid sessionId from URL
+        router.replace('/general-tutor'); 
         initializeNewSession();
       }
     } else if (profile) { 
-      // No sessionId, and profile is loaded, so initialize a new session
       initializeNewSession();
     }
   }, [searchParams, profile, router, initializeNewSession]);
@@ -63,6 +66,12 @@ export default function GeneralTutorPage() {
   const handleNewSessionClick = () => {
     initializeNewSession();
   };
+  
+  const suggestionChipsConfig: SuggestionChipConfig[] = [
+    { label: "Write", icon: Edit, action: () => console.log("Write suggestion clicked") },
+    { label: "Learn", icon: BookOpen, action: () => console.log("Learn suggestion clicked") },
+    { label: "EduAI's choice", icon: HelpCircle, action: () => console.log("EduAI's choice clicked") },
+  ];
 
   if (profileLoading) {
     return (
@@ -118,9 +127,21 @@ export default function GeneralTutorPage() {
             <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
           </Button>
         </div>
+
+        {/* Student Name Suggestion Chip - Above Chat */}
+        <div className="flex justify-center my-4">
+          <Button 
+            variant="outline" 
+            className="rounded-full px-4 py-2 text-sm shadow-sm hover:bg-primary/5"
+            onClick={() => console.log("Student name suggestion clicked")}
+          >
+            <Sparkles className="mr-2 h-4 w-4 text-accent" />
+            {profile.name ? `${profile.name} returns!` : "Explore EduAI Tutor"}
+          </Button>
+        </div>
       </div>
       
-      <div className="w-full max-w-4xl mx-auto flex-grow flex flex-col items-center px-4 pb-4">
+      <div className="w-full max-w-3xl mx-auto flex-grow flex flex-col items-center px-4 pb-4 min-h-0">
         <div className="w-full flex-grow min-h-0">
             {chatKey && currentConversationId && ( 
             <DynamicChatInterface
@@ -135,6 +156,25 @@ export default function GeneralTutorPage() {
             )}
         </div>
       </div>
+
+      {/* Other Suggestion Chips - Below Chat */}
+      <div className="w-full max-w-3xl mx-auto px-4 py-4">
+        <div className="flex flex-wrap justify-center gap-3">
+          {suggestionChipsConfig.map((chip) => (
+            <Button
+              key={chip.label}
+              variant="outline"
+              size="sm"
+              className="rounded-full px-4 py-2 text-xs shadow-sm hover:bg-primary/5"
+              onClick={chip.action}
+            >
+              <chip.icon className="mr-1.5 h-3.5 w-3.5" />
+              {chip.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
     </div>
   );
 }
