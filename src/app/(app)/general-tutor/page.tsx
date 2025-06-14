@@ -33,6 +33,7 @@ export default function GeneralTutorPage() {
       const newId = `general-tutor-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(newId);
       setChatKey(newId); 
+      // If navigating here to start new, ensure URL reflects no specific session
       if (searchParams.get('sessionId')) {
         router.replace('/general-tutor', { scroll: false });
       }
@@ -43,22 +44,27 @@ export default function GeneralTutorPage() {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
       const conversation = getConversationById(sessionIdFromQuery);
+      // Ensure the loaded session is actually a general tutor session
       if (conversation && conversation.topic === "AI Learning Assistant Chat") {
         setCurrentConversationId(sessionIdFromQuery);
         setChatKey(sessionIdFromQuery); 
       } else {
-        router.replace('/general-tutor'); 
+        // If sessionId is invalid or for a different type, start new session
+        router.replace('/general-tutor'); // Clear invalid sessionId from URL
         initializeNewSession();
       }
     } else if (profile) { 
+      // No sessionId, and profile is loaded, so initialize a new session
       initializeNewSession();
     }
   }, [searchParams, profile, router, initializeNewSession]);
 
 
-  const handleNewSessionClick = () => {
-    initializeNewSession();
-  };
+  // This function would be used if we re-add an explicit "New Session" button
+  // For now, new sessions are started by navigating to the page without a sessionId
+  // const handleNewSessionClick = () => {
+  //   initializeNewSession();
+  // };
 
   const getSuggestionChips = () => {
     const chips = [];
@@ -114,23 +120,18 @@ export default function GeneralTutorPage() {
     );
   }
 
-  const initialMainChatMessage = `Hi ${profile.name}! How can I assist you today? Ask me anything, explore topics, or get help with your studies.`;
+  const initialMainChatMessage = `Hi ${profile.name}! How can I assist you?`;
   
   return (
-    <div className="min-h-full flex flex-col pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-1 md:px-0 pt-0 mt-0">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-primary flex items-center mt-0">
-            <BrainIcon className="mr-2 h-6 w-6 sm:h-7 sm:w-7" /> AI Learning Assistant
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">Your personal AI for learning and exploration.</p>
-        </div>
-        <Button onClick={handleNewSessionClick} variant="outline" size="sm" className="mt-3 sm:mt-0 shadow-sm">
-          <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
-        </Button>
+    <div className="min-h-full flex flex-col items-center pt-6 sm:pt-10 bg-background">
+      <div className="w-full max-w-3xl mx-auto text-center mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-foreground flex items-center justify-center">
+          <Sparkles className="h-6 w-6 sm:h-7 sm:w-7 text-accent mr-2" />
+          {profile?.name ? `${profile.name} returns!` : 'EduAI Tutor'}
+        </h1>
       </div>
       
-      <div className="w-full max-w-3xl mx-auto flex-grow flex flex-col items-center">
+      <div className="w-full max-w-3xl mx-auto flex-grow flex flex-col items-center px-4">
         <div className="w-full flex-grow min-h-0">
             {chatKey && currentConversationId && ( 
             <DynamicChatInterface
@@ -139,7 +140,7 @@ export default function GeneralTutorPage() {
                 topic="AI Learning Assistant Chat" 
                 conversationId={currentConversationId}
                 initialSystemMessage={initialMainChatMessage}
-                placeholderText="Ask me anything or explore a topic..."
+                placeholderText="How can I help you today?"
                 enableImageUpload={true} 
             />
             )}
@@ -153,10 +154,10 @@ export default function GeneralTutorPage() {
                 key={chip.label}
                 variant="outline"
                 size="sm"
-                className="rounded-full px-3 py-1.5 h-auto text-xs sm:text-sm bg-card/80 hover:bg-muted/90 border-border shadow-sm"
+                className="rounded-full px-3 py-1.5 h-auto text-xs sm:text-sm bg-card hover:bg-muted/90 border-border shadow-sm"
                 onClick={() => {
+                  // In a real app, this would send the chip.label as a query
                   console.log(`Suggestion chip clicked: ${chip.label}`);
-                  // Future: Implement logic to send this suggestion as a query
                 }}
               >
                 <IconComponent className="mr-1.5 h-4 w-4 text-muted-foreground" />
