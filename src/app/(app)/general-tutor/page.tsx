@@ -89,26 +89,27 @@ export default function GeneralTutorPage() {
   
   return (
     <div className="h-full flex flex-col pt-0">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 pt-0 mt-0">
-        <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
-                <Brain className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> AI Learning Assistant
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pt-0 mt-0">
+        <div className="flex-grow mb-2 sm:mb-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
+                <Brain className="mr-2 h-6 w-6 sm:h-7 sm:w-7"/> AI Learning Assistant
             </h1>
-            <p className="text-muted-foreground mt-1">Your multi-modal personal tutor for general queries.</p>
+            <p className="text-sm text-muted-foreground mt-1">Your multi-modal personal tutor for general queries.</p>
         </div>
-        <Button onClick={handleNewConversation} variant="outline" className="mt-2 sm:mt-0">
+        <Button onClick={handleNewConversation} variant="outline" size="sm" className="self-start sm:self-center">
           <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
         </Button>
       </div>
       <div className="flex-grow flex flex-col min-h-0 max-w-4xl w-full mx-auto">
-        {chatKey && currentConversationId && ( // Ensure key and ID are set
+        {chatKey && currentConversationId && ( 
           (<DynamicChatInterface
             key={chatKey} 
             userProfile={profile}
-            topic="AI Learning Assistant Chat" // Specific topic for AI to recognize this mode
+            topic="AI Learning Assistant Chat" 
             conversationId={currentConversationId}
             initialSystemMessage={initialMainChatMessage}
             placeholderText="Ask anything or upload an image..."
+            enableImageUpload={true}
           />)
         )}
       </div>
