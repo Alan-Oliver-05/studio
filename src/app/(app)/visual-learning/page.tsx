@@ -112,7 +112,7 @@ export default function VisualLearningPage() {
 
       if (mode === "mindmaps") {
         setMindMapConfig({ initialTopic: "My New Mind Map", initialNodes: [] });
-        setCanvasPanelGrow(7);
+        setCanvasPanelGrow(window.innerWidth < 768 ? 10 : 7); // Maximize canvas on mobile by default for mindmaps
       } else {
         setMindMapConfig(null);
       }
@@ -153,6 +153,7 @@ export default function VisualLearningPage() {
             const firstUserMessageText = conversation.messages.find(m => m.sender === 'user')?.text;
             setMindMapConfig({ initialTopic: firstUserMessageText || "Restored Mind Map", initialNodes: [] });
           }
+           setCanvasPanelGrow(window.innerWidth < 768 ? 10 : 7); // Ensure mobile default for mindmaps
         } else {
           setMindMapConfig(null);
         }
@@ -195,21 +196,22 @@ export default function VisualLearningPage() {
   }, []);
 
   const handlePanelResize = (action: 'wider-canvas' | 'wider-chat' | 'reset' | 'maximize-canvas' | 'maximize-chat') => {
+    const isCurrentlyMobile = window.innerWidth < 768;
     switch (action) {
       case 'wider-canvas':
-        setCanvasPanelGrow(prev => Math.min(9, prev + 1));
+        setCanvasPanelGrow(prev => Math.min(isCurrentlyMobile ? 10 : 9, prev + (isCurrentlyMobile ? 2 : 1)));
         break;
       case 'wider-chat':
-        setCanvasPanelGrow(prev => Math.max(1, prev - 1));
+        setCanvasPanelGrow(prev => Math.max(isCurrentlyMobile ? 0 : 1, prev - (isCurrentlyMobile ? 2 : 1)));
         break;
       case 'reset':
-        setCanvasPanelGrow(7);
+        setCanvasPanelGrow(isCurrentlyMobile ? 5 : 7); // 50/50 on mobile, 70/30 on desktop
         break;
       case 'maximize-canvas':
-        setCanvasPanelGrow(10); // Maximize canvas
+        setCanvasPanelGrow(10); 
         break;
       case 'maximize-chat':
-        setCanvasPanelGrow(0); // Minimize canvas, maximize chat
+        setCanvasPanelGrow(0); 
         break;
     }
   };
@@ -262,27 +264,27 @@ export default function VisualLearningPage() {
     return initialMessage;
   };
   
-  const canvasPanelStyle = { flexGrow: canvasPanelGrow, flexBasis: '0%', minWidth: canvasPanelGrow === 0 ? '0px' : '300px', display: canvasPanelGrow === 0 ? 'none' : 'flex' };
-  const chatPanelStyle = { flexGrow: 10 - canvasPanelGrow, flexBasis: '0%', minWidth: canvasPanelGrow === 10 ? '0px' : '300px', display: canvasPanelGrow === 10 ? 'none' : 'flex' };
+  const canvasPanelStyle = { flexGrow: canvasPanelGrow, flexBasis: '0%', minWidth: canvasPanelGrow === 0 ? '0px' : 'auto', display: canvasPanelGrow === 0 ? 'none' : 'flex' };
+  const chatPanelStyle = { flexGrow: 10 - canvasPanelGrow, flexBasis: '0%', minWidth: canvasPanelGrow === 10 ? '0px' : 'auto', display: canvasPanelGrow === 10 ? 'none' : 'flex' };
 
 
   return (
     <div className="h-full flex flex-col pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 pt-0 mt-0">
-        <div className="text-center sm:text-left">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-                <PieChartIcon className="mr-3 h-7 w-7 sm:h-8 sm:w-8 text-accent"/> Visual Learning Studio
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 pt-0 mt-0">
+        <div className="text-center sm:text-left mb-3 sm:mb-0">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
+                <PieChartIcon className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-accent"/> Visual Learning Studio
             </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               Explore concepts with AI-generated graphs, diagrams, and interactive mind maps.
             </p>
         </div>
-        <Button onClick={handleNewSessionClick} variant="outline" className="mt-3 sm:mt-0 shadow-sm">
-          <RotateCcw className="mr-2 h-4 w-4" /> New Session ({activeModeConfig.label})
+        <Button onClick={handleNewSessionClick} variant="outline" className="shadow-sm text-xs sm:text-sm">
+          <RotateCcw className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" /> New Session ({activeModeConfig.label})
         </Button>
       </div>
 
-      <div className="flex justify-center mb-6">
+      <div className="flex justify-center mb-4 sm:mb-6">
         <div className="bg-muted p-1 rounded-lg shadow-sm flex flex-wrap justify-center gap-1">
           {visualModes.map((mode) => {
             const Icon = mode.icon;
@@ -293,12 +295,12 @@ export default function VisualLearningPage() {
                 variant={isActive ? "secondary" : "ghost"}
                 onClick={() => handleModeChange(mode.id)}
                 className={cn(
-                  "px-3 py-1.5 h-auto text-xs sm:text-sm rounded-md flex items-center gap-1.5 sm:gap-2",
+                  "px-2.5 sm:px-3 py-1 sm:py-1.5 h-auto text-xs sm:text-sm rounded-md flex items-center gap-1 sm:gap-1.5",
                   isActive && "shadow-md bg-background text-primary font-semibold"
                 )}
                 aria-pressed={isActive}
               >
-                <Icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
+                <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", isActive ? "text-primary" : "text-muted-foreground")} />
                 {mode.label}
               </Button>
             );
@@ -314,7 +316,7 @@ export default function VisualLearningPage() {
                     <AIGraphsAndCharts />
                 </div>
             ) : activeMode === "diagrams" ? (
-                <div className="flex-1 flex flex-col min-h-0 w-full max-w-6xl mx-auto">
+                <div className="flex-1 flex flex-col min-h-0 w-full max-w-5xl mx-auto">
                     <AIConceptualDiagrams
                         userProfile={profile}
                         conversationId={currentConversationId}
@@ -322,27 +324,27 @@ export default function VisualLearningPage() {
                 </div>
             ) : activeMode === "mindmaps" ? (
              <TooltipProvider>
-              <div className="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden relative h-full">
-                {(canvasPanelGrow > 0 || chatPanelGrow > 0) && (
-                    <div className="absolute top-1 right-1 z-20 flex gap-1 bg-background/70 dark:bg-slate-800/70 p-1 rounded-md shadow-md border border-border dark:border-slate-700">
-                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-canvas')} className="h-7 w-7 p-1"><Maximize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Canvas</p></TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-canvas')} className="h-7 w-7 p-1"><PanelRightOpen className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Make Canvas Wider</p></TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('reset')} className="h-7 w-7 p-1"><Columns2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reset Layout (70/30)</p></TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-chat')} className="h-7 w-7 p-1"><PanelLeftOpen className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Make Chat Wider</p></TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-chat')} className="h-7 w-7 p-1"><Minimize2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Maximize Chat</p></TooltipContent></Tooltip>
+              <div className="flex-1 flex flex-col md:flex-row gap-2 md:gap-4 overflow-hidden relative h-full">
+                {(canvasPanelGrow > 0 || (10-canvasPanelGrow) > 0) && (
+                    <div className="absolute top-0.5 right-0.5 md:top-1 md:right-1 z-20 flex gap-0.5 md:gap-1 bg-background/70 dark:bg-slate-800/70 p-0.5 md:p-1 rounded-md shadow-md border border-border dark:border-slate-700">
+                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-canvas')} className="h-6 w-6 md:h-7 md:w-7 p-1"><Maximize2 className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent><p>Maximize Canvas</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-canvas')} className="h-6 w-6 md:h-7 md:w-7 p-1"><PanelRightOpen className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent><p>Wider Canvas</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('reset')} className="h-6 w-6 md:h-7 md:w-7 p-1"><Columns2 className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent><p>Reset Layout</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('wider-chat')} className="h-6 w-6 md:h-7 md:w-7 p-1"><PanelLeftOpen className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent><p>Wider Chat</p></TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button size="xs" variant="ghost" onClick={() => handlePanelResize('maximize-chat')} className="h-6 w-6 md:h-7 md:w-7 p-1"><Minimize2 className="h-3.5 w-3.5" /></Button></TooltipTrigger><TooltipContent><p>Maximize Chat</p></TooltipContent></Tooltip>
                     </div>
                 )}
 
                 <div className="flex flex-col overflow-hidden border rounded-lg shadow-md bg-card dark:bg-slate-800 h-full" style={canvasPanelStyle}>
                   <AIMindMapDisplay
-                    key={chatKey} // Ensure re-render on new session
+                    key={chatKey} 
                     initialTopic={mindMapConfig?.initialTopic}
                     initialNodes={mindMapConfig?.initialNodes}
                   />
                 </div>
                 <div className="flex flex-col overflow-hidden h-full" style={chatPanelStyle}>
                   <DynamicChatInterface
-                    key={`${chatKey}-chat`} // Ensure re-render on new session
+                    key={`${chatKey}-chat`} 
                     userProfile={profile}
                     topic={activeModeConfig.storageTopic}
                     conversationId={currentConversationId}
@@ -355,7 +357,6 @@ export default function VisualLearningPage() {
               </div>
              </TooltipProvider>
             ) : (
-              // Fallback for any other mode (shouldn't happen if modes are exhaustive)
               <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full">
                 <DynamicChatInterface
                   key={chatKey}
@@ -371,12 +372,10 @@ export default function VisualLearningPage() {
           </>
         )}
       </div>
-       <div className="text-center mt-4 py-2">
-            <Sparkles className="h-4 w-4 text-accent mx-auto mb-1 opacity-70"/>
+       <div className="text-center mt-4 py-1 sm:py-2">
+            <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent mx-auto mb-1 opacity-70"/>
             <p className="text-xs text-muted-foreground">Select a mode above to begin your visual exploration.</p>
         </div>
     </div>
   );
 }
-
-    

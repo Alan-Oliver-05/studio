@@ -5,11 +5,10 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Upload, FileText, Image as ImageIconLucide, Brain, Loader2, Camera, ZoomIn, ZoomOut, RotateCcw as ResetIcon, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import type { InitialNodeData } from '@/types'; // Import the shared type
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import type { InitialNodeData } from '@/types'; 
 
 
-// Node interface internal to this component
 interface Node {
   id: string;
   text: string;
@@ -20,16 +19,16 @@ interface Node {
   aiGenerated: boolean;
   parentId?: string;
   confidence?: number;
-  aiType?: string; // Used for smart suggestions logic
+  aiType?: string; 
 }
 
 interface AIMindMapDisplayProps {
   initialTopic?: string;
-  initialNodes?: InitialNodeData[]; // Use the shared type
+  initialNodes?: InitialNodeData[]; 
 }
 
 const MANUAL_NODE_COLOR = 'hsl(var(--primary))'; 
-const AI_NODE_COLOR = 'hsl(var(--chart-3))'; // Purple from theme
+const AI_NODE_COLOR = 'hsl(var(--chart-3))'; 
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 3.0;
 const ZOOM_SENSITIVITY = 0.001;
@@ -64,9 +63,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
   const [translateY, setTranslateY] = useState(50); 
 
   useEffect(() => {
-    // This effect handles updates to initialTopic and initialNodes AFTER the component has mounted
-    // and initialNodesProcessedRef has been set. This is for dynamic updates from parent.
-    if (initialNodesProcessedRef.current) { // Only run if initial processing is done
+    if (initialNodesProcessedRef.current) { 
         let newNodes: Node[] = [];
         let rootNodeExists = false;
 
@@ -87,7 +84,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
             
             initialNodes.filter(n => n.id !== newNodes[0]?.id).forEach((nodeData, index) => {
                 const parentNode = newNodes.find(pn => pn.id === nodeData.parentId) || (rootNodeExists ? newNodes[0] : null);
-                const xSpacing = 220; const ySpacing = 50;
+                const xSpacing = 200; const ySpacing = 45; // Slightly reduced spacing for mobile
                 newNodes.push({
                     id: nodeData.id, text: nodeData.text,
                     x: nodeData.x !== undefined ? nodeData.x : (parentNode ? parentNode.x + xSpacing : 50 + xSpacing * (index + 1)),
@@ -98,14 +95,14 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
             });
         }
         
-        if (!rootNodeExists) { // If no root from initialNodes, create/update one
+        if (!rootNodeExists) { 
             const existingRootIndex = nodes.findIndex(n => n.id === 'root');
             const rootText = initialTopic || (newNodes.length > 0 ? newNodes[0].text : DEFAULT_ROOT_NODE.text);
-            if (existingRootIndex > -1 && newNodes.length === 0) { // Keep old root if no new nodes and just topic change
+            if (existingRootIndex > -1 && newNodes.length === 0) { 
                 newNodes = [{...nodes[existingRootIndex], text: rootText }];
-            } else if (newNodes.length === 0) { // Brand new root
+            } else if (newNodes.length === 0) { 
                  newNodes.push({ ...DEFAULT_ROOT_NODE, text: rootText, x:50, y:150 });
-            } else if (newNodes.length > 0 && newNodes[0].id !== 'root') { // If new nodes don't define a root, make one
+            } else if (newNodes.length > 0 && newNodes[0].id !== 'root') { 
                  const newRootNode = { ...DEFAULT_ROOT_NODE, text: rootText, x:50, y:150 };
                  newNodes = [newRootNode, ...newNodes.map(n => ({...n, parentId: n.parentId || newRootNode.id}))];
             }
@@ -117,12 +114,11 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
 
 
   useEffect(() => {
-    // This effect is specifically for the very first load / initial processing
     if (initialNodes && initialNodes.length > 0 && !initialNodesProcessedRef.current) {
       const transformedInitialNodes: Node[] = [];
       let currentY = 150; 
-      const xSpacing = 220;
-      const ySpacing = 50;
+      const xSpacing = 200; // Adjusted for smaller screens
+      const ySpacing = 45;  // Adjusted
       let rootNodePresent = false;
 
       const rootData = initialNodes.find(n => n.type === 'root' || n.id === 'root');
@@ -137,21 +133,21 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
           aiGenerated: rootData.aiGenerated || false,
           parentId: undefined
         });
-        currentY = transformedInitialNodes[0].y + ySpacing * 2;
+        currentY = transformedInitialNodes[0].y + ySpacing * 1.5; // Adjusted
         rootNodePresent = true;
       } else if (initialTopic) {
          transformedInitialNodes.push({ ...DEFAULT_ROOT_NODE, text: initialTopic, x:50, y: currentY });
-         currentY += ySpacing * 2;
+         currentY += ySpacing * 1.5; // Adjusted
          rootNodePresent = true;
       } else {
          transformedInitialNodes.push({ ...DEFAULT_ROOT_NODE, x:50, y: currentY });
-         currentY += ySpacing * 2;
+         currentY += ySpacing * 1.5; // Adjusted
          rootNodePresent = true;
       }
       
       const rootId = transformedInitialNodes[0].id;
 
-      initialNodes.filter(n => n.id !== rootId).forEach((nodeData, index) => { // Process all non-root nodes
+      initialNodes.filter(n => n.id !== rootId).forEach((nodeData, index) => { 
         const parentNode = transformedInitialNodes.find(pn => pn.id === nodeData.parentId) || (rootNodePresent ? transformedInitialNodes[0] : null);
         transformedInitialNodes.push({
           id: nodeData.id,
@@ -168,11 +164,9 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
       setNodes(transformedInitialNodes);
       initialNodesProcessedRef.current = true; 
     } else if (!initialNodes && initialTopic && !initialNodesProcessedRef.current) {
-        // Handle case where only initialTopic is provided, no initialNodes
         setNodes([{...DEFAULT_ROOT_NODE, text: initialTopic, x: 50, y: 150}]);
         initialNodesProcessedRef.current = true;
     } else if (!initialNodesProcessedRef.current && (!initialNodes || initialNodes.length === 0) && !initialTopic) {
-        // Default setup if nothing is provided initially
         setNodes([{...DEFAULT_ROOT_NODE, x: 50, y: 150}]);
         initialNodesProcessedRef.current = true;
     }
@@ -239,8 +233,8 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
     const detailNodesToAdd = subNodesContent.map((sub, index) => ({
       id: `detail_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
       text: sub.text,
-      x: parentNode.x + 200,
-      y: parentNode.y + (index * 35) - ((subNodesContent.length -1) * 35 / 2),
+      x: parentNode.x + 180, // Reduced x offset
+      y: parentNode.y + (index * 30) - ((subNodesContent.length -1) * 30 / 2), // Reduced y spacing
       type: 'detail' as 'detail',
       color: parentColor, 
       parentId,
@@ -255,11 +249,11 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
     if (!parentNode) return;
 
     const newGeneratedNodesData: Node[] = analysisSuggestions.map((suggestion, index) => {
-      const yOffset = (nodes.filter(n => n.parentId === parentId).length + index) * 50 - (analysisSuggestions.length > 1 ? ((analysisSuggestions.length-1)*50/2) : 0);
+      const yOffset = (nodes.filter(n => n.parentId === parentId).length + index) * 45 - (analysisSuggestions.length > 1 ? ((analysisSuggestions.length-1)*45/2) : 0); // Reduced y spacing
       return {
         id: `ai_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
         text: `${suggestion.text} (${Math.round(suggestion.confidence * 100)}%)`,
-        x: parentNode.x + 250,
+        x: parentNode.x + 220, // Reduced x offset
         y: parentNode.y + yOffset,
         type: 'leaf' as 'leaf',
         color: AI_NODE_COLOR,
@@ -322,12 +316,12 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
     if (!parentNode) return;
 
     const siblings = nodes.filter(n => n.parentId === parentId);
-    const yOffset = (siblings.length) * 40 - (siblings.length > 0 ? ((siblings.length -1) * 40 / 2) : 0);
+    const yOffset = (siblings.length) * 35 - (siblings.length > 0 ? ((siblings.length -1) * 35 / 2) : 0); // Reduced y spacing
 
     const newNode: Node = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
       text,
-      x: parentNode.x + 220,
+      x: parentNode.x + 200, // Reduced x offset
       y: parentNode.y + yOffset,
       type: 'leaf',
       color: MANUAL_NODE_COLOR,
@@ -344,12 +338,12 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
     const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)];
     
     const siblings = nodes.filter(n => n.parentId === parentId);
-    const yOffset = (siblings.length) * 40 - (siblings.length > 0 ? ((siblings.length -1) * 40 / 2) : 0);
+    const yOffset = (siblings.length) * 35 - (siblings.length > 0 ? ((siblings.length -1) * 35 / 2) : 0); // Reduced y spacing
 
     const newNode: Node = {
       id: `ai_smart_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       text: `🤖 ${randomSuggestion}`,
-      x: parentNode.x + 220,
+      x: parentNode.x + 200, // Reduced x offset
       y: parentNode.y + yOffset,
       type: 'leaf',
       color: AI_NODE_COLOR,
@@ -471,24 +465,17 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
 
   const handleDownloadSVG = () => {
     if (!svgRef.current) return;
-
     const svgElement = svgRef.current;
     const serializer = new XMLSerializer();
     let source = serializer.serializeToString(svgElement);
-
-    // Add name spaces.
     if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
       source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
     }
     if(!source.match(/^<svg[^>]+"http\:\/\/www\.w3\.org\/1999\/xlink"/)){
       source = source.replace(/^<svg/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
     }
-
-    // Add XML declaration
     source = '<?xml version="1.0" standalone="no"?>\r\n' + source;
-
     const url = "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(source);
-
     const downloadLink = document.createElement("a");
     downloadLink.href = url;
     const rootNode = nodes.find(n => n.type === 'root');
@@ -506,17 +493,17 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
       const parentNode = nodes.find(n => n.id === node.parentId);
       if (!parentNode) return null;
 
-      const nodeWidth = node.type === 'root' ? 120 : Math.min(Math.max(node.text.length * 7 + 20, 100), 300); 
-      const parentNodeWidth = parentNode.type === 'root' ? 120 : Math.min(Math.max(parentNode.text.length * 7 + 20, 100), 300);
+      const nodeWidth = node.type === 'root' ? 100 : Math.min(Math.max(node.text.length * 6 + 20, 80), 250); // Adjusted node width
+      const parentNodeWidth = parentNode.type === 'root' ? 100 : Math.min(Math.max(parentNode.text.length * 6 + 20, 80), 250); // Adjusted
       
       const startX = parentNode.x + parentNodeWidth; 
-      const startY = parentNode.y + 17.5; 
+      const startY = parentNode.y + 15; // Adjusted center
       const endX = node.x; 
-      const endY = node.y + 17.5; 
+      const endY = node.y + 15; // Adjusted center
       
-      const controlX1 = startX + Math.max(50, (endX - startX) * 0.4);
+      const controlX1 = startX + Math.max(40, (endX - startX) * 0.4);
       const controlY1 = startY;
-      const controlX2 = endX - Math.max(50, (endX - startX) * 0.4);
+      const controlX2 = endX - Math.max(40, (endX - startX) * 0.4);
       const controlY2 = endY;
 
       return (
@@ -524,10 +511,10 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
           key={`${parentNode.id}-${node.id}`}
           d={`M ${startX} ${startY} C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${endX} ${endY}`}
           stroke={node.aiGenerated ? AI_NODE_COLOR : MANUAL_NODE_COLOR}
-          strokeWidth={2}
+          strokeWidth={1.5} // Thinner line
           fill="none"
           className="transition-all duration-200"
-          strokeDasharray={node.type === 'detail' ? "3,3" : "none"}
+          strokeDasharray={node.type === 'detail' ? "2,2" : "none"} // Adjusted dash
         />
       );
     });
@@ -536,7 +523,8 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
   const renderNode = (node: Node) => {
     const isSelected = selectedNodeId === node.id;
     const isEditing = editingNodeId === node.id;
-    const nodeWidth = node.type === 'root' ? 120 : Math.min(Math.max(node.text.length * 7 + 30, 100), 300); 
+    const nodeWidth = node.type === 'root' ? 100 : Math.min(Math.max(node.text.length * 6 + 20, 80), 250); // Adjusted
+    const nodeHeight = 30; // Fixed height
     const nodeFill = node.color;
     const textColor = 'hsl(var(--primary-foreground))'; 
     const strokeColor = node.color; 
@@ -549,42 +537,42 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
           x={node.x}
           y={node.y}
           width={nodeWidth}
-          height={35} 
-          rx={17.5} 
+          height={nodeHeight} 
+          rx={nodeHeight / 2} 
           fill={nodeFill}
           stroke={strokeColor}
-          strokeWidth={isSelected ? 3 : 2}
-          className={cn("transition-all duration-200", isSelected ? 'drop-shadow-lg' : 'opacity-90 hover:opacity-100')}
-          strokeDasharray={isAIDerived && node.type !== 'root' ? "6,3" : "none"} 
+          strokeWidth={isSelected ? 2.5 : 1.5} // Adjusted stroke
+          className={cn("transition-all duration-200", isSelected ? 'drop-shadow-md' : 'opacity-90 hover:opacity-100')}
+          strokeDasharray={isAIDerived && node.type !== 'root' ? "4,2" : "none"} // Adjusted dash
         />
         
         {node.confidence && node.aiGenerated && (
           <Brain 
-            className="w-3 h-3 opacity-80" 
+            className="w-2.5 h-2.5 opacity-80" 
             fill="hsl(var(--primary-foreground))"
             strokeWidth={0.5}
-            x={node.x + nodeWidth - 22} 
-            y={node.y + 5}
+            x={node.x + nodeWidth - 18} 
+            y={node.y + 4}
             style={{ pointerEvents: 'none' }}
           />
         )}
         
         {!isEditing ? (
           <text
-            x={node.x + 15} 
-            y={node.y + 22.5} 
+            x={node.x + 12} 
+            y={node.y + (nodeHeight / 2) + 3.5} // Vertically center text
             fill={textColor}
-            fontSize="11"
+            fontSize="10" // Smaller font
             fontWeight={node.type === 'root' ? '600' : '500'}
             className="pointer-events-none select-none"
             onDoubleClick={() => node.type !== 'root' && setEditingNodeId(node.id)}
           >
-            {node.text.length > ((nodeWidth - (node.aiGenerated && node.confidence ? 45 : 30))/7) 
-              ? node.text.substring(0, Math.floor((nodeWidth - (node.aiGenerated && node.confidence ? 45:30))/7 - 3)) + '...' 
+            {node.text.length > ((nodeWidth - (node.aiGenerated && node.confidence ? 35 : 24))/6) // Adjusted truncation
+              ? node.text.substring(0, Math.floor((nodeWidth - (node.aiGenerated && node.confidence ? 35:24))/6 - 2)) + '...' 
               : node.text}
           </text>
         ) : (
-          <foreignObject x={node.x + 5} y={node.y + 5} width={nodeWidth - 10} height={25}>
+          <foreignObject x={node.x + 4} y={node.y + 4} width={nodeWidth - 8} height={nodeHeight - 8}>
             <div xmlns="http://www.w3.org/1999/xhtml" className="h-full">
                 <input
                 type="text"
@@ -594,7 +582,7 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
                 onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === 'Escape') setEditingNodeId(null);
                 }}
-                className="w-full h-full px-2.5 text-xs border border-slate-400 rounded-md outline-none bg-white text-black"
+                className="w-full h-full px-2 text-[10px] border border-slate-400 rounded-sm outline-none bg-white text-black" // Smaller font
                 autoFocus
                 />
             </div>
@@ -602,20 +590,20 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
         )}
         
         {isSelected && !isEditing && (
-          <g transform={`translate(${node.x + nodeWidth + 5}, ${node.y + 17.5})`} className="cursor-pointer">
+          <g transform={`translate(${node.x + nodeWidth + 4}, ${node.y + (nodeHeight / 2)})`} className="cursor-pointer">
             <Tooltip>
               <TooltipTrigger asChild>
-                <circle cx={10} cy={0} r={10} fill="hsl(var(--primary))" className="hover:opacity-80" onClick={(e) => { e.stopPropagation(); addNode(node.id); }}>
-                  <Plus className="text-primary-foreground w-3 h-3" x={10 - 6} y={0 - 6} />
+                <circle cx={8} cy={0} r={8} fill="hsl(var(--primary))" className="hover:opacity-80" onClick={(e) => { e.stopPropagation(); addNode(node.id); }}>
+                  <Plus className="text-primary-foreground w-2.5 h-2.5" x={8 - 5} y={0 - 5} />
                 </circle>
               </TooltipTrigger>
-              <TooltipContent><p>Add child node</p></TooltipContent>
+              <TooltipContent><p>Add child</p></TooltipContent>
             </Tooltip>
             
             <Tooltip>
               <TooltipTrigger asChild>
-                <circle cx={32} cy={0} r={10} fill="hsl(var(--chart-3))" className="hover:opacity-80" onClick={(e) => { e.stopPropagation(); addSmartNode(node.id);}}>
-                  <Brain className="text-primary-foreground w-3 h-3"  x={32 - 6} y={0 - 6} />
+                <circle cx={25} cy={0} r={8} fill="hsl(var(--chart-3))" className="hover:opacity-80" onClick={(e) => { e.stopPropagation(); addSmartNode(node.id);}}>
+                  <Brain className="text-primary-foreground w-2.5 h-2.5"  x={25 - 5} y={0 - 5} />
                 </circle>
               </TooltipTrigger>
                <TooltipContent><p>AI Smart Add</p></TooltipContent>
@@ -623,23 +611,23 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
           </g>
         )}
         {isSelected && !isEditing && node.id !== 'root' && ( 
-             <g transform={`translate(${node.x - 15}, ${node.y + 17.5})`} className="cursor-pointer">
+             <g transform={`translate(${node.x - 12}, ${node.y + (nodeHeight / 2)})`} className="cursor-pointer">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <circle cx={0} cy={-9} r={8} fill="hsl(var(--secondary))" className="hover:opacity-80" onClick={(e) => {e.stopPropagation(); setEditingNodeId(node.id);}}>
-                        <Edit2 className="text-secondary-foreground w-2.5 h-2.5" x={0-5} y={-9-5} />
+                    <circle cx={0} cy={-7} r={7} fill="hsl(var(--secondary))" className="hover:opacity-80" onClick={(e) => {e.stopPropagation(); setEditingNodeId(node.id);}}>
+                        <Edit2 className="text-secondary-foreground w-2 h-2" x={0-4} y={-7-4} />
                     </circle>
                   </TooltipTrigger>
-                  <TooltipContent><p>Edit node</p></TooltipContent>
+                  <TooltipContent><p>Edit</p></TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <circle cx={0} cy={9} r={8} fill="hsl(var(--destructive))" className="hover:opacity-80" onClick={(e) => {e.stopPropagation(); deleteNode(node.id);}}>
-                        <Trash2 className="text-destructive-foreground w-2.5 h-2.5" x={0-5} y={9-5} />
+                    <circle cx={0} cy={7} r={7} fill="hsl(var(--destructive))" className="hover:opacity-80" onClick={(e) => {e.stopPropagation(); deleteNode(node.id);}}>
+                        <Trash2 className="text-destructive-foreground w-2 h-2" x={0-4} y={7-4} />
                     </circle>
                   </TooltipTrigger>
-                  <TooltipContent><p>Delete node</p></TooltipContent>
+                  <TooltipContent><p>Delete</p></TooltipContent>
                 </Tooltip>
             </g>
         )}
@@ -650,42 +638,41 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
   return (
     <TooltipProvider>
     <div className="w-full h-full bg-slate-100 dark:bg-slate-900/70 relative overflow-hidden rounded-lg border border-border shadow-inner">
-      {/* Control Panel */}
-      <div className="absolute top-4 left-4 z-10 bg-background dark:bg-slate-800 rounded-xl shadow-xl p-4 w-72 border border-border">
-        <div className="flex items-center space-x-2 mb-3">
-          <Brain className="w-6 h-6 text-purple-500 flex-shrink-0" />
-          <h2 className="text-base md:text-lg font-semibold text-foreground truncate">AI Mind Map</h2>
+      <div className="absolute top-2 left-2 sm:top-4 sm:left-4 z-10 bg-background dark:bg-slate-800 rounded-lg sm:rounded-xl shadow-xl p-2 sm:p-3 w-full max-w-[calc(100%-1rem)] sm:max-w-xs md:w-64 lg:w-72 border border-border">
+        <div className="flex items-center space-x-1.5 mb-2">
+          <Brain className="w-5 h-5 text-purple-500 flex-shrink-0" />
+          <h2 className="text-sm sm:text-base font-semibold text-foreground truncate">AI Mind Map</h2>
         </div>
         
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Button
             variant="default"
             size="sm"
             onClick={() => setShowUploadPanel(!showUploadPanel)}
-            className="w-full"
+            className="w-full text-xs h-8"
           >
-            <Upload className="w-4 h-4 mr-1.5" />
-            {showUploadPanel ? "Hide Upload Panel" : "Upload & Analyze"}
+            <Upload className="w-3.5 h-3.5 mr-1.5" />
+            {showUploadPanel ? "Hide Upload" : "Upload & Analyze"}
           </Button>
           
           {showUploadPanel && (
-            <div className="bg-muted/50 dark:bg-slate-700/50 p-2.5 rounded-md border border-border">
+            <div className="bg-muted/50 dark:bg-slate-700/50 p-2 rounded-md border border-border">
               <input ref={fileInputRef} type="file" multiple accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png" onChange={handleFileUpload} className="hidden" />
-              <div className="grid grid-cols-2 gap-1.5">
-                <Button size="xs" variant="secondary" onClick={() => fileInputRef.current?.click()} className="text-xs"><FileText className="w-3.5 h-3.5 mr-1" />Docs</Button>
-                <Button size="xs" variant="secondary" onClick={() => fileInputRef.current?.click()} className="text-xs"><ImageIconLucide className="w-3.5 h-3.5 mr-1" />Images</Button>
+              <div className="grid grid-cols-2 gap-1">
+                <Button size="xs" variant="secondary" onClick={() => fileInputRef.current?.click()} className="text-xs h-7"><FileText className="w-3 h-3 mr-1" />Docs</Button>
+                <Button size="xs" variant="secondary" onClick={() => fileInputRef.current?.click()} className="text-xs h-7"><ImageIconLucide className="w-3 h-3 mr-1" />Images</Button>
               </div>
             </div>
           )}
           
           {isProcessing && (
-            <div className="flex items-center space-x-1.5 text-sm text-primary p-1.5 bg-primary/10 rounded-md">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="flex items-center space-x-1 text-xs text-primary p-1 bg-primary/10 rounded-md">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
               <span>AI analyzing...</span>
             </div>
           )}
           
-          <ul className="text-xs text-muted-foreground space-y-1 pt-2 border-t border-border">
+          <ul className="text-xs text-muted-foreground space-y-0.5 pt-1.5 border-t border-border">
             <li>• AI nodes from uploads.</li>
             <li>• Purple button: AI suggestions.</li>
             <li>• Dashed border: AI content.</li>
@@ -693,65 +680,62 @@ const AIMindMapDisplay: React.FC<AIMindMapDisplayProps> = ({ initialTopic, initi
         </div>
       </div>
 
-    {/* Uploaded Files Panel - simplified */}
       {uploadedFiles.length > 0 && (
-        <div className="absolute top-4 right-4 z-10 bg-background dark:bg-slate-800 rounded-xl shadow-xl p-2.5 max-w-[180px] border border-border">
-          <h3 className="text-xs font-semibold text-foreground mb-1">Analyzed Files:</h3>
-          <div className="space-y-1 max-h-20 overflow-y-auto text-xs pr-1 scrollbar-thin">
+        <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 bg-background dark:bg-slate-800 rounded-lg sm:rounded-xl shadow-xl p-2 max-w-[120px] sm:max-w-[160px] border border-border">
+          <h3 className="text-xs font-semibold text-foreground mb-0.5">Analyzed:</h3>
+          <div className="space-y-0.5 max-h-16 sm:max-h-20 overflow-y-auto text-xs pr-0.5 scrollbar-thin">
             {uploadedFiles.map((file, index) => (
               <div key={index} className="flex items-center space-x-1 text-muted-foreground">
-                {file.type.startsWith('image/') ? <Camera className="w-3 h-3 text-primary flex-shrink-0" /> : <FileText className="w-3 h-3 text-green-600 flex-shrink-0" />}
-                <span className="truncate" title={file.name}>{file.name}</span>
+                {file.type.startsWith('image/') ? <Camera className="w-2.5 h-2.5 text-primary flex-shrink-0" /> : <FileText className="w-2.5 h-2.5 text-green-600 flex-shrink-0" />}
+                <span className="truncate text-[10px]" title={file.name}>{file.name}</span>
               </div>
             ))}
           </div>
         </div>
       )}
       
-      {/* Zoom Controls & Download */}
-       <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1.5">
+       <div className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 z-10 flex flex-col gap-1 sm:gap-1.5">
          <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => zoom(1.25)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9 border-border"><ZoomIn className="h-4 w-4 text-foreground" /></Button>
+                <Button variant="outline" size="icon" onClick={() => zoom(1.25)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 sm:h-9 sm:w-9 border-border"><ZoomIn className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-foreground" /></Button>
             </TooltipTrigger>
             <TooltipContent side="right"><p>Zoom In</p></TooltipContent>
         </Tooltip>
          <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => zoom(0.8)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9 border-border"><ZoomOut className="h-4 w-4 text-foreground" /></Button>
+                <Button variant="outline" size="icon" onClick={() => zoom(0.8)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 sm:h-9 sm:w-9 border-border"><ZoomOut className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-foreground" /></Button>
             </TooltipTrigger>
             <TooltipContent side="right"><p>Zoom Out</p></TooltipContent>
         </Tooltip>
          <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={resetView} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9 border-border"><ResetIcon className="h-4 w-4 text-foreground" /></Button>
+                <Button variant="outline" size="icon" onClick={resetView} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 sm:h-9 sm:w-9 border-border"><ResetIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-foreground" /></Button>
             </TooltipTrigger>
             <TooltipContent side="right"><p>Reset View</p></TooltipContent>
         </Tooltip>
         <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={handleDownloadSVG} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-9 w-9 border-border">
-                    <Download className="h-4 w-4 text-foreground" />
+                <Button variant="outline" size="icon" onClick={handleDownloadSVG} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 sm:h-9 sm:w-9 border-border">
+                    <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-foreground" />
                 </Button>
             </TooltipTrigger>
             <TooltipContent side="right"><p>Download as SVG</p></TooltipContent>
         </Tooltip>
       </div>
 
-      {/* Legend */}
-      <div className="absolute bottom-4 right-4 z-10 bg-background dark:bg-slate-800 rounded-lg shadow-md p-2.5 border border-border">
-        <ul className="space-y-1 text-xs text-muted-foreground">
-            <li className="flex items-center space-x-1.5">
-                <div className="w-3 h-3 rounded-sm" style={{backgroundColor: MANUAL_NODE_COLOR}}></div>
-                <span className="text-foreground">Manual Nodes</span>
+      <div className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 z-10 bg-background dark:bg-slate-800 rounded-md sm:rounded-lg shadow-md p-1.5 sm:p-2 border border-border">
+        <ul className="space-y-0.5 text-xs text-muted-foreground">
+            <li className="flex items-center space-x-1">
+                <div className="w-2.5 h-2.5 rounded-sm" style={{backgroundColor: MANUAL_NODE_COLOR}}></div>
+                <span className="text-foreground text-[10px] sm:text-xs">Manual</span>
             </li>
-            <li className="flex items-center space-x-1.5">
-                <div className="w-3 h-3 rounded-sm" style={{backgroundColor: AI_NODE_COLOR}}></div>
-                <span className="text-foreground">AI Generated</span>
+            <li className="flex items-center space-x-1">
+                <div className="w-2.5 h-2.5 rounded-sm" style={{backgroundColor: AI_NODE_COLOR}}></div>
+                <span className="text-foreground text-[10px] sm:text-xs">AI</span>
             </li>
-            <li className="flex items-center space-x-1.5">
-                <Brain className="w-3 h-3" style={{color: AI_NODE_COLOR}} />
-                <span className="text-foreground">AI Score</span>
+            <li className="flex items-center space-x-1">
+                <Brain className="w-2.5 h-2.5" style={{color: AI_NODE_COLOR}} />
+                <span className="text-foreground text-[10px] sm:text-xs">AI Score</span>
             </li>
         </ul>
       </div>
