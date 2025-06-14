@@ -220,6 +220,7 @@ export default function LanguageLearningPage() {
               className={cn(
                 "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-1 flex flex-col items-center justify-center text-center group",
                 "bg-card border-2 rounded-xl overflow-hidden shadow-md hover:shadow-lg h-36", // Fixed height
+                "w-full sm:w-48 md:w-52 lg:w-56 flex-shrink-0", // Width classes
                 isActive
                   ? "border-primary ring-2 ring-primary/60 bg-primary/5"
                   : "border-border hover:border-primary/50 dark:bg-slate-800/50 dark:hover:border-primary/70"
@@ -231,14 +232,14 @@ export default function LanguageLearningPage() {
               aria-label={`Switch to ${mode.label} mode`}
             >
               <CardHeader className="p-3 pt-4">
-                 <div className={cn("p-3 rounded-full mb-1.5 transition-colors duration-300 w-fit mx-auto", 
+                 <div className={cn("p-1.5 rounded-full mb-1 transition-colors duration-300 w-fit mx-auto", 
                     isActive ? "bg-primary/20" : "bg-muted group-hover:bg-primary/10"
                  )}>
-                    <Icon className={cn("h-6 w-6 transition-colors duration-300", 
+                    <Icon className={cn("h-4 w-4 transition-colors duration-300", 
                         isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
                     )} />
                  </div>
-                <CardTitle className={cn("text-sm font-semibold transition-colors", 
+                <CardTitle className={cn("text-xs font-medium transition-colors", 
                     isActive ? "text-primary" : "text-foreground group-hover:text-primary"
                 )}>
                     {mode.label}
