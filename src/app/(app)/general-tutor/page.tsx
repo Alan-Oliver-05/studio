@@ -7,31 +7,31 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from "react"; 
+import { useEffect, useState, useCallback } from "react";
 import { getConversationById } from "@/lib/chat-storage";
 import type { UserProfile } from "@/types";
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
-  { 
+  {
     loading: () => <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
-    ssr: false 
+    ssr: false
   }
 );
 
 interface SuggestionChipConfig {
   label: string;
   icon: React.ElementType;
-  action?: () => void; // Placeholder for future actions
+  action?: () => void;
 }
 
 export default function GeneralTutorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
-  const [chatKey, setChatKey] = useState<string>(''); 
+  const [chatKey, setChatKey] = useState<string>('');
 
   const initializeNewSession = useCallback(() => {
     if (profile) {
@@ -39,7 +39,7 @@ export default function GeneralTutorPage() {
       const newTimestamp = Date.now();
       const newId = `general-tutor-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(newId);
-      setChatKey(newId); 
+      setChatKey(newId);
       if (searchParams.get('sessionId')) {
         router.replace('/general-tutor', { scroll: false });
       }
@@ -52,12 +52,12 @@ export default function GeneralTutorPage() {
       const conversation = getConversationById(sessionIdFromQuery);
       if (conversation && conversation.topic === "AI Learning Assistant Chat") {
         setCurrentConversationId(sessionIdFromQuery);
-        setChatKey(sessionIdFromQuery); 
+        setChatKey(sessionIdFromQuery);
       } else {
-        router.replace('/general-tutor'); 
+        router.replace('/general-tutor');
         initializeNewSession();
       }
-    } else if (profile) { 
+    } else if (profile) {
       initializeNewSession();
     }
   }, [searchParams, profile, router, initializeNewSession]);
@@ -66,8 +66,8 @@ export default function GeneralTutorPage() {
   const handleNewSessionClick = () => {
     initializeNewSession();
   };
-  
-  const suggestionChipsConfig: SuggestionChipConfig[] = [
+
+  const otherSuggestionChips: SuggestionChipConfig[] = [
     { label: "Write", icon: Edit, action: () => console.log("Write suggestion clicked") },
     { label: "Learn", icon: BookOpen, action: () => console.log("Learn suggestion clicked") },
     { label: "EduAI's choice", icon: HelpCircle, action: () => console.log("EduAI's choice clicked") },
@@ -96,7 +96,7 @@ export default function GeneralTutorPage() {
       </div>
     );
   }
-  
+
   if (!currentConversationId || !chatKey) {
      return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
@@ -107,7 +107,7 @@ export default function GeneralTutorPage() {
   }
 
   const initialMainChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context. How can I help you today?`;
-  
+
   return (
     <div className="min-h-full flex flex-col items-center pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
       <div className="w-full max-w-4xl mx-auto px-4">
@@ -128,30 +128,26 @@ export default function GeneralTutorPage() {
           </Button>
         </div>
 
-        {/* Student Name Suggestion Chip - Above Chat */}
-        <div className="flex justify-center my-4">
-          <Button 
-            variant="outline" 
-            className="rounded-full px-4 py-2 text-sm shadow-sm hover:bg-primary/5"
-            onClick={() => console.log("Student name suggestion clicked")}
-          >
-            <Sparkles className="mr-2 h-4 w-4 text-accent" />
-            {profile.name ? `${profile.name} returns!` : "Explore EduAI Tutor"}
-          </Button>
+        {/* Student Name Suggestion - Above Chat, styled as text */}
+        <div className="flex justify-center my-6">
+          <p className="text-2xl text-foreground flex items-center">
+            <Sparkles className="mr-3 h-6 w-6 text-orange-500" /> {/* Orange Sparkles icon */}
+            {profile.name ? `${profile.name} returns!` : "Welcome to EduAI Tutor!"}
+          </p>
         </div>
       </div>
-      
+
       <div className="w-full max-w-3xl mx-auto flex-grow flex flex-col items-center px-4 pb-4 min-h-0">
         <div className="w-full flex-grow min-h-0">
-            {chatKey && currentConversationId && ( 
+            {chatKey && currentConversationId && (
             <DynamicChatInterface
-                key={chatKey} 
+                key={chatKey}
                 userProfile={profile}
-                topic="AI Learning Assistant Chat" 
+                topic="AI Learning Assistant Chat"
                 conversationId={currentConversationId}
                 initialSystemMessage={initialMainChatMessage}
                 placeholderText="Ask anything or upload an image..."
-                enableImageUpload={true} 
+                enableImageUpload={true}
             />
             )}
         </div>
@@ -160,7 +156,7 @@ export default function GeneralTutorPage() {
       {/* Other Suggestion Chips - Below Chat */}
       <div className="w-full max-w-3xl mx-auto px-4 py-4">
         <div className="flex flex-wrap justify-center gap-3">
-          {suggestionChipsConfig.map((chip) => (
+          {otherSuggestionChips.map((chip) => (
             <Button
               key={chip.label}
               variant="outline"
