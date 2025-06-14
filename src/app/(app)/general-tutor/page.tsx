@@ -67,11 +67,19 @@ export default function GeneralTutorPage() {
     initializeNewSession();
   };
 
-  const otherSuggestionChips: SuggestionChipConfig[] = [
-    { label: "Write", icon: Edit, action: () => console.log("Write suggestion clicked") },
-    { label: "Learn", icon: BookOpen, action: () => console.log("Learn suggestion clicked") },
-    { label: "EduAI's choice", icon: HelpCircle, action: () => console.log("EduAI's choice clicked") },
-  ];
+  const getSuggestionChips = (): SuggestionChipConfig[] => {
+    const chips: SuggestionChipConfig[] = [];
+    
+    chips.push(
+      { label: "Write", icon: Edit, action: () => console.log("Write suggestion clicked") },
+      { label: "Learn", icon: BookOpen, action: () => console.log("Learn suggestion clicked") },
+      { label: "EduAI's choice", icon: HelpCircle, action: () => console.log("EduAI's choice clicked") }
+    );
+    return chips;
+  };
+  
+  const otherSuggestionChips = getSuggestionChips();
+
 
   if (profileLoading) {
     return (
@@ -106,14 +114,14 @@ export default function GeneralTutorPage() {
     );
   }
 
-  const initialMainChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context. How can I help you today?`;
+  const initialMainChatMessage = `Hi ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context. How can I help you today?`;
 
   return (
     <div className="min-h-full flex flex-col items-center pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
       <div className="w-full max-w-4xl mx-auto px-4">
         <div className="flex flex-col sm:flex-row justify-between items-center my-6">
           <div className="flex items-center space-x-3">
-            <BrainIcon className="h-8 w-8 text-primary flex-shrink-0" />
+            <BrainIcon className="h-7 w-7 text-primary flex-shrink-0" />
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold text-foreground">
                 AI Learning Assistant
@@ -128,12 +136,14 @@ export default function GeneralTutorPage() {
           </Button>
         </div>
 
-        {/* Student Name Suggestion - Above Chat, styled as text */}
-        <div className="flex justify-center my-6">
-          <p className="text-2xl text-foreground flex items-center">
-            <Sparkles className="mr-3 h-6 w-6 text-orange-500" /> {/* Orange Sparkles icon */}
-            {profile.name ? `${profile.name} returns!` : "Welcome to EduAI Tutor!"}
-          </p>
+        <div className="flex flex-col items-center justify-center my-6">
+            <p className="text-2xl text-foreground flex items-center">
+                <Sparkles className="mr-3 h-6 w-6 text-orange-500" />
+                {profile.name ? `${profile.name} returns!` : "Welcome to EduAI Tutor!"}
+            </p>
+            <p className="text-lg text-muted-foreground mt-1">
+                Ready to explore and learn something new?
+            </p>
         </div>
       </div>
 
@@ -153,7 +163,6 @@ export default function GeneralTutorPage() {
         </div>
       </div>
 
-      {/* Other Suggestion Chips - Below Chat */}
       <div className="w-full max-w-3xl mx-auto px-4 py-4">
         <div className="flex flex-wrap justify-center gap-3">
           {otherSuggestionChips.map((chip) => (
