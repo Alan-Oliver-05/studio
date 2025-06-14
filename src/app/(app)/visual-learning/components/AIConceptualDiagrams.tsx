@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -36,7 +37,7 @@ interface Node {
   x: number;
   y: number;
   type: 'root' | 'leaf' | 'detail';
-  color: string;
+  color: string; 
   aiGenerated: boolean;
   parentId?: string;
   confidence?: number;
@@ -78,6 +79,18 @@ interface AIConceptualDiagramsProps {
   userProfile: UserProfile | null;
   conversationId: string | null;
 }
+
+// Wrapper component for SVG <g> to ensure compatibility with Radix Slot
+const GWrapper = React.forwardRef<SVGGElement, React.PropsWithChildren<React.SVGProps<SVGGElement>>>(
+  ({ children, ...props }, ref) => {
+    return (
+      <g ref={ref} {...props}>
+        {children}
+      </g>
+    );
+  }
+);
+GWrapper.displayName = 'GWrapper';
 
 const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile, conversationId }) => {
   const [query, setQuery] = useState('');
@@ -254,7 +267,7 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
         sun: Sun, leaf: Leaf, heart: Heart, droplets: Droplets, atom: Atom
       };
       const IconComponent = iconName ? iconMap[iconName] : Lightbulb;
-      return <IconComponent className="w-4 h-4" />; // Slightly smaller icon
+      return <IconComponent className="w-4 h-4" />; 
     };
     const isHovered = hoveredElement === element.id;
 
@@ -262,7 +275,7 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
       <TooltipProvider key={element.id}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <g 
+          <GWrapper 
             onMouseEnter={() => setHoveredElement(element.id)}
             onMouseLeave={() => setHoveredElement(null)}
             className="cursor-pointer"
@@ -271,33 +284,33 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
             <circle
               cx={element.x}
               cy={element.y}
-              r={element.type === 'organ' ? 30 : element.type === 'formula' ? 45 : 25} // Reduced radius
+              r={element.type === 'organ' ? 30 : element.type === 'formula' ? 45 : 25} 
               fill={`${element.color.replace(')', ', 0.2)').replace('hsl(','hsla(')}`} 
               stroke={element.color}
               strokeWidth={isHovered ? 2 : 1.5}
               className="transition-all duration-150"
             />
             {element.icon && (
-              <foreignObject x={element.x - 8} y={element.y - 8} width="16" height="16" style={{ color: element.color, pointerEvents: 'none' }}> {/* Adjusted for smaller icon */}
+              <foreignObject x={element.x - 8} y={element.y - 8} width="16" height="16" style={{ color: element.color, pointerEvents: 'none' }}> 
                   {getIcon(element.icon)}
               </foreignObject>
             )}
             {showLabels && (
               <text
                 x={element.x}
-                y={element.y + (element.type === 'formula' ? 50 : 35)} // Adjusted label position
+                y={element.y + (element.type === 'formula' ? 50 : 35)} 
                 textAnchor="middle"
                 fill="hsl(var(--foreground))"
-                fontSize={element.type === 'formula' ? '9' : '8'} // Reduced font size
+                fontSize={element.type === 'formula' ? '9' : '8'} 
                 fontWeight="500"
                 className="pointer-events-none select-none"
               >
-                {element.label.length > 15 ? element.label.substring(0, 12) + '...' : element.label} {/* Shorter truncate */}
+                {element.label.length > 15 ? element.label.substring(0, 12) + '...' : element.label} 
               </text>
             )}
-          </g>
+          </GWrapper>
         </TooltipTrigger>
-        <TooltipContent side="top" className="bg-popover text-popover-foreground p-1.5 rounded-md shadow-lg text-xs"> {/* Smaller tooltip */}
+        <TooltipContent side="top" className="bg-popover text-popover-foreground p-1.5 rounded-md shadow-lg text-xs"> 
           <p className="font-semibold">{element.label}</p>
           <p>Type: {element.type}</p>
         </TooltipContent>
@@ -315,12 +328,12 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
     const dx = toEl.x - fromEl.x;
     const dy = toEl.y - fromEl.y;
     const angle = Math.atan2(dy, dx);
-    const fromRadius = fromEl.type === 'organ' ? 30 : fromEl.type === 'formula' ? 45 : 25; // Use reduced radius
-    const toRadius = toEl.type === 'organ' ? 30 : toEl.type === 'formula' ? 45 : 25;   // Use reduced radius
+    const fromRadius = fromEl.type === 'organ' ? 30 : fromEl.type === 'formula' ? 45 : 25; 
+    const toRadius = toEl.type === 'organ' ? 30 : toEl.type === 'formula' ? 45 : 25;   
 
     const startX = fromEl.x + Math.cos(angle) * (fromRadius + 2);
     const startY = fromEl.y + Math.sin(angle) * (fromRadius + 2);
-    const endX = toEl.x - Math.cos(angle) * (toRadius + 4); // Adjusted end marker offset
+    const endX = toEl.x - Math.cos(angle) * (toRadius + 4); 
     const endY = toEl.y - Math.sin(angle) * (toRadius + 4); 
     
     const arrowColor = 'hsl(var(--muted-foreground))';
@@ -328,17 +341,17 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
     return (
       <g key={`${connection.from}-${connection.to}`}>
         <defs>
-          <marker id={`arrow-${connection.from}-${connection.to}`} viewBox="0 0 10 10" refX="7" refY="3" markerWidth="4" markerHeight="4" orient="auto-start-reverse"> {/* Smaller marker */}
+          <marker id={`arrow-${connection.from}-${connection.to}`} viewBox="0 0 10 10" refX="7" refY="3" markerWidth="4" markerHeight="4" orient="auto-start-reverse"> 
             <path d="M 0 0 L 10 3 L 0 6 z" fill={arrowColor} />
           </marker>
         </defs>
         <line
           x1={startX} y1={startY} x2={endX} y2={endY}
-          stroke={arrowColor} strokeWidth="1" // Thinner line
+          stroke={arrowColor} strokeWidth="1" 
           markerEnd={`url(#arrow-${connection.from}-${connection.to})`}
         />
         {showLabels && connection.label && (
-          <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 5} textAnchor="middle" fill={arrowColor} fontSize="7" fontWeight="500" className="pointer-events-none"> {/* Smaller font */}
+          <text x={(startX + endX) / 2} y={(startY + endY) / 2 - 5} textAnchor="middle" fill={arrowColor} fontSize="7" fontWeight="500" className="pointer-events-none"> 
             {connection.label}
           </text>
         )}
@@ -347,7 +360,7 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
   };
 
   const exampleQueries = [
-    "Diagram photosynthesis", // Shorter for compact buttons
+    "Diagram photosynthesis", 
     "Heart circulation",
     "Atomic structure",
     "Water cycle",
@@ -483,19 +496,29 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
         }
         svgElement.replaceChild(gWrapper, originalG);
     } else {
-        while (svgElement.firstChild) {
-          if (svgElement.firstChild.nodeName === 'g') { 
-             const mainGroup = svgElement.firstChild as SVGGElement;
-             while(mainGroup.firstChild) {
-                gWrapper.appendChild(mainGroup.firstChild);
-             }
-             mainGroup.appendChild(gWrapper);
-             break;
-          }
-          svgElement.removeChild(svgElement.firstChild); 
+        // Fallback if the structure is different, try to find the main group or wrap all children
+        let mainGroupFound = false;
+        const childrenToWrap = Array.from(svgElement.children).filter(child => child.nodeName !== 'style' && child.nodeName !== 'defs');
+        
+        if (childrenToWrap.length === 1 && childrenToWrap[0].nodeName === 'g') {
+             // If there's already a single top-level group (besides style/defs), re-wrap its contents
+            const singleTopG = childrenToWrap[0] as SVGGElement;
+            while (singleTopG.firstChild) {
+                gWrapper.appendChild(singleTopG.firstChild);
+            }
+            svgElement.replaceChild(gWrapper, singleTopG);
+            mainGroupFound = true;
+        } else if (childrenToWrap.length > 0) {
+            // If multiple children or no single 'g', wrap all relevant children
+            childrenToWrap.forEach(child => gWrapper.appendChild(child.cloneNode(true)));
+            childrenToWrap.forEach(child => svgElement.removeChild(child)); // Remove original children that were wrapped
+            svgElement.appendChild(gWrapper); // Append the new wrapper
+            mainGroupFound = true;
         }
-        if (!svgElement.querySelector('g')) { 
-            svgElement.appendChild(gWrapper);
+
+
+        if (!mainGroupFound) { // If still no main group, just append the wrapper (less ideal)
+           svgElement.appendChild(gWrapper);
         }
     }
 
@@ -607,12 +630,12 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
       </div>
       </TooltipProvider>
 
-      <div className="flex-grow overflow-hidden p-2 relative"> {/* Reduced padding */}
+      <div className="flex-grow overflow-hidden p-2 relative"> 
         <svg 
             ref={canvasRef} 
             width="100%" 
             height="100%" 
-            className="bg-muted/30 dark:bg-slate-800/30 rounded-lg border border-border shadow-inner min-h-[360px] sm:min-h-[460px] cursor-grab active:cursor-grabbing" // Reduced min-height
+            className="bg-muted/30 dark:bg-slate-800/30 rounded-lg border border-border shadow-inner min-h-[360px] sm:min-h-[460px] cursor-grab active:cursor-grabbing" 
             viewBox="0 0 800 600" 
             preserveAspectRatio="xMidYMid meet" 
             onMouseMove={handleMouseMove}
@@ -626,16 +649,16 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
             <>
               {currentDiagram.connections?.map(renderConnection)}
               {currentDiagram.elements.map(renderElement)}
-              <text x={currentDiagram.elements[0]?.x || 400} y={(currentDiagram.elements[0]?.y || 30) - 40} textAnchor="middle" className="fill-foreground text-base font-semibold select-none pointer-events-none"> {/* Reduced font size and y-offset */}
+              <text x={currentDiagram.elements[0]?.x || 400} y={(currentDiagram.elements[0]?.y || 30) - 40} textAnchor="middle" className="fill-foreground text-base font-semibold select-none pointer-events-none"> 
                 {currentDiagram.title}
               </text>
               {currentDiagram.aiConfidence && (
-                <g transform={`translate(${(currentDiagram.elements[0]?.x || 400) + 180}, ${(currentDiagram.elements[0]?.y || 10) - 50})`}> {/* Adjusted position */}
-                  <rect x="0" y="0" width="120" height="30" rx="15" className="fill-background/80 stroke-border pointer-events-none" /> {/* Smaller rect */}
-                  <text x="60" y="12" textAnchor="middle" className="fill-muted-foreground text-[10px] font-medium select-none pointer-events-none"> {/* Smaller font */}
+                <g transform={`translate(${(currentDiagram.elements[0]?.x || 400) + 180}, ${(currentDiagram.elements[0]?.y || 10) - 50})`}> 
+                  <rect x="0" y="0" width="120" height="30" rx="15" className="fill-background/80 stroke-border pointer-events-none" /> 
+                  <text x="60" y="12" textAnchor="middle" className="fill-muted-foreground text-[10px] font-medium select-none pointer-events-none"> 
                     AI Confidence
                   </text>
-                  <text x="60" y="24" textAnchor="middle" style={{fill: 'hsl(var(--chart-3))'}} className="text-xs font-bold select-none pointer-events-none"> {/* Smaller font */}
+                  <text x="60" y="24" textAnchor="middle" style={{fill: 'hsl(var(--chart-3))'}} className="text-xs font-bold select-none pointer-events-none"> 
                     {Math.round(currentDiagram.aiConfidence * 100)}%
                   </text>
                 </g>
@@ -643,34 +666,34 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
             </>
           )}
           {!currentDiagram && !isGenerating && (
-            <text x="400" y="300" textAnchor="middle" dy=".3em" className="fill-muted-foreground text-sm select-none pointer-events-none"> {/* Smaller font */}
+            <text x="400" y="300" textAnchor="middle" dy=".3em" className="fill-muted-foreground text-sm select-none pointer-events-none"> 
               Enter a query to generate a diagram. Try: "Photosynthesis"
             </text>
           )}
           {isGenerating && (
-             <text x="400" y="300" textAnchor="middle" dy=".3em" style={{fill: 'hsl(var(--chart-3))'}} className="text-sm select-none animate-pulse pointer-events-none"> {/* Smaller font */}
+             <text x="400" y="300" textAnchor="middle" dy=".3em" style={{fill: 'hsl(var(--chart-3))'}} className="text-sm select-none animate-pulse pointer-events-none"> 
                 🤖 AI is thinking... Please wait.
             </text>
           )}
           </g>
         </svg>
-       <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1.5"> {/* Reduced gap */}
+       <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-1.5"> 
          <TooltipProvider>
          <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => zoom(1.25)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 border-border"><ZoomIn className="h-3.5 w-3.5 text-foreground" /></Button> {/* Smaller button & icon */}
+                <Button variant="outline" size="icon" onClick={() => zoom(1.25)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 border-border"><ZoomIn className="h-3.5 w-3.5 text-foreground" /></Button> 
             </TooltipTrigger>
             <TooltipContent side="right"><p>Zoom In</p></TooltipContent>
         </Tooltip>
          <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => zoom(0.8)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 border-border"><ZoomOut className="h-3.5 w-3.5 text-foreground" /></Button> {/* Smaller button & icon */}
+                <Button variant="outline" size="icon" onClick={() => zoom(0.8)} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 border-border"><ZoomOut className="h-3.5 w-3.5 text-foreground" /></Button> 
             </TooltipTrigger>
             <TooltipContent side="right"><p>Zoom Out</p></TooltipContent>
         </Tooltip>
          <Tooltip>
             <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={resetView} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 border-border"><ResetIcon className="h-3.5 w-3.5 text-foreground" /></Button> {/* Smaller button & icon */}
+                <Button variant="outline" size="icon" onClick={resetView} className="bg-background/80 dark:bg-slate-700/80 backdrop-blur-sm shadow-md h-8 w-8 border-border"><ResetIcon className="h-3.5 w-3.5 text-foreground" /></Button> 
             </TooltipTrigger>
             <TooltipContent side="right"><p>Reset View</p></TooltipContent>
         </Tooltip>
@@ -679,22 +702,22 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
       </div>
       
       {diagramHistory.length > 0 && (
-        <div className="absolute bottom-4 right-4 bg-card rounded-lg shadow-lg p-2 max-w-[200px] border border-border z-10"> {/* Reduced padding and max-width */}
-          <h3 className="font-semibold text-xs text-foreground mb-1 flex items-center space-x-1.5"> {/* Smaller font */}
+        <div className="absolute bottom-4 right-4 bg-card rounded-lg shadow-lg p-2 max-w-[200px] border border-border z-10"> 
+          <h3 className="font-semibold text-xs text-foreground mb-1 flex items-center space-x-1.5"> 
             <BookOpen className="w-3.5 h-3.5 text-primary" />
             <span>Recent Diagrams</span>
           </h3>
-          <div className="space-y-1 max-h-28 overflow-y-auto scrollbar-thin"> {/* Reduced max-height */}
+          <div className="space-y-1 max-h-28 overflow-y-auto scrollbar-thin"> 
             {diagramHistory.map((diagram, index) => (
               <Button
                 key={index}
                 variant="ghost"
-                size="xs" // Use "xs" if available, otherwise adjust padding & height
+                size="xs" 
                 onClick={() => setCurrentDiagram(diagram)}
                 className="w-full text-left justify-start p-1 h-auto bg-muted/50 hover:bg-muted text-xs"
               >
                 <div className="text-xs text-foreground truncate flex-grow">{diagram.title}</div>
-                {diagram.query && <div className="text-[10px] text-muted-foreground truncate ml-1 opacity-70">({diagram.query.substring(0,8)}...)</div>} {/* Smaller font */}
+                {diagram.query && <div className="text-[10px] text-muted-foreground truncate ml-1 opacity-70">({diagram.query.substring(0,8)}...)</div>} 
               </Button>
             ))}
           </div>
@@ -706,5 +729,4 @@ const AIConceptualDiagrams: React.FC<AIConceptualDiagramsProps> = ({ userProfile
 
 export default AIConceptualDiagrams;
 
-        
     
