@@ -18,13 +18,6 @@ const DynamicChatInterface = dynamic(() =>
   }
 );
 
-const suggestionChipsConfig = [
-  { labelKey: "profileName", icon: Sparkles, defaultLabel: "Personalized Query" }, // Placeholder for profile name
-  { label: "Write", icon: Edit },
-  { label: "Learn", icon: BookOpen },
-  { label: "EduAI's choice", icon: HelpCircle },
-];
-
 export default function GeneralTutorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const searchParams = useSearchParams();
@@ -68,12 +61,23 @@ export default function GeneralTutorPage() {
   };
 
   const getSuggestionChips = () => {
-    return suggestionChipsConfig.map(chip => {
-      if (chip.labelKey === "profileName" && profile?.name) {
-        return { ...chip, label: profile.name };
-      }
-      return chip;
-    }).filter(chip => chip.label); // Filter out if label is undefined (e.g. no profile name for profileName chip)
+    const chips = [];
+    // Chip for profile name
+    if (profile?.name) {
+      chips.push({ label: profile.name, icon: Sparkles }); 
+    }
+  
+    // Other static chips
+    const staticChipsConfig = [
+      { label: "Write", icon: Edit },
+      { label: "Learn", icon: BookOpen },
+      { label: "EduAI's choice", icon: HelpCircle },
+    ];
+    staticChipsConfig.forEach(config => {
+      chips.push({ label: config.label, icon: config.icon });
+    });
+    
+    return chips;
   };
 
 
@@ -116,12 +120,12 @@ export default function GeneralTutorPage() {
     <div className="min-h-full flex flex-col pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-1 md:px-0 pt-0 mt-0">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-            <BrainIcon className="mr-3 h-7 w-7 sm:h-8 sm:w-8" /> AI Learning Assistant
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-primary flex items-center mt-0">
+            <BrainIcon className="mr-2 h-6 w-6 sm:h-7 sm:w-7" /> AI Learning Assistant
           </h1>
-          <p className="text-muted-foreground mt-1">Your personal AI for learning and exploration.</p>
+          <p className="text-sm text-muted-foreground mt-1">Your personal AI for learning and exploration.</p>
         </div>
-        <Button onClick={handleNewSessionClick} variant="outline" className="mt-3 sm:mt-0 shadow-sm">
+        <Button onClick={handleNewSessionClick} variant="outline" size="sm" className="mt-3 sm:mt-0 shadow-sm">
           <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
         </Button>
       </div>
