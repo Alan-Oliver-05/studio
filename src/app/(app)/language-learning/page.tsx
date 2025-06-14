@@ -37,7 +37,7 @@ interface ModeConfig {
   id: TranslationMode;
   label: string;
   icon: React.ElementType;
-  description: string;
+  description: string; // Kept for potential tooltip or future use, not directly in button
   storageTopic: string; 
   initialSystemMessageTemplate: string;
   placeholderTextTemplate: string;
@@ -46,7 +46,7 @@ interface ModeConfig {
 
 const modes: ModeConfig[] = [
   {
-    id: "text", label: "Text Translator", icon: TypeIcon, 
+    id: "text", label: "Text", icon: TypeIcon, 
     description: "Translate typed text. Ask for grammar explanations or usage context.", 
     storageTopic: "Language Text Translation",
     initialSystemMessageTemplate: "Hello ${profileName}! I'm ready for text translation. Type your text and specify the target language (e.g., 'Translate 'hello' to Spanish'). You can also ask for grammar help!",
@@ -54,7 +54,7 @@ const modes: ModeConfig[] = [
     enableImageUpload: false
   },
   {
-    id: "voice", label: "Voice Translator", icon: Mic, 
+    id: "voice", label: "Voice", icon: Mic, 
     description: "Speak and get instant voice translations. Supports multiple languages.", 
     storageTopic: "Language Voice Translation", 
     initialSystemMessageTemplate: "Hi ${profileName}! Use the mic to speak. I'll translate your words.", 
@@ -62,7 +62,7 @@ const modes: ModeConfig[] = [
     enableImageUpload: false
   },
   {
-    id: "conversation", label: "Conversation Practice", icon: MessagesSquare, 
+    id: "conversation", label: "Conversation", icon: MessagesSquare, 
     description: "Practice bilingual dialogues with an AI partner in various scenarios.", 
     storageTopic: "Language Conversation Practice",
     initialSystemMessageTemplate: "Hi ${profileName}! Let's practice a conversation. Tell me the scenario, your role & language, and my role & language. E.g., 'I'm a tourist (English) asking for directions from a local (French).'",
@@ -70,7 +70,7 @@ const modes: ModeConfig[] = [
     enableImageUpload: false
   },
   {
-    id: "camera", label: "Image Text Translator", icon: CameraIcon, 
+    id: "camera", label: "Image Text", icon: CameraIcon, 
     description: "Translate text from images captured or uploaded from your device.", 
     storageTopic: "Language Camera Translation", 
     initialSystemMessageTemplate: "Hello ${profileName}! Upload an image with text, and I'll translate it. Please also specify the target language if it's not your preferred one.",
@@ -226,50 +226,28 @@ export default function LanguageLearningPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-2 mb-6">
-        {modes.map((mode) => {
-          const Icon = mode.icon;
-          const isActive = activeMode === mode.id;
-          return (
-            <Card
-              key={mode.id}
-              onClick={() => handleModeChange(mode.id)}
-              className={cn(
-                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col group",
-                "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-48 md:w-52 lg:w-56 flex-shrink-0 h-36", 
-                isActive
-                  ? "border-primary shadow-xl shadow-primary/25 ring-1 ring-primary/50"
-                  : "border-border hover:border-primary/50 hover:shadow-lg dark:bg-slate-800/70 dark:hover:border-primary/70"
-              )}
-              tabIndex={0}
-              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleModeChange(mode.id)}
-              role="button"
-              aria-pressed={isActive}
-              aria-label={`Switch to ${mode.label} mode`}
-            >
-              <CardHeader className="items-center text-center p-3 pt-4"> 
-                 <div className={cn("p-1.5 rounded-full mb-1 transition-colors duration-300 w-fit mx-auto", 
-                    isActive ? "bg-primary/20" : "bg-muted group-hover:bg-primary/10"
-                 )}>
-                    <Icon className={cn("h-4 w-4 transition-colors duration-300", 
-                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-                    )} />
-                 </div>
-                <CardTitle className={cn("text-xs font-medium transition-colors", 
-                    isActive ? "text-primary" : "text-foreground group-hover:text-primary"
-                )}>
-                    {mode.label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-2 pt-0 text-center flex-grow flex flex-col justify-center"> 
-                   <CardDescription className="text-xs leading-snug text-muted-foreground">{mode.description}</CardDescription>
-              </CardContent>
-              {isActive && (
-                <div className="w-full h-1 bg-primary mt-auto"></div>
-              )}
-            </Card>
-          );
-        })}
+      <div className="flex justify-center mb-6">
+        <div className="bg-muted p-1 rounded-lg shadow-sm flex flex-wrap justify-center gap-1">
+          {modes.map((mode) => {
+            const Icon = mode.icon;
+            const isActive = activeMode === mode.id;
+            return (
+              <Button
+                key={mode.id}
+                variant={isActive ? "secondary" : "ghost"}
+                onClick={() => handleModeChange(mode.id)}
+                className={cn(
+                  "px-3 py-1.5 h-auto text-xs sm:text-sm rounded-md flex items-center gap-1.5 sm:gap-2",
+                  isActive && "shadow-md bg-background text-primary font-semibold"
+                )}
+                aria-pressed={isActive}
+              >
+                <Icon className={cn("h-4 w-4", isActive ? "text-primary" : "text-muted-foreground")} />
+                {mode.label}
+              </Button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex-grow min-h-0 w-full max-w-4xl mx-auto bg-card shadow-xl rounded-xl border border-border/60 overflow-hidden">
@@ -306,3 +284,4 @@ export default function LanguageLearningPage() {
   );
 }
 
+    
