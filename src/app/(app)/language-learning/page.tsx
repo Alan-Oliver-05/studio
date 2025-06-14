@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react"; 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
-import type { UserProfile } from "@/types";
+import type { UserProfile, InitialNodeData } from "@/types";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 const DynamicChatInterface = dynamic(() =>
@@ -218,12 +219,11 @@ export default function LanguageLearningPage() {
               key={mode.id}
               onClick={() => handleModeChange(mode.id)}
               className={cn(
-                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-1 flex flex-col items-center justify-center text-center group",
-                "bg-card border-2 rounded-xl overflow-hidden shadow-md hover:shadow-lg h-36", 
-                "w-full sm:w-48 md:w-52 lg:w-56 flex-shrink-0", 
+                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col items-center justify-center text-center group",
+                "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-48 md:w-52 lg:w-56 flex-shrink-0 h-36", 
                 isActive
-                  ? "border-primary ring-2 ring-primary/60 bg-primary/5"
-                  : "border-border hover:border-primary/50 dark:bg-slate-800/50 dark:hover:border-primary/70"
+                  ? "border-primary shadow-xl shadow-primary/25 ring-1 ring-primary/50"
+                  : "border-border hover:border-primary/50 hover:shadow-lg dark:bg-slate-800/70 dark:hover:border-primary/70"
               )}
               tabIndex={0}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleModeChange(mode.id)}
@@ -231,7 +231,7 @@ export default function LanguageLearningPage() {
               aria-pressed={isActive}
               aria-label={`Switch to ${mode.label} mode`}
             >
-              <CardHeader className="p-3 pt-4">
+              <CardHeader className="p-3 pt-4"> 
                  <div className={cn("p-1.5 rounded-full mb-1 transition-colors duration-300 w-fit mx-auto", 
                     isActive ? "bg-primary/20" : "bg-muted group-hover:bg-primary/10"
                  )}>
@@ -245,17 +245,18 @@ export default function LanguageLearningPage() {
                     {mode.label}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-2 pt-0">
-                   <CardDescription className="text-xs leading-snug text-muted-foreground group-hover:text-foreground/80 transition-colors">
-                        {mode.description}
-                    </CardDescription>
+              <CardContent className="p-2 pt-0 text-center flex-grow flex flex-col justify-center"> 
+                   <CardDescription className="text-xs leading-snug text-muted-foreground">{mode.description}</CardDescription>
               </CardContent>
+              {isActive && (
+                <div className="w-full h-1 bg-primary mt-auto"></div>
+              )}
             </Card>
           );
         })}
       </div>
 
-      <div className="flex-grow min-h-0 w-full bg-card shadow-xl rounded-xl border border-border/60 overflow-hidden">
+      <div className="flex-grow min-h-0 w-full max-w-4xl mx-auto bg-card shadow-xl rounded-xl border border-border/60 overflow-hidden">
         {profile && currentConversationId && chatKey && (
           <>
             {activeMode === "voice" ? (
