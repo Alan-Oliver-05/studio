@@ -235,8 +235,8 @@ export default function LanguageLearningPage() {
               key={mode.id}
               onClick={() => handleModeChange(mode.id)}
               className={cn(
-                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col",
-                "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-40 md:w-44 lg:w-48 flex-shrink-0 h-28", 
+                "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col group",
+                "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-44 md:w-48 lg:w-52 flex-shrink-0 h-32", 
                 isActive
                   ? "border-primary shadow-xl shadow-primary/25 ring-1 ring-primary/50"
                   : "border-border hover:border-primary/50 hover:shadow-lg dark:bg-slate-800/70 dark:hover:border-primary/70"
@@ -305,3 +305,4 @@ export default function LanguageLearningPage() {
     </div>
   );
 }
+
