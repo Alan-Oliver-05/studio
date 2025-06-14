@@ -2,7 +2,7 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Sparkles, Edit, BookOpen, RotateCcw, HelpCircle, Brain as BrainIcon } from "lucide-react";
+import { Loader2, AlertTriangle, Sparkles, Edit, BookOpen, RotateCcw, HelpCircle, Brain as BrainIcon, FileQuestion, Camera, Calculator } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
@@ -19,11 +19,26 @@ const DynamicChatInterface = dynamic(() =>
   }
 );
 
-interface SuggestionChipConfig {
-  label: string;
+const subjectTags = ["Math", "Physics", "Chemistry", "Biology", "History", "Literature", "Computer Science", "Economics"];
+
+interface SuggestionCardProps {
+  title: string;
+  description: string;
   icon: React.ElementType;
   action?: () => void;
 }
+
+const SuggestionCard: React.FC<SuggestionCardProps> = ({ title, description, icon: Icon, action }) => (
+  <div 
+    className="p-4 bg-card rounded-lg border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+    onClick={action || (() => console.log(`${title} card clicked`))}
+  >
+    <Icon className="h-6 w-6 text-primary mb-2"/>
+    <h4 className="font-semibold text-foreground mb-1">{title}</h4>
+    <p className="text-xs text-muted-foreground">{description}</p>
+  </div>
+);
+
 
 export default function GeneralTutorPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
@@ -66,20 +81,7 @@ export default function GeneralTutorPage() {
   const handleNewSessionClick = () => {
     initializeNewSession();
   };
-
-  const getSuggestionChips = (): SuggestionChipConfig[] => {
-    const chips: SuggestionChipConfig[] = [];
-    
-    chips.push(
-      { label: "Write", icon: Edit, action: () => console.log("Write suggestion clicked") },
-      { label: "Learn", icon: BookOpen, action: () => console.log("Learn suggestion clicked") },
-      { label: "EduAI's choice", icon: HelpCircle, action: () => console.log("EduAI's choice clicked") }
-    );
-    return chips;
-  };
   
-  const otherSuggestionChips = getSuggestionChips();
-
 
   if (profileLoading) {
     return (
@@ -163,19 +165,33 @@ export default function GeneralTutorPage() {
         </div>
       </div>
 
-      <div className="w-full max-w-3xl mx-auto px-4 py-4">
-        <div className="flex flex-wrap justify-center gap-3">
-          {otherSuggestionChips.map((chip) => (
-            <Button
-              key={chip.label}
-              variant="outline"
-              size="sm"
-              className="rounded-full px-4 py-2 text-xs shadow-sm hover:bg-primary/5"
-              onClick={chip.action}
+      <div className="w-full max-w-3xl mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <SuggestionCard 
+                title="Ask Anything"
+                description="From complex math equations to historical event details."
+                icon={FileQuestion}
+            />
+            <SuggestionCard 
+                title="Snap & Solve"
+                description="Upload images of handwritten problems or textbook questions."
+                icon={Camera}
+            />
+            <SuggestionCard 
+                title="Step-by-Step"
+                description="Get detailed explanations and learn the method, not just the answer."
+                icon={Calculator}
+            />
+        </div>
+        <div className="flex flex-wrap justify-center gap-2">
+          {subjectTags.map(tag => (
+            <span 
+                key={tag} 
+                className="text-xs text-muted-foreground px-3 py-1 bg-card rounded-full shadow-sm border cursor-pointer hover:bg-muted transition-colors"
+                onClick={() => console.log(`${tag} tag clicked`)}
             >
-              <chip.icon className="mr-1.5 h-3.5 w-3.5" />
-              {chip.label}
-            </Button>
+              {tag}
+            </span>
           ))}
         </div>
       </div>
@@ -183,3 +199,4 @@ export default function GeneralTutorPage() {
     </div>
   );
 }
+
