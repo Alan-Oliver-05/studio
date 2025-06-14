@@ -60,32 +60,9 @@ export default function GeneralTutorPage() {
   }, [searchParams, profile, router, initializeNewSession]);
 
 
-  // This function would be used if we re-add an explicit "New Session" button
-  // For now, new sessions are started by navigating to the page without a sessionId
-  // const handleNewSessionClick = () => {
-  //   initializeNewSession();
-  // };
-
-  const getSuggestionChips = () => {
-    const chips = [];
-    // Chip for profile name
-    if (profile?.name) {
-      chips.push({ label: profile.name, icon: Sparkles }); 
-    }
-  
-    // Other static chips
-    const staticChipsConfig = [
-      { label: "Write", icon: Edit },
-      { label: "Learn", icon: BookOpen },
-      { label: "EduAI's choice", icon: HelpCircle },
-    ];
-    staticChipsConfig.forEach(config => {
-      chips.push({ label: config.label, icon: config.icon });
-    });
-    
-    return chips;
+  const handleNewSessionClick = () => {
+    initializeNewSession();
   };
-
 
   if (profileLoading) {
     return (
@@ -120,18 +97,30 @@ export default function GeneralTutorPage() {
     );
   }
 
-  const initialMainChatMessage = `Hi ${profile.name}! How can I assist you?`;
+  const initialMainChatMessage = `Hello ${profile.name}! I'm your AI Learning Assistant. Ask me any question about your studies, homework, or concepts you'd like to understand better. You can also upload an image for context. How can I help you today?`;
   
   return (
-    <div className="min-h-full flex flex-col items-center pt-6 sm:pt-10 bg-background">
-      <div className="w-full max-w-3xl mx-auto text-center mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-foreground flex items-center justify-center">
-          <Sparkles className="h-6 w-6 sm:h-7 sm:w-7 text-accent mr-2" />
-          {profile?.name ? `${profile.name} returns!` : 'EduAI Tutor'}
-        </h1>
+    <div className="min-h-full flex flex-col items-center pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
+      <div className="w-full max-w-4xl mx-auto px-4">
+        <div className="flex flex-col sm:flex-row justify-between items-center my-6">
+          <div className="flex items-center space-x-3">
+            <BrainIcon className="h-8 w-8 text-primary flex-shrink-0" />
+            <div>
+              <h1 className="text-xl sm:text-2xl font-semibold text-foreground">
+                AI Learning Assistant
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Your multi-modal personal tutor for general queries.
+              </p>
+            </div>
+          </div>
+          <Button onClick={handleNewSessionClick} variant="outline" size="sm" className="mt-4 sm:mt-0">
+            <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
+          </Button>
+        </div>
       </div>
       
-      <div className="w-full max-w-3xl mx-auto flex-grow flex flex-col items-center px-4">
+      <div className="w-full max-w-4xl mx-auto flex-grow flex flex-col items-center px-4 pb-4">
         <div className="w-full flex-grow min-h-0">
             {chatKey && currentConversationId && ( 
             <DynamicChatInterface
@@ -140,34 +129,12 @@ export default function GeneralTutorPage() {
                 topic="AI Learning Assistant Chat" 
                 conversationId={currentConversationId}
                 initialSystemMessage={initialMainChatMessage}
-                placeholderText="How can I help you today?"
+                placeholderText="Ask anything or upload an image..."
                 enableImageUpload={true} 
             />
             )}
-        </div>
-
-        <div className="mt-6 mb-4 flex flex-wrap justify-center gap-2 sm:gap-3">
-          {getSuggestionChips().map((chip) => {
-            const IconComponent = chip.icon;
-            return (
-              <Button
-                key={chip.label}
-                variant="outline"
-                size="sm"
-                className="rounded-full px-3 py-1.5 h-auto text-xs sm:text-sm bg-card hover:bg-muted/90 border-border shadow-sm"
-                onClick={() => {
-                  // In a real app, this would send the chip.label as a query
-                  console.log(`Suggestion chip clicked: ${chip.label}`);
-                }}
-              >
-                <IconComponent className="mr-1.5 h-4 w-4 text-muted-foreground" />
-                {chip.label}
-              </Button>
-            );
-          })}
         </div>
       </div>
     </div>
   );
 }
-
