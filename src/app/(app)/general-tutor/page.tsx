@@ -2,7 +2,7 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Sparkles, Edit, BookOpen, RotateCcw, HelpCircle } from "lucide-react";
+import { Loader2, AlertTriangle, Sparkles, Edit, BookOpen, RotateCcw, HelpCircle, Brain as BrainIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
@@ -18,7 +18,8 @@ const DynamicChatInterface = dynamic(() =>
   }
 );
 
-const suggestionChips = [
+const suggestionChipsConfig = [
+  { labelKey: "profileName", icon: Sparkles, defaultLabel: "Personalized Query" }, // Placeholder for profile name
   { label: "Write", icon: Edit },
   { label: "Learn", icon: BookOpen },
   { label: "EduAI's choice", icon: HelpCircle },
@@ -66,6 +67,15 @@ export default function GeneralTutorPage() {
     initializeNewSession();
   };
 
+  const getSuggestionChips = () => {
+    return suggestionChipsConfig.map(chip => {
+      if (chip.labelKey === "profileName" && profile?.name) {
+        return { ...chip, label: profile.name };
+      }
+      return chip;
+    }).filter(chip => chip.label); // Filter out if label is undefined (e.g. no profile name for profileName chip)
+  };
+
 
   if (profileLoading) {
     return (
@@ -100,25 +110,24 @@ export default function GeneralTutorPage() {
     );
   }
 
-  const initialMainChatMessage = `Hi ${profile.name}! How can I assist you?`;
-  const greetingName = profile.name || "EduAI Tutor";
+  const initialMainChatMessage = `Hi ${profile.name}! How can I assist you today? Ask me anything, explore topics, or get help with your studies.`;
   
   return (
-    <div className="h-full flex flex-col items-center pt-6 sm:pt-8 pb-8 px-4">
-      <div className="w-full max-w-3xl relative mb-6 flex items-center justify-center">
-        <h1 className="text-xl sm:text-2xl font-semibold text-foreground flex items-center">
-          <Sparkles className="mr-2 h-6 w-6 sm:h-7 sm:w-7 text-orange-400" /> 
-          {greetingName} returns!
-        </h1>
-        <div className="absolute top-0 right-0">
-            <Button variant="outline" size="sm" onClick={handleNewSessionClick}>
-                <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
-            </Button>
+    <div className="min-h-full flex flex-col pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-1 md:px-0 pt-0 mt-0">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
+            <BrainIcon className="mr-3 h-7 w-7 sm:h-8 sm:w-8" /> AI Learning Assistant
+          </h1>
+          <p className="text-muted-foreground mt-1">Your personal AI for learning and exploration.</p>
         </div>
+        <Button onClick={handleNewSessionClick} variant="outline" className="mt-3 sm:mt-0 shadow-sm">
+          <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
+        </Button>
       </div>
       
-      <div className="w-full max-w-3xl flex flex-col items-center">
-        <div className="w-full">
+      <div className="w-full max-w-3xl mx-auto flex-grow flex flex-col items-center">
+        <div className="w-full flex-grow min-h-0">
             {chatKey && currentConversationId && ( 
             <DynamicChatInterface
                 key={chatKey} 
@@ -126,23 +135,24 @@ export default function GeneralTutorPage() {
                 topic="AI Learning Assistant Chat" 
                 conversationId={currentConversationId}
                 initialSystemMessage={initialMainChatMessage}
-                placeholderText="How can I help you today?"
+                placeholderText="Ask me anything or explore a topic..."
                 enableImageUpload={true} 
             />
             )}
         </div>
 
-        <div className="mt-6 flex flex-wrap justify-center gap-2 sm:gap-3">
-          {suggestionChips.map((chip) => {
+        <div className="mt-6 mb-4 flex flex-wrap justify-center gap-2 sm:gap-3">
+          {getSuggestionChips().map((chip) => {
             const IconComponent = chip.icon;
             return (
               <Button
                 key={chip.label}
                 variant="outline"
                 size="sm"
-                className="rounded-full px-3 py-1.5 h-auto text-xs sm:text-sm bg-background hover:bg-muted/80"
+                className="rounded-full px-3 py-1.5 h-auto text-xs sm:text-sm bg-card/80 hover:bg-muted/90 border-border shadow-sm"
                 onClick={() => {
                   console.log(`Suggestion chip clicked: ${chip.label}`);
+                  // Future: Implement logic to send this suggestion as a query
                 }}
               >
                 <IconComponent className="mr-1.5 h-4 w-4 text-muted-foreground" />
@@ -155,3 +165,4 @@ export default function GeneralTutorPage() {
     </div>
   );
 }
+
