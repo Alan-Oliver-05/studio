@@ -2,7 +2,7 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Sparkles, Edit, BookOpen, Code, Coffee, HelpCircle, RotateCcw } from "lucide-react";
+import { Loader2, AlertTriangle, Sparkles, Edit, BookOpen, RotateCcw, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
@@ -21,8 +21,6 @@ const DynamicChatInterface = dynamic(() =>
 const suggestionChips = [
   { label: "Write", icon: Edit },
   { label: "Learn", icon: BookOpen },
-  // { label: "Code", icon: Code }, // Removed
-  // { label: "Life stuff", icon: Coffee }, // Removed
   { label: "EduAI's choice", icon: HelpCircle },
 ];
 
@@ -41,7 +39,6 @@ export default function GeneralTutorPage() {
       const newId = `general-tutor-${profileIdentifier}-${newTimestamp}`;
       setCurrentConversationId(newId);
       setChatKey(newId); 
-      // Clear sessionId from URL if present, to ensure a truly new session
       if (searchParams.get('sessionId')) {
         router.replace('/general-tutor', { scroll: false });
       }
@@ -56,11 +53,10 @@ export default function GeneralTutorPage() {
         setCurrentConversationId(sessionIdFromQuery);
         setChatKey(sessionIdFromQuery); 
       } else {
-        // If sessionId is invalid or not for this tutor, start new
         router.replace('/general-tutor'); 
         initializeNewSession();
       }
-    } else if (profile) { // Only initialize if no session ID and profile exists
+    } else if (profile) { 
       initializeNewSession();
     }
   }, [searchParams, profile, router, initializeNewSession]);
@@ -109,14 +105,16 @@ export default function GeneralTutorPage() {
   
   return (
     <div className="h-full flex flex-col items-center pt-6 sm:pt-8 pb-8 px-4">
-      <div className="w-full max-w-3xl flex justify-between items-center mb-6">
+      <div className="w-full max-w-3xl relative mb-6 flex items-center justify-center">
         <h1 className="text-xl sm:text-2xl font-semibold text-foreground flex items-center">
           <Sparkles className="mr-2 h-6 w-6 sm:h-7 sm:w-7 text-orange-400" /> 
           {greetingName} returns!
         </h1>
-        <Button variant="outline" size="sm" onClick={handleNewSessionClick}>
-            <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
-        </Button>
+        <div className="absolute top-0 right-0">
+            <Button variant="outline" size="sm" onClick={handleNewSessionClick}>
+                <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
+            </Button>
+        </div>
       </div>
       
       <div className="w-full max-w-3xl flex flex-col items-center">
@@ -157,4 +155,3 @@ export default function GeneralTutorPage() {
     </div>
   );
 }
-
