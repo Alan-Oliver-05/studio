@@ -219,8 +219,8 @@ export default function LanguageLearningPage() {
               onClick={() => handleModeChange(mode.id)}
               className={cn(
                 "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-1 flex flex-col items-center justify-center text-center group",
-                "bg-card border-2 rounded-xl overflow-hidden shadow-md hover:shadow-lg h-36", // Fixed height
-                "w-full sm:w-48 md:w-52 lg:w-56 flex-shrink-0", // Width classes
+                "bg-card border-2 rounded-xl overflow-hidden shadow-md hover:shadow-lg h-36", 
+                "w-full sm:w-48 md:w-52 lg:w-56 flex-shrink-0", 
                 isActive
                   ? "border-primary ring-2 ring-primary/60 bg-primary/5"
                   : "border-border hover:border-primary/50 dark:bg-slate-800/50 dark:hover:border-primary/70"
@@ -255,7 +255,7 @@ export default function LanguageLearningPage() {
         })}
       </div>
 
-      <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto bg-card shadow-xl rounded-xl border border-border/60 overflow-hidden">
+      <div className="flex-grow min-h-0 w-full bg-card shadow-xl rounded-xl border border-border/60 overflow-hidden">
         {profile && currentConversationId && chatKey && (
           <>
             {activeMode === "voice" ? (

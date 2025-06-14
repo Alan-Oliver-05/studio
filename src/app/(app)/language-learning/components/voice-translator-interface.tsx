@@ -197,7 +197,7 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
 
   if (hasPermission === null) {
     return (
-      <Card className="w-full max-w-lg mx-auto mt-6 p-8 text-center bg-card shadow-lg border border-border/50">
+      <Card className="w-full mx-auto mt-6 p-8 text-center bg-card shadow-lg border border-border/50">
         <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-4" />
         <p className="text-muted-foreground">Requesting microphone permission...</p>
       </Card>
@@ -205,7 +205,7 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
   }
   if (hasPermission === false) {
      return (
-      <Card className="w-full max-w-lg mx-auto mt-6 p-8 text-center bg-card shadow-lg border border-destructive/30">
+      <Card className="w-full mx-auto mt-6 p-8 text-center bg-card shadow-lg border border-destructive/30">
         <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
         <CardTitle className="text-xl mb-2 text-destructive">Microphone Access Denied</CardTitle>
         <CardDescription className="mb-6 text-muted-foreground">
@@ -219,7 +219,7 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto flex flex-col shadow-none border-0 min-h-[calc(100vh-25rem)] bg-transparent">
+    <Card className="w-full flex flex-col shadow-none border-0 min-h-[calc(100vh-25rem)] bg-transparent">
       <CardHeader className="text-center pb-4 pt-2">
         <div className="mx-auto bg-primary/10 rounded-full p-3 w-fit mb-2">
             <Languages className="h-8 w-8 text-primary" />
