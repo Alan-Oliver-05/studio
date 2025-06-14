@@ -94,7 +94,7 @@ export default function VisualLearningPage() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(Date.now().toString());
   const [mindMapConfig, setMindMapConfig] = useState<{ initialTopic?: string; initialNodes?: InitialNodeData[] } | null>(null);
-  const [canvasPanelGrow, setCanvasPanelGrow] = useState(7);
+  const [canvasPanelGrow, setCanvasPanelGrow] = useState(8); // Default to 8 for desktop
 
   const getStorageTopicForMode = useCallback((mode: VisualLearningMode): string => {
     return visualModes.find(m => m.id === mode)?.storageTopic || "Visual Learning - General";
@@ -112,7 +112,7 @@ export default function VisualLearningPage() {
 
       if (mode === "mindmaps") {
         setMindMapConfig({ initialTopic: "My New Mind Map", initialNodes: [] });
-        setCanvasPanelGrow(window.innerWidth < 768 ? 10 : 7); // Maximize canvas on mobile by default for mindmaps
+        setCanvasPanelGrow(window.innerWidth < 768 ? 10 : 8); // Maximize canvas on mobile, 80/20 on desktop
       } else {
         setMindMapConfig(null);
       }
@@ -153,7 +153,7 @@ export default function VisualLearningPage() {
             const firstUserMessageText = conversation.messages.find(m => m.sender === 'user')?.text;
             setMindMapConfig({ initialTopic: firstUserMessageText || "Restored Mind Map", initialNodes: [] });
           }
-           setCanvasPanelGrow(window.innerWidth < 768 ? 10 : 7); // Ensure mobile default for mindmaps
+           setCanvasPanelGrow(window.innerWidth < 768 ? 10 : 8); // Desktop default to 8
         } else {
           setMindMapConfig(null);
         }
@@ -205,7 +205,7 @@ export default function VisualLearningPage() {
         setCanvasPanelGrow(prev => Math.max(isCurrentlyMobile ? 0 : 1, prev - (isCurrentlyMobile ? 2 : 1)));
         break;
       case 'reset':
-        setCanvasPanelGrow(isCurrentlyMobile ? 5 : 7); // 50/50 on mobile, 70/30 on desktop
+        setCanvasPanelGrow(isCurrentlyMobile ? 5 : 8); // 50/50 on mobile, 80/20 on desktop
         break;
       case 'maximize-canvas':
         setCanvasPanelGrow(10); 
