@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
@@ -100,7 +99,8 @@ export default function GeneralTutorPage() {
           <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
         </Button>
       </div>
-      <div className="flex-grow flex flex-col min-h-0 max-w-4xl w-full mx-auto">
+      {/* Changed max-w-4xl to max-w-3xl */}
+      <div className="flex-grow flex flex-col min-h-0 max-w-3xl w-full mx-auto"> 
         {chatKey && currentConversationId && ( 
           (<DynamicChatInterface
             key={chatKey} 
