@@ -2,12 +2,13 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Sparkles, Edit, BookOpen, Code, Coffee, HelpCircle } from "lucide-react";
+import { Loader2, AlertTriangle, Sparkles, Edit, BookOpen, Code, Coffee, HelpCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from "react"; 
+import { useEffect, useState, useCallback } from "react"; 
+import { getConversationById } from "@/lib/chat-storage";
 
 const DynamicChatInterface = dynamic(() =>
   import('../study-session/components/chat-interface').then((mod) => mod.ChatInterface),
@@ -20,8 +21,8 @@ const DynamicChatInterface = dynamic(() =>
 const suggestionChips = [
   { label: "Write", icon: Edit },
   { label: "Learn", icon: BookOpen },
-  { label: "Code", icon: Code },
-  { label: "Life stuff", icon: Coffee },
+  // { label: "Code", icon: Code }, // Removed
+  // { label: "Life stuff", icon: Coffee }, // Removed
   { label: "EduAI's choice", icon: HelpCircle },
 ];
 
@@ -33,19 +34,42 @@ export default function GeneralTutorPage() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(''); 
 
+  const initializeNewSession = useCallback(() => {
+    if (profile) {
+      const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
+      const newTimestamp = Date.now();
+      const newId = `general-tutor-${profileIdentifier}-${newTimestamp}`;
+      setCurrentConversationId(newId);
+      setChatKey(newId); 
+      // Clear sessionId from URL if present, to ensure a truly new session
+      if (searchParams.get('sessionId')) {
+        router.replace('/general-tutor', { scroll: false });
+      }
+    }
+  }, [profile, router, searchParams]);
+
   useEffect(() => {
     const sessionIdFromQuery = searchParams.get('sessionId');
     if (sessionIdFromQuery) {
-      setCurrentConversationId(sessionIdFromQuery);
-      setChatKey(sessionIdFromQuery); 
-    } else if (profile) {
-      const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
-      const newTimestamp = Date.now();
-      const defaultId = `general-tutor-${profileIdentifier}-${newTimestamp}`;
-      setCurrentConversationId(defaultId);
-      setChatKey(defaultId); 
+      const conversation = getConversationById(sessionIdFromQuery);
+      if (conversation && conversation.topic === "AI Learning Assistant Chat") {
+        setCurrentConversationId(sessionIdFromQuery);
+        setChatKey(sessionIdFromQuery); 
+      } else {
+        // If sessionId is invalid or not for this tutor, start new
+        router.replace('/general-tutor'); 
+        initializeNewSession();
+      }
+    } else if (profile) { // Only initialize if no session ID and profile exists
+      initializeNewSession();
     }
-  }, [searchParams, profile]);
+  }, [searchParams, profile, router, initializeNewSession]);
+
+
+  const handleNewSessionClick = () => {
+    initializeNewSession();
+  };
+
 
   if (profileLoading) {
     return (
@@ -84,16 +108,18 @@ export default function GeneralTutorPage() {
   const greetingName = profile.name || "EduAI Tutor";
   
   return (
-    <div className="h-full flex flex-col items-center justify-center pt-8 sm:pt-12 md:pt-16 pb-8 px-4">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl sm:text-4xl font-semibold text-foreground flex items-center justify-center">
-          <Sparkles className="mr-2 h-7 w-7 sm:h-8 sm:w-8 text-orange-400" /> 
+    <div className="h-full flex flex-col items-center pt-6 sm:pt-8 pb-8 px-4">
+      <div className="w-full max-w-3xl flex justify-between items-center mb-6">
+        <h1 className="text-xl sm:text-2xl font-semibold text-foreground flex items-center">
+          <Sparkles className="mr-2 h-6 w-6 sm:h-7 sm:w-7 text-orange-400" /> 
           {greetingName} returns!
         </h1>
+        <Button variant="outline" size="sm" onClick={handleNewSessionClick}>
+            <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
+        </Button>
       </div>
       
       <div className="w-full max-w-3xl flex flex-col items-center">
-        {/* Chat Interface takes full width of its container */}
         <div className="w-full">
             {chatKey && currentConversationId && ( 
             <DynamicChatInterface
@@ -108,7 +134,6 @@ export default function GeneralTutorPage() {
             )}
         </div>
 
-        {/* Suggestion Chips */}
         <div className="mt-6 flex flex-wrap justify-center gap-2 sm:gap-3">
           {suggestionChips.map((chip) => {
             const IconComponent = chip.icon;
@@ -119,7 +144,6 @@ export default function GeneralTutorPage() {
                 size="sm"
                 className="rounded-full px-3 py-1.5 h-auto text-xs sm:text-sm bg-background hover:bg-muted/80"
                 onClick={() => {
-                  // Placeholder: In a real app, this would set the input or trigger an action
                   console.log(`Suggestion chip clicked: ${chip.label}`);
                 }}
               >
@@ -133,3 +157,4 @@ export default function GeneralTutorPage() {
     </div>
   );
 }
+
