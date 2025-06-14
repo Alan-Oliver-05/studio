@@ -11,7 +11,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
-import type { UserProfile, InitialNodeData } from "@/types"; // Assuming InitialNodeData is for mindmaps, but not directly used here
+import type { UserProfile, InitialNodeData } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
@@ -38,7 +38,7 @@ interface ModeConfig {
   label: string;
   icon: React.ElementType;
   description: string;
-  storageTopic: string; // This will be the `specificTopic` for the AI flow
+  storageTopic: string; 
   initialSystemMessageTemplate: string;
   placeholderTextTemplate: string;
   enableImageUpload: boolean;
@@ -87,7 +87,6 @@ export default function LanguageLearningPage() {
   const [activeMode, setActiveMode] = useState<TranslationMode>(modes[0].id);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(Date.now().toString());
-  // mindMapConfig is not used in Language Studio directly, but kept for type consistency from Visual Learning
   const [mindMapConfig, setMindMapConfig] = useState<{ initialTopic?: string; initialNodes?: InitialNodeData[] } | null>(null);
 
 
@@ -105,7 +104,6 @@ export default function LanguageLearningPage() {
       setCurrentConversationId(newId);
       setChatKey(newId);
       
-      // Reset mindMapConfig unless the mode is specifically mindmaps (which it isn't here)
       setMindMapConfig(null); 
 
       if (searchParams.get('mode') !== mode || !searchParams.get('sessionId')) {
@@ -131,7 +129,7 @@ export default function LanguageLearningPage() {
         setActiveMode(conversationMode);
         setCurrentConversationId(sessionIdFromQuery);
         setChatKey(sessionIdFromQuery);
-        setMindMapConfig(null); // Not used in Language Studio
+        setMindMapConfig(null); 
 
         if (modeFromQuery !== conversationMode) {
             router.replace(`/language-learning?sessionId=${sessionIdFromQuery}&mode=${conversationMode}`, { scroll: false });
@@ -201,9 +199,19 @@ export default function LanguageLearningPage() {
   }
 
   const getInitialMessageForMode = (modeConfig: ModeConfig, currentProfile: UserProfile) => {
-    return modeConfig.initialSystemMessageTemplate.replace('${profileName}', currentProfile.name);
-  }
-
+    let initialMessage = modeConfig.initialSystemMessageTemplate.replace('${profileName}', currentProfile.name);
+     if (modeConfig.id === 'mindmaps' && currentConversationId && searchParams.get('sessionId')) { // Though 'mindmaps' isn't in this file's modes, kept for robustness
+        const conversation = getConversationById(currentConversationId);
+        const firstUserMessage = conversation?.messages.find(m => m.sender === 'user');
+        if(firstUserMessage?.text && (firstUserMessage.text.length < 100)) {
+             initialMessage = initialMessage.replace("what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'", `the canvas is ready for your topic: "${firstUserMessage.text}". You can add nodes or upload a document.`);
+        } else if (mindMapConfig?.initialTopic) {
+             initialMessage = initialMessage.replace("what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'", `the canvas is ready for your topic: "${mindMapConfig.initialTopic}".`);
+        }
+    }
+    return initialMessage;
+  };
+  
   return (
     <div className="h-full flex flex-col pt-0 bg-gradient-to-br from-background via-primary/5 to-background">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 pt-0 mt-0 px-1">
@@ -228,7 +236,7 @@ export default function LanguageLearningPage() {
               onClick={() => handleModeChange(mode.id)}
               className={cn(
                 "cursor-pointer transition-all duration-200 ease-in-out transform hover:-translate-y-0.5 flex flex-col",
-                "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-48 md:w-52 lg:w-56 flex-shrink-0 h-36", 
+                "bg-card border-2 rounded-xl overflow-hidden w-full sm:w-40 md:w-44 lg:w-48 flex-shrink-0 h-28", 
                 isActive
                   ? "border-primary shadow-xl shadow-primary/25 ring-1 ring-primary/50"
                   : "border-border hover:border-primary/50 hover:shadow-lg dark:bg-slate-800/70 dark:hover:border-primary/70"
@@ -291,11 +299,9 @@ export default function LanguageLearningPage() {
        <div className="text-center mt-6 py-2">
             <Sparkles className="h-5 w-5 text-accent mx-auto mb-1.5 opacity-80"/>
             <p className="text-xs text-muted-foreground">
-              {activeModeConfig.label}: {activeModeConfig.description} Your preferred language is {profile.preferredLanguage}.
+              {activeModeConfig.description} Your preferred language is {profile.preferredLanguage}.
             </p>
         </div>
     </div>
   );
 }
-
-    
