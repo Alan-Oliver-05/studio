@@ -52,14 +52,14 @@ interface ModeConfig {
 }
 
 const languageLearningModes: ModeConfig[] = [
-  {
-    id: "text", label: "Text", icon: TypeIcon, 
-    description: "Translate typed text. Ask for grammar explanations or usage context.", 
-    storageTopic: "Language Text Translation",
-    initialSystemMessageTemplate: "Hello ${profileName}! I'm ready for text translation. Type your text and specify the target language (e.g., 'Translate 'hello' to Spanish'). You can also ask for grammar help!",
-    placeholderTextTemplate: "E.g., Translate 'How are you?' to German, or explain this French phrase...",
-    enableImageUpload: false
-  },
+  // {
+  //   id: "text", label: "Text", icon: TypeIcon, 
+  //   description: "Translate typed text. Ask for grammar explanations or usage context.", 
+  //   storageTopic: "Language Text Translation",
+  //   initialSystemMessageTemplate: "Hello ${profileName}! I'm ready for text translation. Type your text and specify the target language (e.g., 'Translate 'hello' to Spanish'). You can also ask for grammar help!",
+  //   placeholderTextTemplate: "E.g., Translate 'How are you?' to German, or explain this French phrase...",
+  //   enableImageUpload: false
+  // },
   {
     id: "voice", label: "Voice", icon: Mic, 
     description: "Speak and get instant voice translations. Supports multiple languages.", 
@@ -134,6 +134,12 @@ export default function LanguageLearningPage() {
     const modeFromQuery = searchParams.get('mode') as LanguageLearningMode | null;
     const sessionIdFromQuery = searchParams.get('sessionId');
     let targetMode = modeFromQuery || activeMode;
+    
+    // Ensure targetMode is valid, default to first if not
+    if (!languageLearningModes.find(m => m.id === targetMode)) {
+        targetMode = languageLearningModes[0].id;
+    }
+
 
     if (sessionIdFromQuery) {
       const conversation = getConversationById(sessionIdFromQuery);
