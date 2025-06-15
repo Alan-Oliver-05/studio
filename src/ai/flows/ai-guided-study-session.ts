@@ -44,9 +44,10 @@ const AIGuidedStudySessionInputSchema = z.object({
   }).describe("The student profile information from the onboarding form."),
   subject: z.string().optional().describe('The main subject of study (e.g., "Physics for 12th Standard CBSE").'),
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
-  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps").'),
+  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps").'),
   question: z.string().describe("The student's question or request for the study session."),
   photoDataUri: z.string().optional().nullable().describe("An optional photo (or document content as image) uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
+  originalFileName: z.string().optional().nullable().describe("The name of the original file uploaded by the user, if applicable (e.g., for document translation mode)."),
 });
 export type AIGuidedStudySessionInput = z.infer<typeof AIGuidedStudySessionInputSchema>;
 
@@ -89,6 +90,7 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isLanguageTextTranslationMode: z.boolean().optional(),
     isLanguageConversationMode: z.boolean().optional(),
     isLanguageCameraMode: z.boolean().optional(),
+    isLanguageDocumentTranslationMode: z.boolean().optional(),
     isVisualLearningFocus: z.boolean().optional(),
     isVisualLearningGraphs: z.boolean().optional(),
     isVisualLearningDiagrams: z.boolean().optional(),
@@ -144,6 +146,7 @@ Current Study Focus:
 {{#if subject}}Subject: {{{subject}}}{{/if}}
 {{#if lesson}}Lesson: {{{lesson}}}{{/if}}
 Topic: {{{specificTopic}}}
+{{#if originalFileName}}Original Document Name (for context): {{{originalFileName}}}{{/if}}
 
 Student's Question/Request: "{{{question}}}"
 
@@ -317,6 +320,24 @@ The 'visualElement' output field is generally not used in this mode for general 
   {{/if}}
   'suggestions' can be about improving image quality for OCR. 'visualElement' MUST be null.
 
+{{else if isLanguageDocumentTranslationMode}}
+  # Language Document Translation Mode
+  You are an AI Language Translator for document text. Student's preferred language: '{{{studentProfile.preferredLanguage}}}'.
+  {{#if originalFileName}}
+  The user is conceptually working with a document named: '{{{originalFileName}}}'.
+  {{else}}
+  The user has provided text for translation, possibly from a document.
+  {{/if}}
+  The student's request, which contains the text to translate and might specify source/target languages, is: "{{{question}}}"
+  
+  Your task is to translate the primary text content found in the '{{{question}}}'.
+  - If the '{{{question}}}' itself contains explicit instructions like "Translate this from French to English: ...", follow those.
+  - Otherwise, attempt to detect the source language from the text.
+  - Translate to the student's preferred language ('{{{studentProfile.preferredLanguage}}}') unless a different target language is clearly requested within '{{{question}}}'.
+  
+  Your 'response' MUST contain ONLY the translated text. Do not add any extra conversational phrases like "Here's the translation:".
+  'suggestions' can be empty or suggest proofreading. 'visualElement' MUST be null.
+
 {{else if isVisualLearningFocus}}
 # Visual Learning Studio AI Agent Prompts (Visual Learning Page Mode)
   {{#if isVisualLearningGraphs}}
@@ -405,7 +426,7 @@ The 'visualElement' output field is generally not used in this mode for general 
       *   Interactive Mind Maps/Flowcharts are handled by the Visual Learning Page mode (isVisualLearningMindMaps). Textual mind maps are handled by AI Learning Assistant Chat.
 
   General Principles:
-  - For all academic queries not in "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", or "Visual Learning Focus":
+  - For all academic queries not in "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", or "Visual Learning Focus":
     1. Understand student's curriculum context (including exam date if available).
     2. Use web search to find official/reputable info on that curriculum for the current topic/question.
     3. Explain/answer based on that "retrieved" info, incorporating motivational nudge if exam date is present and relevant.
@@ -466,7 +487,8 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     const isLanguageMode = isBaseLanguageTranslatorMode || 
                            specificTopicFromInput === "Language Text Translation" ||
                            specificTopicFromInput === "Language Conversation Practice" ||
-                           specificTopicFromInput === "Language Camera Translation";
+                           specificTopicFromInput === "Language Camera Translation" ||
+                           specificTopicFromInput === "Language Document Translation";
 
     const promptInput: z.infer<typeof PromptInputSchema> = {
       ...input,
@@ -486,6 +508,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
       isLanguageTextTranslationMode: specificTopicFromInput === "Language Text Translation",
       isLanguageConversationMode: specificTopicFromInput === "Language Conversation Practice",
       isLanguageCameraMode: specificTopicFromInput === "Language Camera Translation",
+      isLanguageDocumentTranslationMode: specificTopicFromInput === "Language Document Translation",
 
       isVisualLearningFocus: specificTopicFromInput.startsWith("Visual Learning"),
       isVisualLearningGraphs: specificTopicFromInput === "Visual Learning - Graphs & Charts",
@@ -528,10 +551,9 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
         }
 
 
-        const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation"];
+        const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation"];
         const isVisualLearningMode = promptInput.isVisualLearningFocus;
 
-        // Check if it's a mode that *should* have an MCQ, based on it NOT being a special mode AND having subject/lesson context
         const shouldHaveMCQ = !nonMCQModes.includes(specificTopicFromInput) && 
                               !isVisualLearningMode &&
                               (input.subject && input.subject.trim() !== "") && 
@@ -552,11 +574,3 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
-    
-    
-
-    
-
-    
-
-    

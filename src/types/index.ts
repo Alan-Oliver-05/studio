@@ -3,14 +3,14 @@
 export interface BoardExamInfo {
   board?: string;
   standard?: string;
-  subjectSegment?: string; // Added for 11th/12th stream
+  subjectSegment?: string; 
 }
 
 export interface CompetitiveExamInfo {
-  examType?: string; // e.g. Central Govt, State Govt, ProfessionalCertifications, Other
-  specificExam?: string; // e.g. JEE, NEET, UPSC CSE, CA, CMA, Custom Exam Name
-  stage?: string; // Added for professional certification stages
-  examDate?: string; // Added for exam due date, stored as YYYY-MM-DD
+  examType?: string; 
+  specificExam?: string; 
+  stage?: string; 
+  examDate?: string; 
 }
 
 export interface UniversityExamInfo {
@@ -28,11 +28,13 @@ export interface EducationQualification {
 
 export type EducationCategory = 'board' | 'competitive' | 'university' | 'other' | '';
 export type LearningStyle = 'visual' | 'auditory' | 'kinesthetic' | 'reading_writing' | 'balanced' | '';
+export type LanguageLearningMode = "text" | "voice" | "conversation" | "camera" | "document";
+
 
 export interface UserProfile {
-  id?: string; // For potential future DB use
+  id?: string; 
   name: string;
-  age: number | ''; // Allow string for form input, convert to number on save
+  age: number | ''; 
   gender: string;
   country: string;
   state: string;
@@ -62,17 +64,17 @@ export interface InitialNodeData {
   id: string;
   text: string;
   parentId?: string;
-  type?: 'root' | 'leaf' | 'detail'; // Consistent with AIMindMapDisplay internal Node type
+  type?: 'root' | 'leaf' | 'detail'; 
   aiGenerated?: boolean;
-  // x and y are optional, AIMindMapDisplay can layout if not provided
+  
   x?: number;
   y?: number;
-  color?: string; // Optional color hint from AI
+  color?: string; 
 }
 
 export interface VisualElement {
   type: 'bar_chart_data' | 'line_chart_data' | 'flowchart_description' | 'image_generation_prompt' | 'interactive_mind_map_canvas';
-  content: any | { // For interactive_mind_map_canvas specifically
+  content: any | { 
     initialTopic?: string;
     initialNodes?: InitialNodeData[];
   }; 
@@ -92,7 +94,7 @@ export interface Message {
   generatedImageUri?: string | null; 
   feedback?: string | null; 
   isCorrect?: boolean | null; 
-  // For interactive Q&A state progression, set by AI
+  
   aiNextStage?: QAS_Stage; 
   aiIsStageComplete?: boolean;
 }
@@ -107,7 +109,7 @@ export interface Conversation {
   messages: Message[];
   summary?: string;
   lastUpdatedAt: number;
-  currentMindMapImageUri?: string | null; // Added for sticky image context in mind map mode
+  currentMindMapImageUri?: string | null; 
 }
 
 export type TaskPriority = "Low" | "Medium" | "High";
@@ -129,7 +131,7 @@ export interface Note {
   updatedAt: number;
 }
 
-// Input/Output types for interactiveQAndA flow, matching Zod schemas in the flow file
+
 export interface InteractiveQAndAInput {
   studentProfile: {
     name: string;
@@ -138,8 +140,8 @@ export interface InteractiveQAndAInput {
     preferredLanguage: string;
     learningStyle?: LearningStyle;
     educationQualification?: {
-      boardExam?: { board?: string; standard?: string; subjectSegment?: string }; // Added subjectSegment
-      competitiveExam?: { examType?: string; specificExam?: string; stage?: string; examDate?: string; }; // Added examDate
+      boardExam?: { board?: string; standard?: string; subjectSegment?: string }; 
+      competitiveExam?: { examType?: string; specificExam?: string; stage?: string; examDate?: string; }; 
       universityExam?: { universityName?: string; course?: string; currentYear?: string };
     };
   };
@@ -149,15 +151,15 @@ export interface InteractiveQAndAInput {
   studentAnswer?: string | null;
   previousQuestion?: string | null;
   conversationHistory?: string | null;
-  currentStage?: QAS_Stage; // This will be 'initial_material', 'deeper_material', 'out_of_syllabus'
-  questionsAskedInStage?: number; // Tracks questions within the current stage
+  currentStage?: QAS_Stage; 
+  questionsAskedInStage?: number; 
 }
 
 export interface InteractiveQAndAOutput {
-  question: string; // The MCQ question or concluding remark
-  feedback?: string | null; // Feedback on user's answer or intro to new stage
-  isCorrect?: boolean | null; // Was the user's last answer correct?
-  suggestions?: string[]; // Suggestions for further study *within the topic*
-  nextStage?: QAS_Stage; // Stage the AI suggests moving to
-  isStageComplete?: boolean; // Has the current stage's objective been met?
+  question: string; 
+  feedback?: string | null; 
+  isCorrect?: boolean | null; 
+  suggestions?: string[]; 
+  nextStage?: QAS_Stage; 
+  isStageComplete?: boolean; 
 }

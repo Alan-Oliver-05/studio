@@ -2,7 +2,7 @@
 "use client";
 
 import { useUserProfile } from "@/contexts/user-profile-context";
-import { Loader2, AlertTriangle, Languages, RotateCcw, Type as TypeIcon, Mic, MessagesSquare, Camera as CameraIcon, Sparkles } from "lucide-react";
+import { Loader2, AlertTriangle, Languages, RotateCcw, Type as TypeIcon, Mic, MessagesSquare, Camera as CameraIcon, FileText as FileTextIcon, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
@@ -11,7 +11,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
-import type { UserProfile, InitialNodeData } from "@/types";
+import type { UserProfile, InitialNodeData, LanguageLearningMode } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
@@ -31,10 +31,17 @@ const VoiceTranslatorInterface = dynamic(() =>
   }
 );
 
-type TranslationMode = "text" | "voice" | "conversation" | "camera";
+const DocumentTranslatorInterface = dynamic(() =>
+  import('./components/DocumentTranslatorInterface').then((mod) => mod.default),
+  {
+    loading: () => <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
+    ssr: false
+  }
+);
+
 
 interface ModeConfig {
-  id: TranslationMode;
+  id: LanguageLearningMode;
   label: string;
   icon: React.ElementType;
   description: string; 
@@ -44,7 +51,7 @@ interface ModeConfig {
   enableImageUpload: boolean;
 }
 
-const modes: ModeConfig[] = [
+const languageLearningModes: ModeConfig[] = [
   {
     id: "text", label: "Text", icon: TypeIcon, 
     description: "Translate typed text. Ask for grammar explanations or usage context.", 
@@ -77,6 +84,14 @@ const modes: ModeConfig[] = [
     placeholderTextTemplate: "Upload an image and type target language if needed...",
     enableImageUpload: true
   },
+  {
+    id: "document", label: "Document", icon: FileTextIcon, 
+    description: "Translate text content from uploaded documents.", 
+    storageTopic: "Language Document Translation",
+    initialSystemMessageTemplate: "Hello ${profileName}! Upload your document (or paste its text content), specify languages, and I'll translate it for you.",
+    placeholderTextTemplate: "File selected. Provide context or click translate...",
+    enableImageUpload: false, // The specific component will handle file inputs, not the generic chat interface.
+  },
 ];
 
 export default function LanguageLearningPage() {
@@ -84,17 +99,17 @@ export default function LanguageLearningPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [activeMode, setActiveMode] = useState<TranslationMode>(modes[0].id);
+  const [activeMode, setActiveMode] = useState<LanguageLearningMode>(languageLearningModes[0].id);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(Date.now().toString());
   const [mindMapConfig, setMindMapConfig] = useState<{ initialTopic?: string; initialNodes?: InitialNodeData[] } | null>(null);
 
 
-  const getStorageTopicForMode = useCallback((mode: TranslationMode): string => {
-    return modes.find(m => m.id === mode)?.storageTopic || "LanguageTranslatorMode"; // Fallback
+  const getStorageTopicForMode = useCallback((mode: LanguageLearningMode): string => {
+    return languageLearningModes.find(m => m.id === mode)?.storageTopic || "LanguageTranslatorMode"; // Fallback
   }, []);
 
-  const initializeNewSession = useCallback((mode: TranslationMode) => {
+  const initializeNewSession = useCallback((mode: LanguageLearningMode) => {
     if (profile) {
       const profileIdentifier = profile.id || `user-${profile.name?.replace(/\s+/g, '-').toLowerCase() || 'anonymous'}`;
       const newTimestamp = Date.now();
@@ -116,14 +131,14 @@ export default function LanguageLearningPage() {
   useEffect(() => {
     if (!profile || profileLoading) return;
 
-    const modeFromQuery = searchParams.get('mode') as TranslationMode | null;
+    const modeFromQuery = searchParams.get('mode') as LanguageLearningMode | null;
     const sessionIdFromQuery = searchParams.get('sessionId');
     let targetMode = modeFromQuery || activeMode;
 
     if (sessionIdFromQuery) {
       const conversation = getConversationById(sessionIdFromQuery);
       if (conversation) {
-        const foundModeConfig = modes.find(m => m.storageTopic === conversation.topic);
+        const foundModeConfig = languageLearningModes.find(m => m.storageTopic === conversation.topic);
         const conversationMode = foundModeConfig ? foundModeConfig.id : targetMode;
 
         setActiveMode(conversationMode);
@@ -151,10 +166,10 @@ export default function LanguageLearningPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, profile, profileLoading, initializeNewSession]); 
   
-  const activeModeConfig = modes.find(m => m.id === activeMode) || modes[0];
+  const activeModeConfig = languageLearningModes.find(m => m.id === activeMode) || languageLearningModes[0];
 
 
-  const handleModeChange = useCallback((newMode: TranslationMode) => {
+  const handleModeChange = useCallback((newMode: LanguageLearningMode) => {
     setActiveMode(newMode); 
     initializeNewSession(newMode); 
   }, [initializeNewSession]);
@@ -199,7 +214,7 @@ export default function LanguageLearningPage() {
   }
 
   const getInitialMessageForMode = (modeConfig: ModeConfig, currentProfile: UserProfile) => {
-    let initialMessage = modeConfig.initialSystemMessageTemplate.replace('${profileName}', currentProfile.name);
+    let initialMessage = modeConfig.initialSystemMessageTemplate.replace(/\$\{profileName\}/g, currentProfile.name);
      if (modeConfig.id === 'mindmaps' && currentConversationId && searchParams.get('sessionId')) { // Though 'mindmaps' isn't in this file's modes, kept for robustness
         const conversation = getConversationById(currentConversationId);
         const firstUserMessage = conversation?.messages.find(m => m.sender === 'user');
@@ -214,9 +229,9 @@ export default function LanguageLearningPage() {
   
   return (
     <div className="h-full flex flex-col pt-0 bg-gradient-to-br from-background via-primary/5 to-background">
-      <div className="mb-6 pt-0 mt-0 px-1">
-        <div className="flex flex-row justify-between items-center">
-          <div className="flex items-center">
+       <div className="mb-4 pt-0 mt-0 px-1">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <div className="flex items-center mb-2 sm:mb-0">
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-primary flex items-center">
                   <Languages className="mr-2 h-6 w-6 sm:mr-3 sm:h-7 sm:w-7 md:h-8 md:w-8 text-chart-2"/> Language Studio
               </h1>
@@ -225,18 +240,18 @@ export default function LanguageLearningPage() {
             onClick={handleNewSessionClick} 
             variant="outline" 
             size="xs" 
-            className="whitespace-nowrap text-xs h-8 px-2.5 py-1 sm:h-9 sm:px-3 sm:text-sm hover:bg-primary/10 hover:border-primary transition-all">
+            className="whitespace-nowrap text-xs h-8 px-2.5 py-1 sm:h-9 sm:px-3 sm:text-sm hover:bg-primary/10 hover:border-primary transition-all self-start sm:self-center">
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> New Session ({activeModeConfig.label})
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-1 sm:text-sm sm:text-left">
-          Your AI-powered multilingual assistant.
+          Your AI-powered multilingual assistant. Current mode: {activeModeConfig.label}
         </p>
       </div>
 
-      <div className="flex justify-center mb-6">
+      <div className="flex justify-center mb-4 sm:mb-6">
         <div className="bg-muted p-1 rounded-lg shadow-sm flex flex-wrap justify-center gap-1">
-          {modes.map((mode) => {
+          {languageLearningModes.map((mode) => {
             const Icon = mode.icon;
             const isActive = activeMode === mode.id;
             return (
@@ -268,7 +283,14 @@ export default function LanguageLearningPage() {
                 conversationId={currentConversationId}
                 topic={getStorageTopicForMode("voice")} 
               />
-            ) : ( // For text, conversation, camera
+            ) : activeMode === "document" ? (
+                <DocumentTranslatorInterface
+                    key={chatKey}
+                    userProfile={profile}
+                    conversationId={currentConversationId}
+                    topic={getStorageTopicForMode("document")}
+                />
+            ) : ( 
               <DynamicChatInterface
                 key={chatKey}
                 userProfile={profile}
