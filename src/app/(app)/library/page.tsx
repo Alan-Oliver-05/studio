@@ -7,6 +7,7 @@ import { summarizeConversation } from "@/ai/flows/summarize-conversation";
 import type { Conversation, Message } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox"; // Added Checkbox import
 import {
   Accordion,
   AccordionContent,
@@ -51,6 +52,11 @@ export default function LibraryPage() {
   const [currentRenameValue, setCurrentRenameValue] = useState<string>("");
   const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]); 
+  
+  // State for multi-select and bulk delete
+  const [selectedConversationIds, setSelectedConversationIds] = useState<string[]>([]);
+  const [showDeleteSelectedDialog, setShowDeleteSelectedDialog] = useState(false);
+
 
   useEffect(() => {
     setIsClient(true); 
@@ -95,7 +101,7 @@ export default function LibraryPage() {
         setGroupedConversations(groups);
         
         const firstGroupKey = Object.keys(groups)[0];
-        if (firstGroupKey && expandedGroups.length === 0) {
+        if (firstGroupKey && expandedGroups.length === 0 && convos.length > 0) { // Ensure convos exist
             setExpandedGroups([firstGroupKey]);
         }
         setError(null);
@@ -180,12 +186,71 @@ export default function LibraryPage() {
     if (conversationToDelete) {
       deleteConversation(conversationToDelete.id);
       toast({ title: "Conversation Deleted", description: `"${getConversationDisplayTitle(conversationToDelete, getGroupNameForConvo(conversationToDelete!))}" has been deleted.`, variant: "default" });
+      setSelectedConversationIds(prev => prev.filter(id => id !== conversationToDelete.id)); // Also remove from selected
       setConversationToDelete(null); 
       loadConversations(); 
     }
   };
-  
 
+  // --- Multi-select and Bulk Delete Logic ---
+  const isConversationSelected = (convoId: string) => selectedConversationIds.includes(convoId);
+
+  const isGroupFullySelected = (groupName: string): boolean => {
+    const convosInGroup = groupedConversations[groupName];
+    if (!convosInGroup || convosInGroup.length === 0) return false;
+    return convosInGroup.every(convo => selectedConversationIds.includes(convo.id));
+  };
+
+  const areAllConversationsSelected = (): boolean => {
+    if (allConversations.length === 0) return false;
+    return selectedConversationIds.length === allConversations.length;
+  };
+
+  const handleToggleSelectConversation = (convoId: string) => {
+    setSelectedConversationIds(prev =>
+      prev.includes(convoId) ? prev.filter(id => id !== convoId) : [...prev, convoId]
+    );
+  };
+
+  const handleToggleSelectGroup = (groupName: string) => {
+    const convosInGroupIds = groupedConversations[groupName]?.map(c => c.id) || [];
+    if (convosInGroupIds.length === 0) return;
+
+    const allCurrentlySelectedInGroup = convosInGroupIds.every(id => selectedConversationIds.includes(id));
+
+    if (allCurrentlySelectedInGroup) {
+      // Deselect all in this group
+      setSelectedConversationIds(prev => prev.filter(id => !convosInGroupIds.includes(id)));
+    } else {
+      // Select all in this group
+      setSelectedConversationIds(prev => [...new Set([...prev, ...convosInGroupIds])]);
+    }
+  };
+  
+  const handleToggleSelectAll = () => {
+    if (areAllConversationsSelected()) {
+      setSelectedConversationIds([]);
+    } else {
+      setSelectedConversationIds(allConversations.map(c => c.id));
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedConversationIds.length > 0) {
+      setShowDeleteSelectedDialog(true);
+    } else {
+      toast({ title: "No Selection", description: "Please select conversations to delete.", variant: "default" });
+    }
+  };
+
+  const confirmDeleteSelected = () => {
+    selectedConversationIds.forEach(id => deleteConversation(id));
+    toast({ title: `${selectedConversationIds.length} Conversation(s) Deleted`, description: "Selected conversations have been removed." });
+    setSelectedConversationIds([]);
+    setShowDeleteSelectedDialog(false);
+    loadConversations();
+  };
+  
   if (isLoading || !isClient) {
     return (
       <div className="flex flex-col items-center justify-center h-full pt-0 mt-0">
@@ -222,7 +287,7 @@ export default function LibraryPage() {
         baseHref = "/general-tutor";
     } else if (convo.subjectContext && convo.lessonContext && convo.topic) {
       baseHref = `/study-session/${encodeURIComponent(convo.subjectContext)}`;
-    } else { // Fallback for older or uncategorized study sessions
+    } else { 
         baseHref = `/study-session/${encodeURIComponent(convo.subjectContext || convo.topic || 'general')}`;
     }
     return `${baseHref}?${queryParams.toString()}`;
@@ -281,7 +346,7 @@ export default function LibraryPage() {
 
   return (
     <div className="pb-8 pt-0">
-      <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center mt-0">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center mt-0">
         <div className="mb-4 sm:mb-0 text-center sm:text-left">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0 pt-0">
             <LibraryBig className="mr-3 h-7 w-7 sm:h-8" /> My Learning Library
@@ -290,6 +355,29 @@ export default function LibraryPage() {
             Review and manage your past study sessions. ({allConversations.length} total session{allConversations.length === 1 ? '' : 's'})
           </p>
         </div>
+         <div className="flex items-center gap-2 self-start sm:self-center mt-3 sm:mt-0">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="select-all-conversations"
+                checked={areAllConversationsSelected()}
+                onCheckedChange={handleToggleSelectAll}
+                disabled={allConversations.length === 0}
+                aria-label="Select all conversations"
+              />
+              <label htmlFor="select-all-conversations" className="text-sm font-medium text-muted-foreground">
+                Select All ({selectedConversationIds.length})
+              </label>
+            </div>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteSelected}
+              disabled={selectedConversationIds.length === 0}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Selected
+            </Button>
+          </div>
       </div>
 
       {sortedGroupNames.length === 0 ? (
@@ -314,11 +402,21 @@ export default function LibraryPage() {
               <AccordionItem value={groupName} key={groupName} className="bg-card border rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
                 <AccordionTrigger className="p-4 md:p-5 hover:no-underline bg-muted/30 hover:bg-muted/50 transition-colors text-left">
                   <div className="flex justify-between items-center w-full">
-                    <h2 className="text-md sm:text-lg font-semibold text-primary flex items-center">
-                        {getGroupIcon(groupName)}
-                        {groupName}
-                    </h2>
-                    <div className="flex items-center">
+                    <div className="flex items-center flex-grow min-w-0">
+                       <Checkbox
+                          id={`select-group-${groupName}`}
+                          checked={isGroupFullySelected(groupName)}
+                          onCheckedChange={() => handleToggleSelectGroup(groupName)}
+                          onClick={(e) => e.stopPropagation()} 
+                          className="mr-3 flex-shrink-0 border-primary/50 data-[state=checked]:bg-primary/80"
+                          aria-label={`Select all conversations in ${groupName}`}
+                        />
+                      <h2 className="text-md sm:text-lg font-semibold text-primary flex items-center truncate" title={groupName}>
+                          {getGroupIcon(groupName)}
+                          <span className="truncate">{groupName}</span>
+                      </h2>
+                    </div>
+                    <div className="flex items-center flex-shrink-0 ml-2">
                         <Badge variant="secondary" className="mr-2">{convosInGroup.length}</Badge>
                         {expandedGroups.includes(groupName) ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
                     </div>
@@ -328,67 +426,78 @@ export default function LibraryPage() {
                   <ul className="divide-y divide-border">
                     {convosInGroup.map((convo) => (
                       <li key={convo.id} className="p-3 md:p-4 hover:bg-accent/5 transition-colors">
-                        {renamingConvoId === convo.id ? (
-                             <div className="flex items-center gap-2">
-                                <Input 
-                                    value={currentRenameValue} 
-                                    onChange={(e) => setCurrentRenameValue(e.target.value)} 
-                                    onKeyDown={(e) => e.key === 'Enter' && handleRenameSubmit(convo.id)}
-                                    className="h-8 text-sm flex-grow"
-                                    autoFocus
-                                />
-                                <Button size="sm" onClick={() => handleRenameSubmit(convo.id)}>Save</Button>
-                                <Button size="sm" variant="outline" onClick={() => setRenamingConvoId(null)}>Cancel</Button>
+                        <div className="flex items-start gap-3">
+                           <Checkbox
+                              id={`select-convo-${convo.id}`}
+                              checked={isConversationSelected(convo.id)}
+                              onCheckedChange={() => handleToggleSelectConversation(convo.id)}
+                              aria-label={`Select conversation titled ${getConversationDisplayTitle(convo, groupName)}`}
+                              className="mt-1 flex-shrink-0 border-primary/40 data-[state=checked]:bg-primary/70"
+                            />
+                          <div className="flex-grow min-w-0">
+                            {renamingConvoId === convo.id ? (
+                                <div className="flex items-center gap-2">
+                                    <Input 
+                                        value={currentRenameValue} 
+                                        onChange={(e) => setCurrentRenameValue(e.target.value)} 
+                                        onKeyDown={(e) => e.key === 'Enter' && handleRenameSubmit(convo.id)}
+                                        className="h-8 text-sm flex-grow"
+                                        autoFocus
+                                    />
+                                    <Button size="sm" onClick={() => handleRenameSubmit(convo.id)}>Save</Button>
+                                    <Button size="sm" variant="outline" onClick={() => setRenamingConvoId(null)}>Cancel</Button>
+                                </div>
+                            ) : (
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full">
+                              <div className="flex-grow mb-2 sm:mb-0 min-w-0">
+                                <h3 className="text-sm md:text-base font-medium text-foreground truncate pr-2" title={getConversationDisplayTitle(convo, groupName)}>
+                                  {getConversationDisplayTitle(convo, groupName)}
+                                </h3>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
+                                    {convo.subjectContext && convo.subjectContext !== groupName && convo.subjectContext !== convo.topic && (
+                                        <span className="flex items-center"><Layers className="mr-1 h-3 w-3"/>S: {convo.subjectContext}</span>
+                                    )}
+                                    {convo.lessonContext && convo.lessonContext !== convo.topic && convo.lessonContext !== groupName && (
+                                        <span className="flex items-center"><BookCopy className="mr-1 h-3 w-3"/>L: {convo.lessonContext}</span>
+                                    )}
+                                    {convo.topic && 
+                                     !convo.topic.startsWith("Language ") && 
+                                     !convo.topic.startsWith("Visual Learning") &&
+                                     !["AI Learning Assistant Chat", "Homework Help"].includes(convo.topic) &&
+                                     convo.topic !== groupName && 
+                                     convo.topic !== convo.subjectContext && 
+                                     convo.topic !== convo.lessonContext && (
+                                      <span className="flex items-center"><FileText className="mr-1 h-3 w-3"/>Topic: {convo.topic}</span>
+                                    )}
+                                    <span className="flex items-center"><CalendarDays className="mr-1 h-3 w-3" />{timeAgo[convo.id] || 'Loading...'}</span>
+                                    <span className="flex items-center"><MessageSquareText className="mr-1 h-3 w-3" />{convo.messages.length} msg</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-1 mt-2 sm:mt-0 self-start sm:self-center flex-shrink-0">
+                                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startRenameConversation(convo)}><Edit3 className="h-4 w-4 text-muted-foreground hover:text-primary" /></Button></TooltipTrigger><TooltipContent><p>Rename</p></TooltipContent></Tooltip>
+                                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteClick(convo)}><Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" /></Button></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
+                                <Button variant="outline" size="sm" asChild className="h-7 px-2.5 text-xs">
+                                  <Link href={getRevisitLink(convo)}>Revisit</Link>
+                                </Button>
+                              </div>
                             </div>
-                        ) : (
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full">
-                          <div className="flex-grow mb-2 sm:mb-0 min-w-0">
-                            <h3 className="text-sm md:text-base font-medium text-foreground truncate pr-2" title={getConversationDisplayTitle(convo, groupName)}>
-                              {getConversationDisplayTitle(convo, groupName)}
-                            </h3>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
-                                {convo.subjectContext && convo.subjectContext !== groupName && convo.subjectContext !== convo.topic && (
-                                    <span className="flex items-center"><Layers className="mr-1 h-3 w-3"/>S: {convo.subjectContext}</span>
-                                )}
-                                {convo.lessonContext && convo.lessonContext !== convo.topic && convo.lessonContext !== groupName && (
-                                    <span className="flex items-center"><BookCopy className="mr-1 h-3 w-3"/>L: {convo.lessonContext}</span>
-                                )}
-                                {convo.topic && 
-                                 !convo.topic.startsWith("Language ") && 
-                                 !convo.topic.startsWith("Visual Learning") &&
-                                 !["AI Learning Assistant Chat", "Homework Help"].includes(convo.topic) &&
-                                 convo.topic !== groupName && 
-                                 convo.topic !== convo.subjectContext && 
-                                 convo.topic !== convo.lessonContext && (
-                                  <span className="flex items-center"><FileText className="mr-1 h-3 w-3"/>Topic: {convo.topic}</span>
-                                )}
-                                <span className="flex items-center"><CalendarDays className="mr-1 h-3 w-3" />{timeAgo[convo.id] || 'Loading...'}</span>
-                                <span className="flex items-center"><MessageSquareText className="mr-1 h-3 w-3" />{convo.messages.length} msg</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-1 mt-2 sm:mt-0 self-start sm:self-center flex-shrink-0">
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startRenameConversation(convo)}><Edit3 className="h-4 w-4 text-muted-foreground hover:text-primary" /></Button></TooltipTrigger><TooltipContent><p>Rename</p></TooltipContent></Tooltip>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteClick(convo)}><Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" /></Button></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
-                            <Button variant="outline" size="sm" asChild className="h-7 px-2.5 text-xs">
-                              <Link href={getRevisitLink(convo)}>Revisit</Link>
-                            </Button>
+                            )}
+                            {(summaries[convo.id] || convo.summary) ? (
+                              <div className="mt-2 p-2.5 border border-dashed rounded-md bg-primary/5">
+                                <h4 className="font-semibold text-primary text-xs flex items-center mb-1"><FileText className="h-3.5 w-3.5 mr-1.5"/>AI Summary:</h4>
+                                <p className="text-xs text-foreground whitespace-pre-wrap line-clamp-3">{summaries[convo.id] || convo.summary}</p>
+                              </div>
+                            ) : ( convo.messages && convo.messages.length >= 2 &&
+                              <Button 
+                                onClick={() => handleGenerateSummary(convo)} 
+                                disabled={loadingSummary[convo.id]}
+                                size="sm" variant="secondary" className="mt-2 text-xs h-7 px-2.5">
+                                {loadingSummary[convo.id] ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
+                                Generate Summary
+                              </Button>
+                            )}
                           </div>
                         </div>
-                        )}
-                        {(summaries[convo.id] || convo.summary) ? (
-                          <div className="mt-2 p-2.5 border border-dashed rounded-md bg-primary/5">
-                            <h4 className="font-semibold text-primary text-xs flex items-center mb-1"><FileText className="h-3.5 w-3.5 mr-1.5"/>AI Summary:</h4>
-                            <p className="text-xs text-foreground whitespace-pre-wrap line-clamp-3">{summaries[convo.id] || convo.summary}</p>
-                          </div>
-                        ) : ( convo.messages && convo.messages.length >= 2 &&
-                          <Button 
-                            onClick={() => handleGenerateSummary(convo)} 
-                            disabled={loadingSummary[convo.id]}
-                            size="sm" variant="secondary" className="mt-2 text-xs h-7 px-2.5">
-                            {loadingSummary[convo.id] ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
-                            Generate Summary
-                          </Button>
-                        )}
                       </li>
                     ))}
                   </ul>
@@ -410,6 +519,23 @@ export default function LibraryPage() {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setConversationToDelete(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirmed} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteSelectedDialog} onOpenChange={setShowDeleteSelectedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Selected Conversations?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the {selectedConversationIds.length} selected conversation(s).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteSelected} className="bg-destructive hover:bg-destructive/90">
+              Delete ({selectedConversationIds.length})
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
