@@ -62,6 +62,7 @@ export default function HomeworkAssistantPage() {
       initializeNewSession();
       setShowInitialUI(true);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, profile, router]);
 
   const initializeNewSession = () => {
@@ -180,16 +181,20 @@ export default function HomeworkAssistantPage() {
 
   return (
     <div className="min-h-full flex flex-col pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 px-4 md:px-0 pt-0 mt-0">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-            <PenSquare className="mr-3 h-7 w-7 sm:h-8 sm:w-8" /> Homework Helper
-          </h1>
-          <p className="text-muted-foreground mt-1">Get step-by-step solutions and answers to your homework questions.</p>
+      <div className="mb-6 pt-0 mt-0 px-4 md:px-0">
+        <div className="flex flex-row justify-between items-center">
+          <div className="flex items-center">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-primary flex items-center">
+              <PenSquare className="mr-2 h-6 w-6 sm:mr-3 sm:h-7 sm:w-7 md:h-8 md:w-8" /> Homework Helper
+            </h1>
+          </div>
+          <Button onClick={handleNewSessionClick} variant="outline" size="xs" className="whitespace-nowrap text-xs h-8 px-2.5 py-1 sm:h-9 sm:px-3 sm:text-sm">
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> New Homework Session
+          </Button>
         </div>
-        <Button onClick={handleNewSessionClick} variant="outline" className="mt-3 sm:mt-0">
-          <RotateCcw className="mr-2 h-4 w-4" /> New Homework Session
-        </Button>
+        <p className="text-xs text-muted-foreground mt-1 sm:text-sm">
+          Get step-by-step solutions and answers to your homework questions.
+        </p>
       </div>
 
       {isSubmittingInitialQuery && (

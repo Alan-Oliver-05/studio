@@ -112,7 +112,7 @@ export default function VisualLearningPage() {
 
       if (mode === "mindmaps") {
         setMindMapConfig({ initialTopic: "My New Mind Map", initialNodes: [] });
-        setCanvasPanelGrow(window.innerWidth < 768 ? 10 : 8); // Maximize canvas on mobile, 80/20 on desktop
+        setCanvasPanelGrow(window.innerWidth < 768 ? 10 : 8); 
       } else {
         setMindMapConfig(null);
       }
@@ -153,7 +153,7 @@ export default function VisualLearningPage() {
             const firstUserMessageText = conversation.messages.find(m => m.sender === 'user')?.text;
             setMindMapConfig({ initialTopic: firstUserMessageText || "Restored Mind Map", initialNodes: [] });
           }
-           setCanvasPanelGrow(window.innerWidth < 768 ? 10 : 8); // Desktop default to 8
+           setCanvasPanelGrow(window.innerWidth < 768 ? 10 : 8); 
         } else {
           setMindMapConfig(null);
         }
@@ -205,7 +205,7 @@ export default function VisualLearningPage() {
         setCanvasPanelGrow(prev => Math.max(isCurrentlyMobile ? 0 : 1, prev - (isCurrentlyMobile ? 2 : 1)));
         break;
       case 'reset':
-        setCanvasPanelGrow(isCurrentlyMobile ? 5 : 8); // 50/50 on mobile, 80/20 on desktop
+        setCanvasPanelGrow(isCurrentlyMobile ? 5 : 8); 
         break;
       case 'maximize-canvas':
         setCanvasPanelGrow(10); 
@@ -270,18 +270,24 @@ export default function VisualLearningPage() {
 
   return (
     <div className="h-full flex flex-col pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 pt-0 mt-0">
-        <div className="text-center sm:text-left mb-3 sm:mb-0">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-                <PieChartIcon className="mr-2 sm:mr-3 h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-accent"/> Visual Learning Studio
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Explore concepts with AI-generated graphs, diagrams, and interactive mind maps.
-            </p>
+      <div className="mb-4 sm:mb-6 pt-0 mt-0">
+        <div className="flex flex-row justify-between items-center">
+            <div className="flex items-center">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-primary flex items-center">
+                    <PieChartIcon className="mr-2 h-6 w-6 sm:mr-3 sm:h-7 sm:w-7 md:h-8 md:w-8 text-accent"/> Visual Learning Studio
+                </h1>
+            </div>
+            <Button 
+              onClick={handleNewSessionClick} 
+              variant="outline" 
+              size="xs" 
+              className="whitespace-nowrap text-xs h-8 px-2.5 py-1 sm:h-9 sm:px-3 sm:text-sm shadow-sm">
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> New Session ({activeModeConfig.label})
+            </Button>
         </div>
-        <Button onClick={handleNewSessionClick} variant="outline" className="shadow-sm text-xs sm:text-sm">
-          <RotateCcw className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" /> New Session ({activeModeConfig.label})
-        </Button>
+        <p className="text-xs text-muted-foreground mt-1 sm:text-sm sm:text-left">
+          Explore concepts with AI-generated graphs, diagrams, and interactive mind maps.
+        </p>
       </div>
 
       <div className="flex justify-center mb-4 sm:mb-6">

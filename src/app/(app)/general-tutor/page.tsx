@@ -121,30 +121,30 @@ export default function GeneralTutorPage() {
   return (
     <div className="min-h-full flex flex-col items-center pt-0 bg-gradient-to-br from-background via-muted/30 to-accent/10 dark:from-background dark:via-muted/10 dark:to-accent/5">
       <div className="w-full max-w-4xl mx-auto px-4">
-        <div className="flex flex-col sm:flex-row justify-between items-center my-6">
-          <div className="flex items-center space-x-3">
-            <BrainIcon className="h-7 w-7 text-primary flex-shrink-0" />
-            <div>
-              <h1 className="text-xl sm:text-2xl font-semibold text-foreground">
+        <div className="my-6">
+          <div className="flex flex-row justify-between items-center w-full">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <BrainIcon className="h-6 w-6 sm:h-7 text-primary flex-shrink-0" />
+              <h1 className="text-lg font-semibold text-foreground sm:text-xl md:text-2xl">
                 AI Learning Assistant
               </h1>
-              <p className="text-sm text-muted-foreground">
-                Your multi-modal personal tutor for general queries.
-              </p>
             </div>
+            <Button onClick={handleNewSessionClick} variant="outline" size="xs" className="whitespace-nowrap text-xs h-8 px-2.5 py-1 sm:h-9 sm:px-3 sm:text-sm">
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> New Conversation
+            </Button>
           </div>
-          <Button onClick={handleNewSessionClick} variant="outline" size="sm" className="mt-4 sm:mt-0">
-            <RotateCcw className="mr-2 h-4 w-4" /> New Conversation
-          </Button>
+          <p className="text-xs text-muted-foreground mt-1 sm:text-sm">
+            Your multi-modal personal tutor for general queries.
+          </p>
         </div>
 
         <div className="flex flex-col items-center justify-center my-6">
             <p className="text-2xl text-foreground flex items-center">
                 <Sparkles className="mr-3 h-6 w-6 text-orange-500" />
-                {profile.name ? `${profile.name} returns!` : "Welcome to EduAI Tutor!"}
+                {profile.name ? `${profile.name}, ready to explore?` : "Welcome to EduAI Tutor!"}
             </p>
             <p className="text-lg text-muted-foreground mt-1">
-                Ready to explore and learn something new?
+                Ask anything and learn something new today!
             </p>
         </div>
       </div>
@@ -199,4 +199,3 @@ export default function GeneralTutorPage() {
     </div>
   );
 }
-

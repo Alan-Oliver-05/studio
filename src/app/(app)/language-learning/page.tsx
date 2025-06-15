@@ -37,7 +37,7 @@ interface ModeConfig {
   id: TranslationMode;
   label: string;
   icon: React.ElementType;
-  description: string; // Kept for potential tooltip or future use, not directly in button
+  description: string; 
   storageTopic: string; 
   initialSystemMessageTemplate: string;
   placeholderTextTemplate: string;
@@ -214,16 +214,24 @@ export default function LanguageLearningPage() {
   
   return (
     <div className="h-full flex flex-col pt-0 bg-gradient-to-br from-background via-primary/5 to-background">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6 pt-0 mt-0 px-1">
-        <div className="text-center sm:text-left">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center mt-0">
-                <Languages className="mr-3 h-7 w-7 sm:h-8 sm:w-8 text-chart-2"/> Language Studio
-            </h1>
-            <p className="text-muted-foreground mt-1">Your AI-powered multilingual assistant.</p>
+      <div className="mb-6 pt-0 mt-0 px-1">
+        <div className="flex flex-row justify-between items-center">
+          <div className="flex items-center">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-primary flex items-center">
+                  <Languages className="mr-2 h-6 w-6 sm:mr-3 sm:h-7 sm:w-7 md:h-8 md:w-8 text-chart-2"/> Language Studio
+              </h1>
+          </div>
+          <Button 
+            onClick={handleNewSessionClick} 
+            variant="outline" 
+            size="xs" 
+            className="whitespace-nowrap text-xs h-8 px-2.5 py-1 sm:h-9 sm:px-3 sm:text-sm hover:bg-primary/10 hover:border-primary transition-all">
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> New Session ({activeModeConfig.label})
+          </Button>
         </div>
-        <Button onClick={handleNewSessionClick} variant="outline" className="mt-3 sm:mt-0 shadow-sm hover:bg-primary/10 hover:border-primary transition-all">
-          <RotateCcw className="mr-2 h-4 w-4" /> New Session ({activeModeConfig.label})
-        </Button>
+        <p className="text-xs text-muted-foreground mt-1 sm:text-sm sm:text-left">
+          Your AI-powered multilingual assistant.
+        </p>
       </div>
 
       <div className="flex justify-center mb-6">
