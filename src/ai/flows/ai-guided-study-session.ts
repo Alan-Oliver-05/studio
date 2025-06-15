@@ -320,8 +320,6 @@ The 'visualElement' output field is generally not used in this mode for general 
 
 {{else if isVisualLearningFocus}}
 # Visual Learning Studio AI Agent Prompts (Visual Learning Page Mode)
-{{! This entire Visual Learning Focus block remains unchanged from the previous version you provided. }}
-{{! All sub-modes (Graphs, Diagrams, MindMaps) and their specific prompts are retained. }}
   {{#if isVisualLearningGraphs}}
     Act as a Data Visualization Expert specializing in creating clear, informative graphs and charts.
     When users request data visualization like a bar chart, line graph, or pie chart about a concept comparing items:
@@ -556,6 +554,8 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
   }
 );
     
+    
+
     
 
     
