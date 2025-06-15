@@ -389,8 +389,10 @@ The 'visualElement' output field is generally not used in this mode for general 
       *   If you use information from a web search, briefly mention the source context (e.g., "According to typical syllabus guidelines for {{{studentProfile.educationQualification.boardExam.board}}}..." or "Official resources for {{{studentProfile.educationQualification.competitiveExam.specificExam}}} often cover...").
   3.  **Personalized Response (Based on "Retrieved" Curriculum)**: Craft your 'response' in the student's preferred language for learning ('{{{studentProfile.preferredLanguage}}}'). Address the student's "{{{question}}}" directly and comprehensively, framed by the "retrieved" curriculum information.
       *   If explaining a concept: Explain it based on how it's typically covered in their specific syllabus. Use examples relevant to their curriculum.
+      {{#if subject}}{{#if lesson}}
       *   **Multiple-Choice Question (MCQ) Generation:** After providing an explanation or answering a curriculum-related question, you MUST conclude your 'response' by posing ONE relevant multiple-choice question (MCQ) with 3-4 distinct options (labeled A, B, C, D). This MCQ should test understanding of the specific curriculum content just discussed. This is for continuous assessment.
       *   Example MCQ in response: "...and that's how refraction works through a prism. Now, to check your understanding: Which of the following best describes Snell's Law?\\nA) n1/sin(θ2) = n2/sin(θ1)\\nB) n1*sin(θ1) = n2*sin(θ2)\\nC) sin(θ1)/n1 = sin(θ2)/n2\\nD) n1*cos(θ1) = n2*cos(θ2)"
+      {{/if}}{{/if}}
       {{#if studentProfile.educationQualification.competitiveExam.examDate}}
       *   **Motivational Nudge (if exam date is present and relevant to query):** If the query is about study strategy, a specific topic, or if the student expresses concern, and an exam date ({{{studentProfile.educationQualification.competitiveExam.examDate}}}) is known for a competitive exam, you can include a brief, positive motivational phrase like, "Keep up the great work for your exam on {{{studentProfile.educationQualification.competitiveExam.examDate}}}!" or "Focusing on this will be very helpful for your upcoming exam on {{{studentProfile.educationQualification.competitiveExam.examDate}}}." Ensure it's natural and not repetitive.
       {{/if}}
@@ -406,14 +408,15 @@ The 'visualElement' output field is generally not used in this mode for general 
           *   For flowcharts/diagrams (that are not text-based mind maps): 'visualElement.type' = 'image_generation_prompt'. 'visualElement.content' = descriptive prompt for image generation. 'visualElement.caption' = "Illustration".
       *   Ensure any data or prompts in 'visualElement' are curriculum-aligned.
       *   Interactive Mind Maps/Flowcharts are handled by the Visual Learning Page mode (isVisualLearningMindMaps). Textual mind maps are handled by AI Learning Assistant Chat.
-{{/if}}
 
   General Principles:
   - For all academic queries not in "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", or "Visual Learning Focus":
     1. Understand student's curriculum context (including exam date if available).
     2. Use web search to find official/reputable info on that curriculum for the current topic/question.
     3. Explain/answer based on that "retrieved" info, incorporating motivational nudge if exam date is present and relevant.
+    {{#if subject}}{{#if lesson}}
     4. Ask a relevant MCQ based on that "retrieved" info.
+    {{/if}}{{/if}}
     5. Suggest official/reputable resources.
   - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
 {{/if}}
@@ -533,11 +536,15 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
         const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation"];
         const isVisualLearningMode = promptInput.isVisualLearningFocus;
 
-        const shouldHaveMCQ = !nonMCQModes.includes(specificTopicFromInput) && !isVisualLearningMode &&
-                               (input.subject || input.lesson);
+        // Check if it's a mode that *should* have an MCQ, based on it NOT being a special mode AND having subject/lesson context
+        const shouldHaveMCQ = !nonMCQModes.includes(specificTopicFromInput) && 
+                              !isVisualLearningMode &&
+                              (input.subject && input.subject.trim() !== "") && 
+                              (input.lesson && input.lesson.trim() !== "");
+
 
         if (shouldHaveMCQ && !output.response.match(/\b([A-D])\)\s/i) && !output.response.match(/\b[A-D]\.\s/i)) {
-          console.warn(`MCQ expected for topic "${specificTopicFromInput}" but not found in response: "${output.response.substring(0,100)}..."`);
+          console.warn(`MCQ expected for topic "${specificTopicFromInput}" (Subject: ${input.subject}, Lesson: ${input.lesson}) but not found in response: "${output.response.substring(0,100)}..."`);
         }
         return output;
     }
@@ -550,5 +557,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     };
   }
 );
+
+    
 
     
