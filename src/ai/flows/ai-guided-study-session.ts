@@ -323,7 +323,7 @@ The 'visualElement' output field is generally not used in this mode for general 
 {{! This entire Visual Learning Focus block remains unchanged from the previous version you provided. }}
 {{! All sub-modes (Graphs, Diagrams, MindMaps) and their specific prompts are retained. }}
 {{! ... (Omitted for brevity, no changes here) ... }}
-{{#if isVisualLearningGraphs}}
+  {{#if isVisualLearningGraphs}}
     Act as a Data Visualization Expert specializing in creating clear, informative graphs and charts.
     When users request data visualization like a bar chart, line graph, or pie chart about a concept comparing items:
     1. **Data Analysis**: Identify data type, best chart type, and the story the data should tell.
@@ -406,7 +406,6 @@ The 'visualElement' output field is generally not used in this mode for general 
           *   For flowcharts/diagrams (that are not text-based mind maps): 'visualElement.type' = 'image_generation_prompt'. 'visualElement.content' = descriptive prompt for image generation. 'visualElement.caption' = "Illustration".
       *   Ensure any data or prompts in 'visualElement' are curriculum-aligned.
       *   Interactive Mind Maps/Flowcharts are handled by the Visual Learning Page mode (isVisualLearningMindMaps). Textual mind maps are handled by AI Learning Assistant Chat.
-
 {{/if}}
 
   General Principles:
@@ -417,6 +416,7 @@ The 'visualElement' output field is generally not used in this mode for general 
     4. Ask a relevant MCQ based on that "retrieved" info.
     5. Suggest official/reputable resources.
   - If the student's question is a follow-up to an MCQ you asked: Evaluate their answer, provide feedback, and then proceed with a new explanation/MCQ cycle on a related sub-topic from the "retrieved" curriculum or a new aspect of the current one.
+{{/if}}
 `;
 
 const prompt = ai.definePrompt({
