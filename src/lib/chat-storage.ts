@@ -2,6 +2,7 @@
 "use client";
 
 import type { Conversation, Message, UserProfile } from "@/types";
+import { toast } from "@/hooks/use-toast";
 
 const CONVERSATIONS_KEY = "eduai-conversations";
 
@@ -40,11 +41,15 @@ export const saveConversation = (conversationToSave: Conversation): void => {
   } catch (error) {
     console.error("Error saving conversation to localStorage:", error);
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-        console.warn(
-            "LocalStorage quota exceeded when trying to save conversations. " +
-            "The total size of all conversations, or this specific conversation, might be too large. " +
-            "Consider managing conversations in the Library page if this issue persists."
-        );
+        const toastMessage = "LocalStorage quota exceeded. New messages for this session might not be saved. Please manage your saved conversations in the Library to free up space.";
+        console.warn(toastMessage);
+        // Display a toast notification to the user
+        toast({
+            title: "Storage Full",
+            description: toastMessage,
+            variant: "destructive",
+            duration: 10000, // Keep the message visible for longer
+        });
     }
   }
 };
@@ -133,3 +138,4 @@ export const updateConversationCustomTitle = (id: string, customTitle: string): 
     console.warn(`Conversation with ID ${id} not found for renaming.`);
   }
 };
+
