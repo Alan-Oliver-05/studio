@@ -85,12 +85,12 @@ const languageLearningModes: ModeConfig[] = [
     enableImageUpload: true
   },
   {
-    id: "document", label: "Document", icon: FileTextIcon, 
-    description: "Translate text content from uploaded documents.", 
+    id: "document", label: "Document/Text", icon: FileTextIcon, 
+    description: "Translate text content from uploaded documents or pasted text.", 
     storageTopic: "Language Document Translation",
     initialSystemMessageTemplate: "Hello ${profileName}! Upload your document (or paste its text content), specify languages, and I'll translate it for you.",
     placeholderTextTemplate: "File selected. Provide context or click translate...",
-    enableImageUpload: false, // The specific component will handle file inputs, not the generic chat interface.
+    enableImageUpload: false, 
   },
 ];
 
