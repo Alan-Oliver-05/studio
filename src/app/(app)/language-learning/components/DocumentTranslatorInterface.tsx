@@ -5,14 +5,20 @@ import React, { useState, useRef, ChangeEvent, useCallback } from 'react';
 import type { UserProfile, Message as MessageType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, UploadCloud, FileText, Languages, ArrowRightLeft, Info, History, Star, AlertCircle } from 'lucide-react';
+import { Loader2, UploadCloud, FileText, Languages, ArrowRightLeft, Info, History, Star, ChevronDown } from 'lucide-react';
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from '@/ai/flows/ai-guided-study-session';
-import { addMessageToConversation, getConversationById } from '@/lib/chat-storage';
-import { LANGUAGES } from '@/lib/constants';
+import { addMessageToConversation } from '@/lib/chat-storage';
+import { LANGUAGES } from '@/lib/constants'; // Assuming LANGUAGES has value and label
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface DocumentTranslatorInterfaceProps {
   userProfile: UserProfile;
@@ -20,9 +26,40 @@ interface DocumentTranslatorInterfaceProps {
   topic: string;
 }
 
+const displayedSourceLanguages = [
+  { value: "detect", label: "Detect language" },
+  { value: "en", label: "English" },
+  { value: "ta", label: "Tamil" },
+  { value: "es", label: "Spanish" },
+];
+
+const displayedTargetLanguages = [
+  { value: "ta", label: "Tamil" },
+  { value: "en", label: "English" },
+  { value: "es", label: "Spanish" },
+];
+
+
+const LanguageTabButton = ({ lang, isActive, onClick, isDropdownTrigger = false }: { lang: {value: string, label: string}, isActive?: boolean, onClick?: () => void, isDropdownTrigger?: boolean }) => (
+  <Button
+    variant="ghost"
+    size="sm"
+    onClick={onClick}
+    className={cn(
+      "text-sm px-3 py-1.5 h-auto rounded-md font-medium",
+      isActive ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/5",
+      isDropdownTrigger && "ml-1"
+    )}
+  >
+    {lang.label}
+    {isDropdownTrigger && <ChevronDown className="ml-1 h-4 w-4" />}
+  </Button>
+);
+
+
 const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = ({ userProfile, conversationId, topic }) => {
-  const [sourceLang, setSourceLang] = useState<string>("detect"); // 'detect' or specific lang code
-  const [targetLang, setTargetLang] = useState<string>(userProfile.preferredLanguage.split('-')[0] || "en");
+  const [sourceLang, setSourceLang] = useState<string>("detect");
+  const [targetLang, setTargetLang] = useState<string>(LANGUAGES.find(l=>l.label.toLowerCase() === userProfile.preferredLanguage.toLowerCase())?.value || displayedTargetLanguages[0].value);
   const [originalFileName, setOriginalFileName] = useState<string | null>(null);
   const [originalFileContent, setOriginalFileContent] = useState<string>("");
   const [translatedContent, setTranslatedContent] = useState<string>("");
@@ -34,27 +71,33 @@ const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit for demo
+      if (file.size > 5 * 1024 * 1024) {
         toast({ title: "File too large", description: "Please upload a document smaller than 5MB.", variant: "destructive" });
         return;
       }
       setOriginalFileName(file.name);
-      setOriginalFileContent(""); // Clear pasted text if a file is chosen
+      setOriginalFileContent(""); 
       setTranslatedContent("");
       setError(null);
-      toast({ title: "File Selected", description: `"${file.name}" is ready. You can paste its content below or directly translate.` });
       
-      // For this demo, we are not reading file content automatically.
-      // User would paste it or AI would simulate processing.
-      // If actual file reading was needed:
-      // const reader = new FileReader();
-      // reader.onload = (e) => setOriginalFileContent(e.target?.result as string);
-      // reader.readAsText(file); // for .txt, .docx, etc. would need libraries
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (typeof e.target?.result === 'string') {
+          setOriginalFileContent(e.target.result);
+          toast({ title: "File Content Loaded", description: `Content from "${file.name}" loaded into the text area.` });
+        } else {
+          toast({ title: "File Read Error", description: `Could not read text content from "${file.name}".`, variant: "destructive" });
+        }
+      };
+      reader.onerror = () => {
+        toast({ title: "File Read Error", description: `Error reading "${file.name}".`, variant: "destructive" });
+      };
+      reader.readAsText(file); // Reading as text
     }
   };
 
   const handleTranslate = async () => {
-    if (!originalFileContent.trim() && !originalFileName) {
+    if (!originalFileContent.trim()) {
       toast({ title: "Nothing to Translate", description: "Please upload a document or paste text.", variant: "destructive" });
       return;
     }
@@ -62,20 +105,23 @@ const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = 
     setError(null);
     setTranslatedContent("");
 
-    let questionForAI = `Please translate the following text content`;
-    if (originalFileName) {
-      questionForAI += ` (from document: ${originalFileName})`;
-    }
+    const sourceLangLabel = LANGUAGES.find(l => l.value === sourceLang)?.label || sourceLang;
+    const targetLangLabel = LANGUAGES.find(l => l.value === targetLang)?.label || targetLang;
+
+    let questionForAI = `Please translate the following text`;
     if (sourceLang !== "detect") {
-      const sourceLangLabel = LANGUAGES.find(l => l.value === sourceLang)?.label || sourceLang;
       questionForAI += ` from ${sourceLangLabel}`;
     }
-    const targetLangLabel = LANGUAGES.find(l => l.value === targetLang)?.label || targetLang;
-    questionForAI += ` to ${targetLangLabel}. The text is: \n\n"${originalFileContent}"`;
+    questionForAI += ` to ${targetLangLabel}.`;
+    if (originalFileName) {
+        questionForAI += ` The text is from a document originally named: "${originalFileName}".`;
+    }
+    questionForAI += ` The text to translate is: \n\n"${originalFileContent}"`;
+    
 
     const userMessage: MessageType = {
       id: crypto.randomUUID(), sender: 'user',
-      text: `Request to translate document: ${originalFileName || 'Pasted Text'}. From: ${sourceLang} To: ${targetLang}. Content snippet: "${originalFileContent.substring(0,50)}..."`,
+      text: `Request to translate ${originalFileName ? `document "${originalFileName}"` : 'pasted text'}. From: ${sourceLangLabel} To: ${targetLangLabel}. Content snippet: "${originalFileContent.substring(0,50)}..."`,
       timestamp: Date.now(),
     };
     addMessageToConversation(conversationId, topic, userMessage, userProfile);
@@ -84,18 +130,18 @@ const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = 
       const aiInput: AIGuidedStudySessionInput = {
         studentProfile: { ...userProfile, age: Number(userProfile.age) },
         specificTopic: "Language Document Translation", 
-        question: questionForAI, 
-        // photoDataUri: can be used if we send a visual preview of the doc later
+        question: questionForAI,
+        photoDataUri: undefined, 
       };
       
-      // Pass originalFileName to the AI prompt context if available
+      // Add originalFileName to prompt context if available
       (aiInput as any).originalFileName = originalFileName; 
 
       const result = await aiGuidedStudySession(aiInput);
       if (result && result.response) {
         setTranslatedContent(result.response);
         const aiMessage: MessageType = {
-          id: crypto.randomUUID(), sender: 'ai', text: `Translated content for ${originalFileName || 'Pasted Text'}:\n${result.response}`,
+          id: crypto.randomUUID(), sender: 'ai', text: result.response,
           suggestions: result.suggestions, timestamp: Date.now(),
         };
         addMessageToConversation(conversationId, topic, aiMessage, userProfile);
@@ -112,112 +158,153 @@ const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = 
       setIsLoading(false);
     }
   };
+  
+  const handleSwapLanguages = () => {
+    if (sourceLang === "detect") {
+        toast({ title: "Cannot Swap", description: "Please select a specific source language to swap.", variant: "default"});
+        return;
+    }
+    const currentSourceIsDisplay = displayedSourceLanguages.some(l => l.value === sourceLang);
+    const currentTargetIsDisplay = displayedTargetLanguages.some(l => l.value === targetLang);
 
-  const languageOptions = [{ value: "detect", label: "Detect Language" }, ...LANGUAGES];
+    if (currentSourceIsDisplay && currentTargetIsDisplay) {
+        const tempSource = sourceLang;
+        setSourceLang(targetLang);
+        setTargetLang(tempSource);
+    } else {
+        // Fallback or more complex logic if languages are not in the small displayed lists
+        const allLangsPlusDetect = [...LANGUAGES, { value: "detect", label: "Detect language" }];
+        const sourceExists = allLangsPlusDetect.find(l => l.value === sourceLang);
+        const targetExists = LANGUAGES.find(l => l.value === targetLang);
+        if (sourceExists && targetExists && sourceLang !== "detect") {
+            setSourceLang(targetLang);
+            setTargetLang(sourceLang);
+        } else {
+            toast({ title: "Swap Not Possible", description: "Selected languages cannot be directly swapped with current options.", variant: "default"});
+        }
+    }
+  };
 
   return (
-    <Card className="w-full flex flex-col shadow-none border-0 min-h-[calc(100vh-25rem)] bg-transparent">
-      <CardHeader className="pb-4 pt-2">
-        <div className="flex flex-col sm:flex-row items-center justify-between">
-          <div className="text-center sm:text-left mb-3 sm:mb-0">
-            <CardTitle className="text-xl sm:text-2xl text-gradient-primary flex items-center">
-              <FileText className="mr-2 h-6 w-6"/> Document Translator
-            </CardTitle>
-            <CardDescription className="text-sm">Translate text from your documents.</CardDescription>
-          </div>
-           <Button
-            onClick={handleTranslate}
-            disabled={isLoading || (!originalFileContent.trim() && !originalFileName)}
-            size="default"
-            className="px-6 text-base h-10 shadow-md w-full sm:w-auto"
-          >
-            {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Languages className="mr-2 h-5 w-5" />}
-            Translate Document
-          </Button>
-        </div>
-        <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 border-t border-b py-3">
-            <div className="flex-1 w-full sm:w-auto">
-                <span className="text-xs font-medium text-muted-foreground db-block mb-1">Source Language</span>
-                <Select value={sourceLang} onValueChange={setSourceLang}>
-                    <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="Source Language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {languageOptions.map(lang => (
-                            <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-            <ArrowRightLeft className="h-5 w-5 text-muted-foreground my-2 sm:my-0 flex-shrink-0" />
-             <div className="flex-1 w-full sm:w-auto">
-                <span className="text-xs font-medium text-muted-foreground db-block mb-1">Target Language</span>
-                <Select value={targetLang} onValueChange={setTargetLang}>
-                    <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="Target Language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {LANGUAGES.map(lang => (
-                            <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-grow p-2 sm:p-4 space-y-4 flex flex-col">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 flex-grow min-h-[300px]">
-          {/* Left Panel - Upload/Input */}
-          <div className="flex flex-col p-3 sm:p-4 border-2 border-dashed border-input rounded-lg bg-muted/30 items-center justify-center">
-            <UploadCloud className="h-12 w-12 text-primary opacity-70 mb-3" />
-            <p className="text-sm font-semibold text-foreground mb-1">Drag and drop your document here</p>
-            <p className="text-xs text-muted-foreground mb-3">(or click "Browse your files")</p>
-             <Button variant="outline" className="mb-3 shadow-sm" onClick={() => fileInputRef.current?.click()}>
-              Browse your files
-            </Button>
-            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.pdf,.docx,.pptx,.xlsx" />
-            {originalFileName && <p className="text-xs text-muted-foreground mt-1 mb-2">Selected: <span className="font-medium text-primary">{originalFileName}</span></p>}
-             <p className="text-xs text-muted-foreground my-2 w-full text-center border-b pb-2">OR Paste Text Below</p>
-            <Textarea
-              placeholder="Paste document text here if not uploading a file, or to provide specific text for translation..."
-              value={originalFileContent}
-              onChange={(e) => setOriginalFileContent(e.target.value)}
-              rows={6}
-              className="w-full flex-grow resize-none text-sm bg-background shadow-sm"
-              disabled={isLoading}
-            />
-            <p className="text-xs text-muted-foreground mt-2">Supported (for conceptual upload): .docx, .pdf, .pptx, .xlsx, .txt</p>
+    <Card className="w-full flex flex-col shadow-none border-0 min-h-[calc(100vh-20rem)] bg-transparent">
+      <CardHeader className="pb-3 pt-2 border-b">
+        <div className="flex items-center justify-between">
+          {/* Source Language Tabs */}
+          <div className="flex items-center">
+            {displayedSourceLanguages.map(lang => (
+              <LanguageTabButton key={lang.value} lang={lang} isActive={sourceLang === lang.value} onClick={() => setSourceLang(lang.value)} />
+            ))}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <LanguageTabButton lang={{value: "more_source", label: ""}} isDropdownTrigger={true}/>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {LANGUAGES.filter(l => !displayedSourceLanguages.find(dsl => dsl.value === l.value)).map(lang => (
+                  <DropdownMenuItem key={lang.value} onSelect={() => setSourceLang(lang.value)}>
+                    {lang.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
-          {/* Right Panel - Translation Output */}
-          <div className="flex flex-col p-3 sm:p-4 border rounded-lg bg-background shadow-sm">
-            <h3 className="text-sm font-semibold text-primary mb-2">Translated Content:</h3>
-            <ScrollArea className="flex-grow border rounded-md p-2 bg-muted/20 min-h-[150px] md:min-h-0">
-              {isLoading && !translatedContent && <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto my-4" />}
-              {error && <div className="text-destructive text-sm p-2"><AlertCircle className="inline h-4 w-4 mr-1"/>Error: {error}</div>}
-              {!isLoading && !error && !translatedContent && <p className="text-muted-foreground text-sm italic p-2">Translation will appear here...</p>}
-              {translatedContent && <p className="text-sm whitespace-pre-wrap">{translatedContent}</p>}
-            </ScrollArea>
+          <Button variant="ghost" size="icon" onClick={handleSwapLanguages} className="text-muted-foreground hover:text-primary">
+            <ArrowRightLeft className="h-5 w-5" />
+          </Button>
+
+          {/* Target Language Tabs */}
+          <div className="flex items-center">
+            {displayedTargetLanguages.map(lang => (
+              <LanguageTabButton key={lang.value} lang={lang} isActive={targetLang === lang.value} onClick={() => setTargetLang(lang.value)} />
+            ))}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                 <LanguageTabButton lang={{value: "more_target", label: ""}} isDropdownTrigger={true}/>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {LANGUAGES.filter(l => !displayedTargetLanguages.find(dtl => dtl.value === l.value)).map(lang => (
+                  <DropdownMenuItem key={lang.value} onSelect={() => setTargetLang(lang.value)}>
+                    {lang.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-        
-        <div className="text-center text-xs text-muted-foreground mt-3">
-          <Info className="inline h-3 w-3 mr-1" />
-          For best results with complex documents, ensure text is clearly formatted. Current translation is based on pasted/provided text.
-        </div>
-        
-        <div className="text-center text-xs text-muted-foreground mt-auto pt-3">
-            Powered by Google Cloud Translation (Conceptual)
-        </div>
-         <div className="flex justify-center gap-3 mt-2 pt-3 border-t">
-            <Button variant="outline" size="sm" className="text-xs opacity-70 hover:opacity-100">
-                <History className="mr-1.5 h-3.5 w-3.5"/> View History
+         <div className="mt-3 text-center">
+            <Button
+                onClick={handleTranslate}
+                disabled={isLoading || !originalFileContent.trim()}
+                size="default"
+                className="px-8 py-2.5 text-base h-auto shadow-md"
+            >
+                {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Languages className="mr-2 h-5 w-5" />}
+                Translate
             </Button>
-             <Button variant="outline" size="sm" className="text-xs opacity-70 hover:opacity-100">
-                <Star className="mr-1.5 h-3.5 w-3.5"/> Saved Translations
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex-grow p-4 space-y-4 flex flex-col md:flex-row gap-4 items-stretch">
+        {/* Left Panel - Upload/Input */}
+        <div className="flex-1 flex flex-col p-4 border-2 border-dashed border-input rounded-lg bg-muted/30 items-center justify-start min-h-[300px] md:min-h-0">
+          <div className="text-center mb-4">
+            <UploadCloud className="h-16 w-16 text-primary opacity-70 mb-3 mx-auto" />
+            <p className="text-lg font-semibold text-foreground mb-1">Drag and drop</p>
+             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".txt,.pdf,.docx,.pptx,.xlsx" />
+            {originalFileName && <p className="text-xs text-muted-foreground mt-1">Selected: <span className="font-medium text-primary">{originalFileName}</span></p>}
+          </div>
+          <Textarea
+            placeholder="Or paste text here directly..."
+            value={originalFileContent}
+            onChange={(e) => setOriginalFileContent(e.target.value)}
+            rows={8}
+            className="w-full flex-grow resize-none text-sm bg-background shadow-sm mb-2"
+            disabled={isLoading}
+          />
+        </div>
+
+        {/* Right Panel - Translation Output / Browse */}
+        <div className="flex-1 flex flex-col p-4 border rounded-lg bg-background shadow-sm min-h-[300px] md:min-h-0">
+           <div className="text-center mb-4">
+            <p className="text-sm font-medium text-muted-foreground mb-2">Or choose a file</p>
+            <Button variant="primary" className="shadow-md" onClick={() => fileInputRef.current?.click()}>
+              Browse your files
             </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Supported file types: .txt, .docx, .pdf
+              <Button variant="link" size="xs" className="p-0 ml-1 h-auto text-xs" onClick={()=>toast({title:"Learn More", description:"Full document parsing for PDF/DOCX is conceptual. Currently, only .txt content is directly processed if read by browser."})}>
+                Learn more
+              </Button>
+            </p>
+          </div>
+          <ScrollArea className="flex-grow border rounded-md p-3 bg-muted/20">
+            {isLoading && !translatedContent && <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto my-4" />}
+            {error && <div className="text-destructive text-sm p-2"><Info className="inline h-4 w-4 mr-1"/>Error: {error}</div>}
+            {!isLoading && !error && !translatedContent && <p className="text-muted-foreground text-sm italic p-2">Translation will appear here...</p>}
+            {translatedContent && <p className="text-sm whitespace-pre-wrap">{translatedContent}</p>}
+          </ScrollArea>
         </div>
       </CardContent>
+      
+      <div className="flex flex-col items-center justify-between gap-2 p-3 border-t text-xs text-muted-foreground sm:flex-row">
+        <p className="flex items-center">
+            <svg className="mr-1.5 h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.0002 22.0002C17.523 22.0002 22.0002 17.523 22.0002 12.0002C22.0002 6.47731 17.523 2.00024 12.0002 2.00024C6.47731 2.00024 2.00024 6.47731 2.00024 12.0002C2.00024 17.523 6.47731 22.0002 12.0002 22.0002Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M7.50024 12.0002L10.0962 14.5962L16.5002 8.19226" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+            Powered by Google Cloud Translation (Conceptual)
+        </p>
+        <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={()=>toast({title:"History", description:"History feature coming soon."})}>
+                <History className="h-4 w-4" />
+                <span className="sr-only">History</span>
+            </Button>
+             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={()=>toast({title:"Saved", description:"Saved translations feature coming soon."})}>
+                <Star className="h-4 w-4" />
+                 <span className="sr-only">Saved</span>
+            </Button>
+            <Button variant="link" size="xs" className="text-muted-foreground hover:text-primary p-0 h-auto text-xs" onClick={()=>toast({title:"Feedback", description:"Feedback system coming soon."})}>
+                Send feedback
+            </Button>
+        </div>
+      </div>
     </Card>
   );
 };
