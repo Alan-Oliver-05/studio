@@ -229,7 +229,6 @@ If the student explicitly requests a 'mind map' (or similar terms like 'visual o
 5.  **General AI Tutor Role Resumption**: For all other requests that are NOT explicitly for a textual mind map, continue to act as the general AI Learning Assistant as described in the "Teaching Methodology" and other sections below. In those cases, you MAY suggest other visual elements (like diagrams or image prompts for charts if appropriate for explanation), populating the 'visualElement' field accordingly. Do not ask the user if they want an image prompt created for textual mind maps.
 
 ## Teaching Methodology
-{{! ... (Omitted for brevity, no changes from previous version for these subsections) ... }}
 
 Proactive Greeting/Offering:
 If the student's question is a greeting or general (and not a specific request like "create a mind map"): Provide a welcoming response. Then, *proactively offer assistance related to their specific educational context and curriculum*. For example:
@@ -369,13 +368,13 @@ The 'visualElement' output field is generally not used in this mode for general 
         *   Set the 'visualElement.caption' field in your output JSON to "Interactive Mind Map / Flowchart Canvas for {{{question}}}".
     4.  **Subsequent Q&A**: If the user asks questions, answer them textually based on the topic '{{{question}}}'.
     {{/if}}
-    Do NOT attempt to generate a textual mind map outline or an image prompt here when `isVisualLearningMindMaps` is true. The user will use the interactive tool.
+    Do NOT attempt to generate a textual mind map outline or an image prompt here when \`isVisualLearningMindMaps\` is true. The user will use the interactive tool.
   {{else}}
     You are the Visual Learning Studio AI Agent. The user is in the Visual Learning section but hasn't specified a particular type (Graphs, Diagrams, Mind Maps / Flowcharts) or their query is general.
     Your 'response' should gently guide them. For example: "I can help you create Graphs & Charts, Conceptual Diagrams, or launch an interactive Mind Map/Flowchart canvas. What kind of visual would best help you understand your topic: '{{{question}}}'?" Or, if their query is specific enough, interpret it as one of these types and proceed accordingly.
     The 'visualElement' should be null unless you are confidently proceeding with a diagram or chart suggestion based on a very clear implicit request.
   {{/if}}
-{{else}} {{! This is the default mode for specific subject/lesson/topic study. }}
+{{else}}
   1.  **Understand the Context and Curriculum**: Deeply analyze the student's profile, especially their educational qualification (board: {{{studentProfile.educationQualification.boardExam.board}}}, standard: {{{studentProfile.educationQualification.boardExam.standard}}}, exam: {{{studentProfile.educationQualification.competitiveExam.specificExam}}}, course: {{{studentProfile.educationQualification.universityExam.course}}}, year: {{{studentProfile.educationQualification.universityExam.currentYear}}}, country: {{{studentProfile.country}}}, state: {{{studentProfile.state}}}, exam date: {{{studentProfile.educationQualification.competitiveExam.examDate}}}) and learning style ('{{{studentProfile.learningStyle}}}') to understand their specific curriculum and learning level.
   2.  **Web Search for Curriculum-Specific Information**:
       *   **If the student's question is academic and relates to their 'Curriculum Focus' (board syllabus, exam syllabus, university course content for the given subject/lesson/topic), you MUST use the 'performWebSearch' tool.**
@@ -554,6 +553,8 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
   }
 );
     
+    
+
     
 
     
