@@ -31,7 +31,7 @@ const inputTypeOptions: InputTypeOption[] = [
   { value: "text", label: "Text", icon: Type, title:"AI Text Summarizer & Note Taker", description: "Paste any text — articles, essays, or research papers — and get concise summaries, key takeaways, and organized notes instantly.", placeholder: "Paste your article, essay, research paper, or any text here..." },
   { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary, and then ask specific questions about its content. *Please note: PDF content is not actually read; AI responds based on filename and your questions.*", placeholder: "Upload your PDF document." },
   { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload audio file, Sai (conceptually) transcribes and summarizes, pinpointing key discussions and insights.", placeholder: "Upload your audio file (e.g., .mp3, .wav)." },
-  { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer", description: "Ace presentations. Sai converts PPT or PDF slides into actionable study notes, detailing core messages, narrative flow, and key takeaways.", placeholder: "Slide summarization coming soon!" },
+  { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer & Q&A", description: "Ace presentations. Sai converts PPT or PDF slides into actionable study notes, detailing core messages, narrative flow, and key takeaways. *AI responds based on filename.*", placeholder: "Upload your PPT or PDF slide deck." },
   { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer", description: "Learn faster from videos. Paste any YouTube link, and Sai extracts crucial topics, arguments, and examples into concise study notes.", placeholder: "https://www.youtube.com/watch?v=..." },
 ];
 
@@ -56,6 +56,13 @@ export default function SummarizerPage() {
   const [audioQuestionHistory, setAudioQuestionHistory] = useState<Array<{ question: string; answer: string; id: string }>>([]);
   const [currentAudioQuestion, setCurrentAudioQuestion] = useState<string>("");
   const [isProcessingAudio, setIsProcessingAudio] = useState<boolean>(false);
+
+  const [uploadedSlideFile, setUploadedSlideFile] = useState<File | null>(null);
+  const slideFileInputRef = useRef<HTMLInputElement>(null);
+  const [slideProcessingOutput, setSlideProcessingOutput] = useState<AIGuidedStudySessionOutput | null>(null);
+  const [slideQuestionHistory, setSlideQuestionHistory] = useState<Array<{ question: string; answer: string; id: string }>>([]);
+  const [currentSlideQuestion, setCurrentSlideQuestion] = useState<string>("");
+  const [isProcessingSlides, setIsProcessingSlides] = useState<boolean>(false);
 
 
   const [isLoading, setIsLoading] = useState<boolean>(false); 
@@ -86,6 +93,12 @@ export default function SummarizerPage() {
       setAudioProcessingOutput(null);
       setAudioQuestionHistory([]);
       setCurrentAudioQuestion("");
+    }
+    if (activeInputType !== 'powerpoint') {
+      setUploadedSlideFile(null);
+      setSlideProcessingOutput(null);
+      setSlideQuestionHistory([]);
+      setCurrentSlideQuestion("");
     }
   }, [activeInputType]);
 
@@ -212,7 +225,7 @@ export default function SummarizerPage() {
         if(audioFileInputRef.current) audioFileInputRef.current.value = "";
         return;
       }
-      if (file.size > 25 * 1024 * 1024) { // 25MB limit for audio (conceptual)
+      if (file.size > 25 * 1024 * 1024) { 
         toast({ title: "File too large", description: "Please upload an audio file smaller than 25MB.", variant: "destructive" });
         setUploadedAudioFile(null);
         if(audioFileInputRef.current) audioFileInputRef.current.value = "";
@@ -287,6 +300,91 @@ export default function SummarizerPage() {
     }
   };
 
+  const handleSlideFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const allowedTypes = ["application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/pdf"];
+      if (!allowedTypes.includes(file.type)) {
+        toast({ title: "Invalid File Type", description: "Please upload a PPT, PPTX, or PDF file for slides.", variant: "destructive" });
+        setUploadedSlideFile(null);
+        if(slideFileInputRef.current) slideFileInputRef.current.value = "";
+        return;
+      }
+      if (file.size > 15 * 1024 * 1024) { // 15MB limit for slides
+        toast({ title: "File too large", description: "Please upload a slide file smaller than 15MB.", variant: "destructive" });
+        setUploadedSlideFile(null);
+        if(slideFileInputRef.current) slideFileInputRef.current.value = "";
+        return;
+      }
+      setUploadedSlideFile(file);
+      setSlideProcessingOutput(null);
+      setSlideQuestionHistory([]);
+      setCurrentSlideQuestion("");
+      setError(null);
+      toast({ title: "Slide File Selected", description: `Ready to process "${file.name}".`});
+    }
+  };
+
+  const handleSummarizeSlides = async () => {
+    if (!uploadedSlideFile || !profile) {
+      toast({ title: "Missing Input", description: "Please upload a slide file and ensure you are logged in.", variant: "destructive" });
+      return;
+    }
+    setIsProcessingSlides(true);
+    setError(null);
+    setSlideProcessingOutput(null);
+    setSlideQuestionHistory([]);
+
+    try {
+      const aiInput: AIGuidedStudySessionInput = {
+        studentProfile: { ...profile, age: Number(profile.age) },
+        specificTopic: "Slide Content Summarization & Q&A",
+        question: `Summarize the slides: ${uploadedSlideFile.name}`,
+        originalFileName: uploadedSlideFile.name,
+      };
+      const result = await aiGuidedStudySession(aiInput);
+      setSlideProcessingOutput(result);
+      toast({ title: "Slide Summary Generated", description: `Summary for "${uploadedSlideFile.name}" is ready.` });
+    } catch (e) {
+      console.error("Slide Summarization error:", e);
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during slide summarization.";
+      setError(errorMessage);
+      toast({ title: "Slide Summarization Failed", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsProcessingSlides(false);
+    }
+  };
+
+  const handleAskSlideQuestion = async () => {
+    if (!currentSlideQuestion.trim() || !uploadedSlideFile || !profile) {
+      toast({ title: "Missing Input", description: "Please type a question and ensure a slide file is loaded.", variant: "destructive" });
+      return;
+    }
+    setIsProcessingSlides(true);
+    setError(null);
+
+    try {
+      const aiInput: AIGuidedStudySessionInput = {
+        studentProfile: { ...profile, age: Number(profile.age) },
+        specificTopic: "Slide Content Summarization & Q&A",
+        question: currentSlideQuestion,
+        originalFileName: uploadedSlideFile.name,
+      };
+      const result = await aiGuidedStudySession(aiInput);
+      setSlideProcessingOutput(result);
+      setSlideQuestionHistory(prev => [...prev, { question: currentSlideQuestion, answer: result.response, id: crypto.randomUUID() }]);
+      setCurrentSlideQuestion("");
+      toast({ title: "Answer Received", description: "AI has responded to your question about the slides." });
+    } catch (e) {
+      console.error("Slide Q&A error:", e);
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during slide Q&A.";
+      setError(errorMessage);
+      toast({ title: "Slide Q&A Failed", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsProcessingSlides(false);
+    }
+  };
+
 
   const handleFeatureUnderDevelopment = (inputTypeLabel: string) => {
     toast({
@@ -303,6 +401,8 @@ export default function SummarizerPage() {
       handleSummarizePdf();
     } else if (activeInputType === "recording") {
       handleSummarizeAudio();
+    } else if (activeInputType === "powerpoint") {
+      handleSummarizeSlides();
     }
      else {
       handleFeatureUnderDevelopment(currentInputTypeConfig.label);
@@ -368,6 +468,22 @@ export default function SummarizerPage() {
                  <p className="text-xs text-muted-foreground mt-2">Max file size: 25MB. Supported: MP3, WAV, M4A etc. AI will summarize based on filename.</p>
             </div>
         );
+      case "powerpoint":
+         return (
+            <div
+                className="flex flex-col items-center justify-center p-6 sm:p-8 border-2 border-dashed border-primary/30 rounded-xl min-h-[200px] bg-card shadow-sm"
+            >
+                <input type="file" ref={slideFileInputRef} onChange={handleSlideFileChange} accept=".ppt,.pptx,.pdf" className="hidden" id="slide-upload-input" />
+                <Button variant="outline" size="lg" onClick={() => slideFileInputRef.current?.click()} className="mb-3">
+                    <UploadCloud className="mr-2 h-5 w-5" /> Upload Slides (PPT, PDF)
+                </Button>
+                {uploadedSlideFile && (
+                    <p className="text-sm text-muted-foreground mb-2">Selected: <span className="font-medium text-primary">{uploadedSlideFile.name}</span></p>
+                )}
+                {!uploadedSlideFile && <p className="text-xs text-muted-foreground">{currentInputTypeConfig.placeholder}</p>}
+                 <p className="text-xs text-muted-foreground mt-2">Max file size: 15MB. AI will summarize based on filename.</p>
+            </div>
+        );
       case "video":
         return (
             <div className="p-4 sm:p-6 border-2 border-dashed border-primary/30 rounded-xl bg-card shadow-sm text-center">
@@ -385,25 +501,6 @@ export default function SummarizerPage() {
                     />
                 </div>
                  <p className="text-xs text-muted-foreground mt-1">Currently supports YouTube video links.</p>
-            </div>
-        );
-      case "powerpoint":
-         return (
-            <div
-                className="flex flex-col items-center justify-center p-6 sm:p-8 border-2 border-dashed border-primary/30 rounded-xl min-h-[200px] bg-card shadow-sm cursor-pointer hover:border-primary/50 dark:hover:border-primary/50 transition-colors"
-                onClick={() => handleFeatureUnderDevelopment(currentInputTypeConfig.label)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && handleFeatureUnderDevelopment(currentInputTypeConfig.label)}
-            >
-                <currentInputTypeConfig.icon className="h-12 w-12 text-primary mx-auto mb-4 opacity-80"/>
-                <p className="text-base font-semibold text-foreground mb-1">Click or drag file to upload</p>
-                <p className="text-xs text-muted-foreground mb-4">
-                    {currentInputTypeConfig.label} summarization is coming soon!
-                </p>
-                <Button variant="outline" size="sm" className="pointer-events-none">
-                    <UploadCloud className="mr-2 h-4 w-4" /> Upload File
-                </Button>
             </div>
         );
       default:
@@ -433,6 +530,7 @@ export default function SummarizerPage() {
                 setGeneratedNoteOutput(null); setError(null); setInputText(""); setVideoUrl("");
                 setUploadedPdfFile(null); setPdfProcessingOutput(null); setPdfQuestionHistory([]); setCurrentPdfQuestion("");
                 setUploadedAudioFile(null); setAudioProcessingOutput(null); setAudioQuestionHistory([]); setCurrentAudioQuestion("");
+                setUploadedSlideFile(null); setSlideProcessingOutput(null); setSlideQuestionHistory([]); setCurrentSlideQuestion("");
               }}
               className={cn(
                 "px-3 py-1.5 h-auto text-xs sm:text-sm rounded-md flex items-center gap-1.5 sm:gap-2",
@@ -452,23 +550,24 @@ export default function SummarizerPage() {
         <div className="mt-6 text-center">
             <Button
             onClick={handleMainGenerateClick}
-            disabled={isLoading || isProcessingPdf || isProcessingAudio ||
+            disabled={isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides ||
               (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
               (activeInputType === "pdf" && !uploadedPdfFile) ||
               (activeInputType === "recording" && !uploadedAudioFile) ||
-              (activeInputType === "video" && !videoUrl.trim()) ||
-              activeInputType === "powerpoint" 
+              (activeInputType === "powerpoint" && !uploadedSlideFile) ||
+              (activeInputType === "video" && !videoUrl.trim())
             }
             size="lg"
             className="px-8 py-3 text-base"
             >
-            {(isLoading || isProcessingPdf || isProcessingAudio) ? (
+            {(isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides) ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : (
                 <Wand2 className="mr-2 h-5 w-5" />
             )}
             {activeInputType === 'pdf' ? "Summarize PDF & Start Q&A" 
               : activeInputType === 'recording' ? "Summarize Audio & Start Q&A" 
+              : activeInputType === 'powerpoint' ? "Summarize Slides & Start Q&A"
               : "Generate Notes"}
             </Button>
         </div>
@@ -706,7 +805,94 @@ export default function SummarizerPage() {
         </Card>
       )}
 
+      {/* Display for Slide Summarization & Q&A Output */}
+      {activeInputType === 'powerpoint' && uploadedSlideFile && !isProcessingSlides && (
+        <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center text-xl sm:text-2xl">
+              <Presentation className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>
+              Slide Analysis: <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[200px] sm:max-w-xs" title={uploadedSlideFile.name}>{uploadedSlideFile.name}</span>
+            </CardTitle>
+            <CardDescription>AI summary and Q&A for your slide presentation.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {slideProcessingOutput?.response && (
+              <div>
+                <h3 className="font-semibold text-lg text-primary mb-1.5">
+                  {slideQuestionHistory.length === 0 ? "Summary:" : "Latest Answer:"}
+                </h3>
+                <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">
+                  {slideProcessingOutput.response}
+                </div>
+              </div>
+            )}
+
+            {slideProcessingOutput?.suggestions && slideProcessingOutput.suggestions.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center">
+                  <Sparkles className="mr-2 h-4 w-4 text-accent"/>Suggested Questions:
+                </h3>
+                 <ul className="space-y-1.5">
+                    {slideProcessingOutput.suggestions.map((suggestion, idx) => (
+                        <li key={idx} className="text-xs">
+                        <Button
+                            variant="link"
+                            className="p-0 h-auto text-accent hover:text-accent/80 text-left"
+                            onClick={() => {
+                                setCurrentSlideQuestion(suggestion);
+                            }}
+                        >
+                            <ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}
+                        </Button>
+                        </li>
+                    ))}
+                </ul>
+              </div>
+            )}
+            
+            {slideQuestionHistory.length > 0 && (
+              <div className="pt-4 border-t">
+                <h3 className="font-semibold text-lg text-primary mb-2">Q&A History:</h3>
+                <ScrollArea className="max-h-60 pr-2">
+                <div className="space-y-4">
+                  {slideQuestionHistory.map(item => (
+                    <div key={item.id} className="text-sm">
+                      <p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p>
+                      <p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p>
+                    </div>
+                  ))}
+                </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {slideProcessingOutput && ( 
+              <div className="pt-6 border-t">
+                 <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about "{uploadedSlideFile.name}":</h3>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={currentSlideQuestion}
+                    onChange={(e) => setCurrentSlideQuestion(e.target.value)}
+                    placeholder="Type your question here..."
+                    className="flex-grow"
+                    disabled={isProcessingSlides}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentSlideQuestion.trim()) { e.preventDefault(); handleAskSlideQuestion(); } }}
+                  />
+                  <Button onClick={handleAskSlideQuestion} disabled={isProcessingSlides || !currentSlideQuestion.trim()}>
+                    {isProcessingSlides && currentSlideQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>}
+                    Ask
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="text-xs text-muted-foreground pt-4 border-t mt-2">
+                <Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>
+                AI responses for slides are based on filename and your questions, not actual slide content processing.
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
     </div>
   );
 }
-
