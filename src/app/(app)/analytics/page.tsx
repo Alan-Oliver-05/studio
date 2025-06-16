@@ -50,10 +50,10 @@ export default function AnalyticsPage() {
   }, []);
 
   const getAnalyticsGroupName = (convo: Conversation): string => {
-    // Specific feature topics
     if (convo.topic === "AI Learning Assistant Chat") return "General AI Tutor";
     if (convo.topic === "Homework Help") return "Homework Helper";
     if (convo.topic?.startsWith("Visual Learning")) return "Visual Learning";
+    
     if (convo.topic === "Language Text Translation") return "Text Translator";
     if (convo.topic === "Language Voice Translation") return "Voice Translator";
     if (convo.topic === "Language Conversation Practice") return "Conversation Translator";
@@ -65,11 +65,11 @@ export default function AnalyticsPage() {
     if (convo.topic === "Audio Content Summarization & Q&A") return "Audio Summarizer & Q&A";
     if (convo.topic === "Slide Content Summarization & Q&A") return "Slide Summarizer & Q&A";
     if (convo.topic === "Video Content Summarization & Q&A") return "Video Summarizer & Q&A";
+
     if (convo.topic === "Flashcard Generation") return "Flashcard Generator";
     if (convo.topic === "MCQ Generation") return "MCQ Quiz Generator";
 
-    // Fallback to subject context or general topic
-    if (convo.subjectContext && convo.subjectContext !== convo.topic) return convo.subjectContext; // Prefer specific subject if it's different from a generic topic
+    if (convo.subjectContext && convo.subjectContext !== convo.topic) return convo.subjectContext;
     return convo.topic || "Uncategorized";
   };
 
@@ -98,10 +98,8 @@ export default function AnalyticsPage() {
           newSessionStats.sessionsByType[typeKey].summarizedCount++;
         }
 
-        // Separate logic for 'studySubjects' focusing on academic curriculum sessions
         const academicSessionTopics = [
             "General AI Tutor", "Homework Helper", "Visual Learning", 
-            // Add any other topics that are clearly academic subject related but not specific tools
         ];
         const isSpecificToolSession = !academicSessionTopics.includes(typeKey) && typeKey !== "Uncategorized" && typeKey !== convo.subjectContext;
 
@@ -222,14 +220,21 @@ export default function AnalyticsPage() {
 
 
   const getSessionTypeIcon = (type: string) => {
-    if (type === "General AI Tutor") return <Brain className="inline mr-2 h-4 w-4"/>;
-    if (type === "Language Translator" || type === "Text Translator" || type === "Voice Translator" || type === "Conversation Translator" || type === "Camera Translator") return <Languages className="inline mr-2 h-4 w-4"/>;
-    if (type === "Homework Helper") return <PenSquare className="inline mr-2 h-4 w-4"/>;
-    if (type === "Visual Learning") return <PieChartIcon className="inline mr-2 h-4 w-4"/>;
-    if (type === "Text Summarizer" || type === "PDF Summarizer & Q&A" || type === "Audio Summarizer & Q&A" || type === "Slide Summarizer & Q&A" || type === "Video Summarizer & Q&A") return <Wand2 className="inline mr-2 h-4 w-4"/>;
-    if (type === "Flashcard Generator") return <Sparkles className="inline mr-2 h-4 w-4"/>;
-    if (type === "MCQ Quiz Generator") return <HelpCircle className="inline mr-2 h-4 w-4"/>;
-    return <BookOpen className="inline mr-2 h-4 w-4"/>;
+    if (type === "General AI Tutor") return <Brain className="inline mr-2 h-4 w-4 text-blue-500"/>;
+    if (type === "Language Translator (Legacy)" || type === "Text Translator" || type === "Voice Translator" || type === "Conversation Translator" || type === "Camera Translator") return <Languages className="inline mr-2 h-4 w-4 text-green-500"/>;
+    if (type === "Homework Helper") return <PenSquare className="inline mr-2 h-4 w-4 text-purple-500"/>;
+    if (type === "Visual Learning") return <PieChartIcon className="inline mr-2 h-4 w-4 text-orange-500"/>;
+    
+    if (type === "Text Summarizer") return <FileText className="inline mr-2 h-4 w-4 text-yellow-600" />;
+    if (type === "PDF Summarizer & Q&A") return <FileText className="inline mr-2 h-4 w-4 text-red-500" />;
+    if (type === "Audio Summarizer & Q&A") return <Mic className="inline mr-2 h-4 w-4 text-sky-500" />;
+    if (type === "Slide Summarizer & Q&A") return <Layers className="inline mr-2 h-4 w-4 text-orange-600" />;
+    if (type === "Video Summarizer & Q&A") return <VideoIcon className="inline mr-2 h-4 w-4 text-rose-500" />;
+    
+    if (type === "Flashcard Generator") return <Sparkles className="inline mr-2 h-4 w-4 text-amber-500"/>;
+    if (type === "MCQ Quiz Generator") return <HelpCircle className="inline mr-2 h-4 w-4 text-cyan-500"/>;
+    
+    return <BookOpen className="inline mr-2 h-4 w-4 text-gray-500"/>;
   };
 
 
@@ -245,7 +250,7 @@ export default function AnalyticsPage() {
       </div>
 
       {noDataAvailable && (
-        <Card className="text-center py-12 shadow-lg max-w-2xl mx-auto bg-card/80 backdrop-blur-sm">
+        <Card className="text-center py-12 shadow-lg max-w-2xl mx-auto bg-card/80 backdrop-blur-sm border-border/50">
             <CardHeader className="p-4">
             <div className="mx-auto bg-primary/10 rounded-full p-4 w-fit">
                 <Sparkles className="h-12 w-12 text-primary" />
@@ -312,9 +317,9 @@ export default function AnalyticsPage() {
 
           <div className="mt-6 space-y-4">
             {Object.entries(sessionStats.sessionsByType).sort(([,a],[,b]) => b.count - a.count).map(([type, data]) => (
-              <Card key={type} className="shadow-md bg-card/80 backdrop-blur-sm border-border/50">
+              <Card key={type} className="shadow-md bg-card/80 backdrop-blur-sm border-border/50 hover:shadow-lg transition-shadow">
                 <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-sm sm:text-base font-semibold text-accent flex items-center">
+                  <CardTitle className="text-sm sm:text-base font-semibold text-accent-foreground flex items-center">
                     {getSessionTypeIcon(type)}
                     {type}
                   </CardTitle>
@@ -400,3 +405,6 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
+
+    
