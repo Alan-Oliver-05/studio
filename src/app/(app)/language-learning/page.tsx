@@ -82,7 +82,7 @@ const languageLearningModes: ModeConfig[] = [
     storageTopic: "Language Camera Translation",
     initialSystemMessageTemplate: "Hello ${profileName}! Upload an image with text, and I'll translate it. Please also specify the target language if it's not your preferred one.",
     placeholderTextTemplate: "Upload an image and type target language if needed...",
-    enableImageUpload: true
+    enableImageUpload: true 
   },
   {
     id: "document", label: "Document/Text", icon: FileTextIcon, 
@@ -295,8 +295,15 @@ export default function LanguageLearningPage() {
                     conversationId={currentConversationId}
                     topic={getStorageTopicForMode("document")}
                 />
+            ) : activeMode === "camera" ? ( // Reverted to use ImageTextTranslatorInterface
+                <ImageTextTranslatorInterface
+                    key={chatKey}
+                    userProfile={profile}
+                    conversationId={currentConversationId}
+                    topic={getStorageTopicForMode("camera")}
+                />
             ) : ( 
-              // Default to DynamicChatInterface for "conversation" and "camera" (Image Text) modes
+              // Default to DynamicChatInterface for "conversation"
               <DynamicChatInterface
                 key={chatKey}
                 userProfile={profile}
