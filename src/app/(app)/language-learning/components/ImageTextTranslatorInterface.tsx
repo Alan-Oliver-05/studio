@@ -8,11 +8,11 @@ import { Card, CardContent, CardHeader, CardDescription, CardFooter, CardTitle }
 import { Loader2, UploadCloud, Languages, Camera, Image as ImageIcon, FileText, ArrowRightLeft, Info, History, Star, ChevronDown } from 'lucide-react';
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from '@/ai/flows/ai-guided-study-session';
 import { addMessageToConversation } from '@/lib/chat-storage';
-import { LANGUAGES } from '@/lib/constants'; 
+import { LANGUAGES } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import NextImage from "next/image"; // Renamed to avoid conflict
+import NextImage from "next/image";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,11 +20,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-
 interface ImageTextTranslatorInterfaceProps {
   userProfile: UserProfile;
   conversationId: string;
-  topic: string; 
+  topic: string;
 }
 
 const displayedTargetLanguages = [
@@ -49,12 +48,11 @@ const LanguageTabButton = ({ lang, isActive, onClick, isDropdownTrigger = false 
   </Button>
 );
 
-
 const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> = ({ userProfile, conversationId, topic }) => {
   const [targetLang, setTargetLang] = useState<string>(LANGUAGES.find(l=>l.label.toLowerCase() === userProfile.preferredLanguage.toLowerCase())?.value || displayedTargetLanguages[0].value);
   const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null);
   const [uploadedImageDataUri, setUploadedImageDataUri] = useState<string | null>(null);
-  
+
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [translatedText, setTranslatedText] = useState<string | null>(null);
 
@@ -70,12 +68,12 @@ const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> 
         toast({ title: "Invalid File Type", description: "Please upload an image file (e.g., PNG, JPG).", variant: "destructive" });
         return;
       }
-      if (file.size > 4 * 1024 * 1024) { 
+      if (file.size > 4 * 1024 * 1024) { // 4MB limit
         toast({ title: "Image too large", description: "Please upload an image smaller than 4MB.", variant: "destructive" });
         return;
       }
       setUploadedImageFile(file);
-      setExtractedText(null); 
+      setExtractedText(null);
       setTranslatedText(null);
       setError(null);
       const reader = new FileReader();
@@ -112,14 +110,13 @@ const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> 
         question: questionForAI,
         photoDataUri: uploadedImageDataUri,
       };
-      
+
       const result = await aiGuidedStudySession(aiInput);
       if (result && result.response) {
-        // Attempt to parse extracted and translated text
         const responseLines = result.response.split('\n');
         let currentExtracted = "";
         let currentTranslated = "";
-        
+
         const extractedLine = responseLines.find(line => line.toLowerCase().startsWith("extracted text"));
         const translatedLine = responseLines.find(line => line.toLowerCase().startsWith("translated text"));
 
@@ -129,10 +126,9 @@ const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> 
         if (translatedLine) {
             currentTranslated = translatedLine.substring(translatedLine.indexOf(':') + 1).trim();
         }
-
+        
         if (!currentExtracted && !currentTranslated && result.response) {
-            // Fallback if specific parsing fails: assume entire response might be the translation or a message
-            currentTranslated = result.response; 
+            currentTranslated = result.response;
             currentExtracted = "AI could not separate extracted text clearly.";
         } else if (!currentTranslated && currentExtracted) {
             currentTranslated = "AI did not provide a translation for the extracted text.";
@@ -145,7 +141,7 @@ const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> 
         setTranslatedText(currentTranslated || "Translation not available or failed.");
 
         const aiMessage: MessageType = {
-          id: crypto.randomUUID(), sender: 'ai', text: result.response, 
+          id: crypto.randomUUID(), sender: 'ai', text: result.response,
           suggestions: result.suggestions, timestamp: Date.now(),
         };
         addMessageToConversation(conversationId, topic, aiMessage, userProfile);
@@ -206,11 +202,11 @@ const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> 
         <div className="flex-1 flex flex-col p-3 sm:p-4 border-2 border-dashed border-input rounded-xl bg-muted/30 items-center justify-center min-h-[250px] md:min-h-0 relative">
           {uploadedImageDataUri ? (
             <div className="relative w-full h-full max-h-[calc(100vh-35rem)] flex items-center justify-center">
-              <NextImage 
-                src={uploadedImageDataUri} 
-                alt={uploadedImageFile?.name || "Uploaded image"} 
-                fill 
-                style={{ objectFit: "contain" }} 
+              <NextImage
+                src={uploadedImageDataUri}
+                alt={uploadedImageFile?.name || "Uploaded image"}
+                fill
+                style={{ objectFit: "contain" }}
                 className="rounded-md"
                 data-ai-hint="uploaded image user content"
               />
@@ -259,8 +255,8 @@ const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> 
           </div>
         </div>
       </CardContent>
-      
-      <div className="flex flex-col items-center justify-between gap-2 p-3 border-t text-xs text-muted-foreground sm:flex-row">
+
+      <CardFooter className="flex flex-col items-center justify-between gap-2 p-3 border-t text-xs text-muted-foreground sm:flex-row">
         <p className="flex items-center">
             <svg className="mr-1.5 h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.0002 22.0002C17.523 22.0002 22.0002 17.523 22.0002 12.0002C22.0002 6.47731 17.523 2.00024 12.0002 2.00024C6.47731 2.00024 2.00024 6.47731 2.00024 12.0002C2.00024 17.523 6.47731 22.0002 12.0002 22.0002Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M7.50024 12.0002L10.0962 14.5962L16.5002 8.19226" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path></svg>
             Powered by Google Cloud Vision & Translation (Conceptual)
@@ -278,7 +274,7 @@ const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> 
                 Send feedback
             </Button>
         </div>
-      </div>
+      </CardFooter>
     </Card>
   );
 };
