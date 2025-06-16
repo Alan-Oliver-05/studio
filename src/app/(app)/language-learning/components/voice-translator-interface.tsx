@@ -116,10 +116,8 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
     };
     
     recognition.onend = () => {
-      if (isListening && !isLoadingAI) { // Only auto-stop if not already processing an AI request
+      if (isListening && !isLoadingAI) { 
          setIsListening(false);
-         // Check if there's content to submit from a continuous listen that just ended
-         // This check is now primarily handled in toggleListening when stopping
       }
     };
     setRecognitionInstance(recognition);
@@ -148,7 +146,7 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
         return;
     }
     if (isListening) {
-      recognitionInstance.stop(); // Stop listening first
+      recognitionInstance.stop(); 
       setIsListening(false);
       const fullTranscript = (transcript + " " + interimTranscript).trim();
       if (fullTranscript) { 
@@ -175,12 +173,11 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
   const handleSubmitTranscript = async (textToTranslate: string) => {
     if (!textToTranslate.trim()) {
       toast({ title: "No input", description: "Nothing to translate.", variant: "default" });
-      setIsLoadingAI(false); // Ensure loading is false if nothing to submit
+      setIsLoadingAI(false); 
       return;
     }
     setIsLoadingAI(true);
     setError(null);
-    // isListening is already false if this is called after stopping.
 
     const targetLangLabel = LANGUAGES.find(l => l.value === targetLang)?.label || targetLang;
     const userMessage: MessageType = {
@@ -204,8 +201,7 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
         };
         setAiResponse(newAiMessage);
         addMessageToConversation(conversationId, topic, newAiMessage, userProfile);
-        // Transcript state is already updated by recognition.onresult
-        setInterimTranscript(''); // Clear interim after final submission
+        setInterimTranscript(''); 
       } else { throw new Error("AI response was empty for voice translation."); }
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Failed to get translation.";
@@ -218,7 +214,7 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
       addMessageToConversation(conversationId, topic, errorAiMessage, userProfile);
     } finally {
       setIsLoadingAI(false);
-      setTranscript(''); // Clear transcript for next recording
+      setTranscript(''); 
     }
   };
 
@@ -231,7 +227,7 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
     const ttsLang = targetLang; 
     const voices = window.speechSynthesis.getVoices();
     let targetVoice = voices.find(voice => voice.lang.startsWith(ttsLang.split('-')[0]));
-    if (!targetVoice) targetVoice = voices.find(voice => voice.lang.startsWith(userProfile.preferredLanguage.split('-')[0])); // Fallback to user's pref lang
+    if (!targetVoice) targetVoice = voices.find(voice => voice.lang.startsWith(userProfile.preferredLanguage.split('-')[0])); 
     if (!targetVoice) targetVoice = voices.find(voice => voice.lang.startsWith('en')); 
     
     if (targetVoice) utterance.voice = targetVoice;
