@@ -39,6 +39,16 @@ const DocumentTranslatorInterface = dynamic(() =>
   }
 );
 
+// This component is no longer directly used by the "camera" (Image Text) mode as per user's latest instruction.
+// It remains in the project for potential future use or if the user changes their mind.
+const ImageTextTranslatorInterface = dynamic(() =>
+  import('./components/ImageTextTranslatorInterface').then((mod) => mod.default),
+  {
+    loading: () => <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
+    ssr: false
+  }
+);
+
 
 interface ModeConfig {
   id: LanguageLearningMode;
@@ -52,14 +62,6 @@ interface ModeConfig {
 }
 
 const languageLearningModes: ModeConfig[] = [
-  // {
-  //   id: "text", label: "Text", icon: TypeIcon, 
-  //   description: "Translate typed text. Ask for grammar explanations or usage context.", 
-  //   storageTopic: "Language Text Translation",
-  //   initialSystemMessageTemplate: "Hello ${profileName}! I'm ready for text translation. Type your text and specify the target language (e.g., 'Translate 'hello' to Spanish'). You can also ask for grammar help!",
-  //   placeholderTextTemplate: "E.g., Translate 'How are you?' to German, or explain this French phrase...",
-  //   enableImageUpload: false
-  // },
   {
     id: "voice", label: "Voice", icon: Mic, 
     description: "Speak and get instant voice translations. Supports multiple languages.", 
@@ -79,7 +81,7 @@ const languageLearningModes: ModeConfig[] = [
   {
     id: "camera", label: "Image Text", icon: CameraIcon, 
     description: "Translate text from images captured or uploaded from your device.", 
-    storageTopic: "Language Camera Translation", 
+    storageTopic: "Language Camera Translation",
     initialSystemMessageTemplate: "Hello ${profileName}! Upload an image with text, and I'll translate it. Please also specify the target language if it's not your preferred one.",
     placeholderTextTemplate: "Upload an image and type target language if needed...",
     enableImageUpload: true
@@ -135,7 +137,6 @@ export default function LanguageLearningPage() {
     const sessionIdFromQuery = searchParams.get('sessionId');
     let targetMode = modeFromQuery || activeMode;
     
-    // Ensure targetMode is valid, default to first if not
     if (!languageLearningModes.find(m => m.id === targetMode)) {
         targetMode = languageLearningModes[0].id;
     }
@@ -221,7 +222,7 @@ export default function LanguageLearningPage() {
 
   const getInitialMessageForMode = (modeConfig: ModeConfig, currentProfile: UserProfile) => {
     let initialMessage = modeConfig.initialSystemMessageTemplate.replace(/\$\{profileName\}/g, currentProfile.name);
-     if (modeConfig.id === 'mindmaps' && currentConversationId && searchParams.get('sessionId')) { // Though 'mindmaps' isn't in this file's modes, kept for robustness
+     if (modeConfig.id === 'mindmaps' && currentConversationId && searchParams.get('sessionId')) { 
         const conversation = getConversationById(currentConversationId);
         const firstUserMessage = conversation?.messages.find(m => m.sender === 'user');
         if(firstUserMessage?.text && (firstUserMessage.text.length < 100)) {
@@ -235,7 +236,7 @@ export default function LanguageLearningPage() {
   
   return (
     <div className="h-full flex flex-col pt-0 bg-gradient-to-br from-background via-primary/5 to-background">
-       <div className="mb-4 pt-0 mt-0 px-1">
+       <div className="mb-4 pt-0 mt-0 px-4 sm:px-0"> {/* Added responsive padding */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
           <div className="flex items-center mb-2 sm:mb-0">
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-primary flex items-center">
@@ -255,7 +256,7 @@ export default function LanguageLearningPage() {
         </p>
       </div>
 
-      <div className="flex justify-center mb-4 sm:mb-6">
+      <div className="flex justify-center mb-4 sm:mb-6 px-4 sm:px-0"> {/* Added responsive padding */}
         <div className="bg-muted p-1 rounded-lg shadow-sm flex flex-wrap justify-center gap-1">
           {languageLearningModes.map((mode) => {
             const Icon = mode.icon;
@@ -279,7 +280,7 @@ export default function LanguageLearningPage() {
         </div>
       </div>
 
-      <div className="flex-grow min-h-0 w-full max-w-4xl mx-auto bg-card shadow-xl rounded-xl border border-border/60 overflow-hidden">
+      <div className="flex-grow min-h-0 w-full max-w-4xl mx-auto bg-card shadow-xl rounded-xl border border-border/60 overflow-hidden px-0 sm:px-0"> {/* Ensure no extra padding here */}
         {profile && currentConversationId && chatKey && (
           <>
             {activeMode === "voice" ? (
@@ -297,6 +298,7 @@ export default function LanguageLearningPage() {
                     topic={getStorageTopicForMode("document")}
                 />
             ) : ( 
+              // Default to DynamicChatInterface for "conversation" and "camera" (Image Text) modes
               <DynamicChatInterface
                 key={chatKey}
                 userProfile={profile}
@@ -310,7 +312,7 @@ export default function LanguageLearningPage() {
           </>
         )}
       </div>
-       <div className="text-center mt-6 py-2">
+       <div className="text-center mt-6 py-2 px-4 sm:px-0"> {/* Added responsive padding */}
             <Sparkles className="h-5 w-5 text-accent mx-auto mb-1.5 opacity-80"/>
             <p className="text-xs text-muted-foreground">
               {activeModeConfig.description} Your preferred language is {profile.preferredLanguage}.
@@ -319,5 +321,4 @@ export default function LanguageLearningPage() {
     </div>
   );
 }
-
     
