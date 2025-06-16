@@ -209,9 +209,12 @@ export default function SummarizerPage() {
         <div className="mt-6 text-center">
             <Button
             onClick={handleMainGenerateClick}
-            disabled={isLoading || 
-                (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
-                (activeInputType === "video" && !videoUrl.trim())
+            disabled={isLoading ||
+              (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
+              (activeInputType === "video" && !videoUrl.trim()) ||
+              activeInputType === "pdf" ||
+              activeInputType === "recording" ||
+              activeInputType === "powerpoint"
             }
             size="lg"
             className="px-8 py-3 text-base"
