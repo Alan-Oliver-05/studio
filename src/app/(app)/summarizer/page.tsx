@@ -98,7 +98,7 @@ export default function SummarizerPage() {
   }, [inputText, activeInputType]);
   
   useEffect(() => {
-    setCurrentMediaConversationId(null); // Reset conversation ID when mode changes
+    setCurrentMediaConversationId(null); 
     if (activeInputType !== 'pdf') {
       setUploadedPdfFile(null);
       setPdfProcessingOutput(null);
@@ -643,7 +643,7 @@ export default function SummarizerPage() {
               onChange={(e) => setInputText(e.target.value)}
               rows={10}
               className="resize-none w-full !border-0 focus-visible:!ring-0 focus-visible:!ring-offset-0 p-2 bg-transparent placeholder:text-muted-foreground/70 text-sm"
-              disabled={isLoadingState}
+              disabled={isLoading}
               maxLength={MAX_CHARACTERS}
               aria-label="Text to summarize"
             />
@@ -730,7 +730,7 @@ export default function SummarizerPage() {
                             value={videoUrl}
                             onChange={(e) => setVideoUrl(e.target.value)}
                             className="pl-10 text-sm h-11"
-                            disabled={isLoadingState || isProcessingVideo} 
+                            disabled={isLoading || isProcessingVideo} 
                             aria-label="YouTube video URL"
                         />
                     </div>
@@ -798,7 +798,7 @@ export default function SummarizerPage() {
         <div className="mt-6 text-center">
             <Button
             onClick={handleMainGenerateClick}
-            disabled={isLoadingState || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo ||
+            disabled={isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo ||
               (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
               (activeInputType === "pdf" && !uploadedPdfFile) ||
               (activeInputType === "recording" && !uploadedAudioFile) ||
@@ -808,7 +808,7 @@ export default function SummarizerPage() {
             size="lg"
             className="px-8 py-3 text-base"
             >
-            {(isLoadingState || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo) ? (
+            {(isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo) ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : (
                 <Wand2 className="mr-2 h-5 w-5" />
@@ -832,7 +832,7 @@ export default function SummarizerPage() {
         </Alert>
       )}
 
-      {activeInputType === 'text' && generatedNoteOutput && !isLoadingState && (
+      {activeInputType === 'text' && generatedNoteOutput && !isLoading && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center text-xl sm:text-2xl"><Brain className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>AI-Generated Notes from Text</CardTitle>
