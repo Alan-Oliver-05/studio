@@ -1,3 +1,4 @@
+
 import { config } from 'dotenv';
 config();
 
@@ -13,3 +14,5 @@ import '@/ai/flows/summarize-text-flow.ts';
 // import '@/ai/flows/conversational-q-and-a.ts'; // Removed
 import '@/ai/flows/interactive-q-and-a.ts';
 // import '@/ai/flows/generate-mcq.ts'; // Removed
+import '@/ai/flows/generate-flashcards-from-document-flow.ts';
+import '@/ai/flows/generate-mcqs-from-document-flow.ts';

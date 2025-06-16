@@ -17,6 +17,7 @@ import {
   PieChartIcon,
   FileText,
   UserCircle2,
+  Sparkles, 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -40,6 +41,7 @@ const navItems = [
   { href: "/visual-learning", icon: PieChartIcon, label: "Visual Learning" },
   { href: "/language-learning", icon: Languages, label: "Language Translator" }, 
   { href: "/summarizer", icon: FileText, label: "AI Note Taker" },
+  { href: "/flashcards", icon: Sparkles, label: "AI Flashcards" }, 
   { href: "/todo", icon: ListChecks, label: "To-Do List" }, 
   { href: "/notepad", icon: NotebookText, label: "Note Pad" },
   { href: "/library", icon: LibraryBig, label: "My Library" },
@@ -56,6 +58,7 @@ export function SidebarNav() {
   const isNavItemActive = (itemHref: string) => {
     if (itemHref === "/dashboard") return pathname === itemHref || pathname === "/";
     if (itemHref === "/language-learning") return pathname.startsWith("/language-learning"); 
+    if (itemHref === "/flashcards") return pathname.startsWith("/flashcards");
     return pathname.startsWith(itemHref);
   };
   
