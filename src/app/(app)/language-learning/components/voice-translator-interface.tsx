@@ -4,13 +4,20 @@
 import { useState, useEffect, useRef } from 'react';
 import type { UserProfile, Message as MessageType } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Mic, MicOff, Volume2, AlertCircle, Settings2, Languages, Info, Sparkles } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Loader2, Mic, MicOff, Volume2, AlertCircle, Settings2, Languages, Info, Sparkles, FileText, History, Star, ChevronDown, Send } from 'lucide-react';
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from '@/ai/flows/ai-guided-study-session';
 import { addMessageToConversation, getConversationById } from '@/lib/chat-storage';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { LANGUAGES } from '@/lib/constants';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface VoiceTranslatorInterfaceProps {
   userProfile: UserProfile;
@@ -25,6 +32,29 @@ declare global {
   }
 }
 
+const displayedTargetLanguages = [
+  { value: "en", label: "English" },
+  { value: "ta", label: "Tamil" },
+  { value: "es", label: "Spanish" },
+];
+
+const LanguageTabButton = ({ lang, isActive, onClick, isDropdownTrigger = false }: { lang: {value: string, label: string}, isActive?: boolean, onClick?: () => void, isDropdownTrigger?: boolean }) => (
+  <Button
+    variant="ghost"
+    size="sm"
+    onClick={onClick}
+    className={cn(
+      "text-xs px-2.5 py-1 h-auto rounded-md font-medium",
+      isActive ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/5",
+      isDropdownTrigger && "ml-1"
+    )}
+  >
+    {lang.label}
+    {isDropdownTrigger && <ChevronDown className="ml-1 h-3.5 w-3.5" />}
+  </Button>
+);
+
+
 const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ userProfile, conversationId, topic }) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -35,7 +65,10 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [recognitionInstance, setRecognitionInstance] = useState<any>(null);
   const { toast } = useToast();
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const transcriptScrollRef = useRef<HTMLDivElement>(null);
+  const translationScrollRef = useRef<HTMLDivElement>(null);
+  const [targetLang, setTargetLang] = useState<string>(LANGUAGES.find(l=>l.label.toLowerCase() === userProfile.preferredLanguage.toLowerCase())?.value || displayedTargetLanguages[0].value);
+
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -83,8 +116,10 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
     };
     
     recognition.onend = () => {
-      if (isListening && !isLoadingAI) {
+      if (isListening && !isLoadingAI) { // Only auto-stop if not already processing an AI request
          setIsListening(false);
+         // Check if there's content to submit from a continuous listen that just ended
+         // This check is now primarily handled in toggleListening when stopping
       }
     };
     setRecognitionInstance(recognition);
@@ -95,10 +130,16 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
   }, [userProfile.preferredLanguage]); 
 
    useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
+    if (transcriptScrollRef.current) {
+      transcriptScrollRef.current.scrollTo({ top: transcriptScrollRef.current.scrollHeight, behavior: 'smooth' });
     }
-  }, [transcript, aiResponse, interimTranscript]);
+  }, [transcript, interimTranscript]);
+
+  useEffect(() => {
+    if (translationScrollRef.current) {
+        translationScrollRef.current.scrollTo({ top: translationScrollRef.current.scrollHeight, behavior: 'smooth'});
+    }
+  }, [aiResponse]);
 
 
   const toggleListening = () => {
@@ -107,10 +148,13 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
         return;
     }
     if (isListening) {
-      recognitionInstance.stop();
+      recognitionInstance.stop(); // Stop listening first
       setIsListening(false);
-      if (transcript.trim() || interimTranscript.trim()) { 
-        handleSubmitTranscript(transcript.trim() + interimTranscript.trim());
+      const fullTranscript = (transcript + " " + interimTranscript).trim();
+      if (fullTranscript) { 
+        handleSubmitTranscript(fullTranscript);
+      } else {
+        toast({ title: "No speech recorded", description: "Mic stopped. Nothing to translate.", variant: "default" });
       }
     } else {
       setTranscript(''); 
@@ -121,8 +165,9 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
         recognitionInstance.start();
         setIsListening(true);
       } catch (e) {
-        setError("Failed to start microphone. It might be in use by another app.");
+        setError("Failed to start microphone. It might be in use by another app or a browser restriction.");
         setIsListening(false);
+        toast({title: "Mic Start Error", description: "Could not start microphone.", variant: "destructive"});
       }
     }
   };
@@ -130,18 +175,17 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
   const handleSubmitTranscript = async (textToTranslate: string) => {
     if (!textToTranslate.trim()) {
       toast({ title: "No input", description: "Nothing to translate.", variant: "default" });
-      setIsListening(false); 
-      if (recognitionInstance) recognitionInstance.stop();
+      setIsLoadingAI(false); // Ensure loading is false if nothing to submit
       return;
     }
     setIsLoadingAI(true);
     setError(null);
-    setIsListening(false); 
-    if (recognitionInstance) recognitionInstance.stop();
+    // isListening is already false if this is called after stopping.
 
+    const targetLangLabel = LANGUAGES.find(l => l.value === targetLang)?.label || targetLang;
     const userMessage: MessageType = {
       id: crypto.randomUUID(), sender: 'user',
-      text: `User spoke: "${textToTranslate}". Please translate this.`,
+      text: `User spoke: "${textToTranslate}". Request to translate to ${targetLangLabel}.`,
       timestamp: Date.now(),
     };
     addMessageToConversation(conversationId, topic, userMessage, userProfile);
@@ -150,7 +194,7 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
       const aiInput: AIGuidedStudySessionInput = {
         studentProfile: { ...userProfile, age: Number(userProfile.age) },
         specificTopic: "LanguageTranslatorMode", 
-        question: `Translate the following spoken text: "${textToTranslate}"`,
+        question: `Translate the following spoken text: "${textToTranslate}" to ${targetLangLabel}.`,
       };
       const result = await aiGuidedStudySession(aiInput);
       if (result && result.response) {
@@ -160,9 +204,9 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
         };
         setAiResponse(newAiMessage);
         addMessageToConversation(conversationId, topic, newAiMessage, userProfile);
-        setTranscript(prev => prev + textToTranslate + " "); 
-        setInterimTranscript(''); 
-      } else { throw new Error("AI response was empty."); }
+        // Transcript state is already updated by recognition.onresult
+        setInterimTranscript(''); // Clear interim after final submission
+      } else { throw new Error("AI response was empty for voice translation."); }
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Failed to get translation.";
       setError(errorMessage);
@@ -174,22 +218,24 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
       addMessageToConversation(conversationId, topic, errorAiMessage, userProfile);
     } finally {
       setIsLoadingAI(false);
+      setTranscript(''); // Clear transcript for next recording
     }
   };
 
   const speakResponse = () => {
-    if (!aiResponse || !aiResponse.text || typeof window.speechSynthesis === 'undefined') {
-      toast({title: "Cannot Speak", description: "No response to speak or speech synthesis not supported.", variant: "destructive"});
+    if (!aiResponse || !aiResponse.text || typeof window.speechSynthesis === 'undefined' || aiResponse.text.startsWith("Error:")) {
+      toast({title: "Cannot Speak", description: "No valid translation to speak or speech synthesis not supported.", variant: "destructive"});
       return;
     }
     const utterance = new SpeechSynthesisUtterance(aiResponse.text);
-    const preferredLangForTTS = userProfile.preferredLanguage; 
+    const ttsLang = targetLang; 
     const voices = window.speechSynthesis.getVoices();
-    let targetVoice = voices.find(voice => voice.lang.startsWith(preferredLangForTTS.split('-')[0]));
+    let targetVoice = voices.find(voice => voice.lang.startsWith(ttsLang.split('-')[0]));
+    if (!targetVoice) targetVoice = voices.find(voice => voice.lang.startsWith(userProfile.preferredLanguage.split('-')[0])); // Fallback to user's pref lang
     if (!targetVoice) targetVoice = voices.find(voice => voice.lang.startsWith('en')); 
     
     if (targetVoice) utterance.voice = targetVoice;
-    else utterance.lang = preferredLangForTTS; 
+    else utterance.lang = ttsLang; 
 
     window.speechSynthesis.cancel(); 
     window.speechSynthesis.speak(utterance);
@@ -218,70 +264,109 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
     );
   }
 
+  const sourceLangLabel = recognitionInstance?.lang 
+    ? (LANGUAGES.find(l => l.value.startsWith(recognitionInstance.lang.split('-')[0]))?.label || recognitionInstance.lang) 
+    : "Your Default Mic Language";
+
   return (
     <Card className="w-full flex flex-col shadow-none border-0 min-h-[calc(100vh-25rem)] bg-transparent">
-      <CardHeader className="text-center pb-4 pt-2">
-        <div className="mx-auto bg-primary/10 rounded-full p-3 w-fit mb-2">
-            <Languages className="h-8 w-8 text-primary" />
+      <CardHeader className="pb-3 pt-2 border-b">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="flex items-center">
+            <span className="text-sm font-medium text-muted-foreground mr-2">Translate from <span className="text-primary font-semibold">{sourceLangLabel}</span> to:</span>
+            {displayedTargetLanguages.map(lang => (
+              <LanguageTabButton key={lang.value} lang={lang} isActive={targetLang === lang.value} onClick={() => setTargetLang(lang.value)} />
+            ))}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                 <LanguageTabButton lang={{value: "more_target", label: ""}} isDropdownTrigger={true}/>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {LANGUAGES.filter(l => !displayedTargetLanguages.find(dtl => dtl.value === l.value)).map(lang => (
+                  <DropdownMenuItem key={lang.value} onSelect={() => setTargetLang(lang.value)}>
+                    {lang.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-        <CardTitle className="text-xl sm:text-2xl text-gradient-primary">Real-time Voice Translator</CardTitle>
-        <CardDescription className="text-sm">Speak naturally, get instant translations.</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow p-4 space-y-4 flex flex-col items-center">
-        <div className="my-4 sm:my-6">
-          <Button
-            onClick={toggleListening}
-            disabled={isLoadingAI || hasPermission === false}
-            size="lg"
-            className={cn("rounded-full w-24 h-24 text-3xl shadow-xl transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95", 
-                         isListening ? "bg-red-500 hover:bg-red-600 animate-pulse ring-4 ring-red-500/50" : "bg-primary hover:bg-primary/90 ring-4 ring-primary/30"
+
+      <CardContent className="flex-grow p-3 sm:p-4 space-y-3 sm:space-y-4 flex flex-col md:flex-row gap-3 sm:gap-4 items-stretch min-h-0">
+        {/* Left Panel - Voice Input / Transcript */}
+        <div className="flex-1 flex flex-col p-3 sm:p-4 border rounded-xl bg-background shadow-sm min-h-[250px] md:min-h-0">
+            <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-primary flex items-center"><Mic className="h-4 w-4 mr-1.5"/>Your Speech</h3>
+                <Button
+                    onClick={toggleListening}
+                    disabled={isLoadingAI || hasPermission === false}
+                    size="default"
+                    className={cn("rounded-full w-20 h-10 text-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105 active:scale-95", 
+                                isListening ? "bg-red-500 hover:bg-red-600 animate-pulse" : "bg-primary hover:bg-primary/90"
+                    )}
+                    aria-label={isListening ? "Stop recording" : "Start recording"}
+                >
+                    {isLoadingAI && !isListening ? <Loader2 className="h-5 w-5 animate-spin" /> : isListening ? <MicOff className="h-5 w-5"/> : <Mic className="h-5 w-5"/>}
+                </Button>
+            </div>
+            <ScrollArea ref={transcriptScrollRef} className="flex-grow border rounded-md p-2.5 bg-muted/30 min-h-[150px] text-sm shadow-inner">
+                {!transcript && !interimTranscript && !error && (
+                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center">
+                    <Sparkles className="h-8 w-8 text-accent mb-2 opacity-70" />
+                    <p className="font-medium text-xs">{isListening ? "Listening..." : "Click the mic to start speaking."}</p>
+                    </div>
+                )}
+                {transcript && <p className="whitespace-pre-wrap">{transcript}</p>}
+                {interimTranscript && <p className="italic text-muted-foreground">{interimTranscript}</p>}
+                {error && !isListening && <div className="text-destructive p-1 text-xs"><Info className="inline h-3.5 w-3.5 mr-1"/>{error}</div>}
+            </ScrollArea>
+            {isListening && !isLoadingAI && (
+                <Button onClick={toggleListening} variant="outline" size="sm" className="mt-3 w-full sm:w-auto self-center shadow-sm">Stop Recording & Translate</Button>
             )}
-            aria-label={isListening ? "Stop recording" : "Start recording"}
-          >
-            {isLoadingAI ? <Loader2 className="h-10 w-10 animate-spin" /> : isListening ? <MicOff className="h-10 w-10"/> : <Mic className="h-10 w-10"/>}
-          </Button>
         </div>
 
-        <ScrollArea ref={scrollAreaRef} className="w-full flex-grow border rounded-lg p-4 min-h-[200px] bg-muted/30 shadow-inner text-sm">
-          {!transcript && !interimTranscript && !aiResponse && !error && (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center">
-              <Sparkles className="h-10 w-10 text-accent mb-3 opacity-70" />
-              <p className="font-medium">{isListening ? "Listening attentively..." : "Press the microphone to begin speaking."}</p>
-              <p className="text-xs mt-1">Your speech will appear here, followed by its translation.</p>
-            </div>
-          )}
-          {transcript && (
-             <div className="mb-3 p-3 rounded-md bg-background shadow-sm border border-border/50">
-                <p className="font-semibold text-primary text-sm">You said:</p>
-                <p className="whitespace-pre-wrap text-base">{transcript}</p>
-             </div>
-          )}
-          {interimTranscript && (
-            <p className="italic text-muted-foreground text-sm">Listening: {interimTranscript}</p>
-          )}
-          {aiResponse && (
-            <div className={cn("mt-3 p-3 rounded-md shadow-sm border", aiResponse.text.startsWith("Error:") ? "bg-destructive/10 border-destructive/50" : "bg-green-500/10 border-green-500/50")}>
-              <p className={cn("font-semibold text-sm", aiResponse.text.startsWith("Error:") ? "text-destructive" : "text-green-700 dark:text-green-400")}>
-                {aiResponse.text.startsWith("Error:") ? "AI Error:" : "Translation:"}
-              </p>
-              <p className="whitespace-pre-wrap text-base">{aiResponse.text.replace(/^Error: /, '')}</p>
-              {!aiResponse.text.startsWith("Error:") && (
-                <Button onClick={speakResponse} variant="outline" size="sm" className="mt-2.5 shadow-sm hover:bg-accent/50">
-                  <Volume2 className="mr-2 h-4 w-4" /> Speak Translation
-                </Button>
-              )}
-            </div>
-          )}
-           {error && !aiResponse?.text.startsWith("Error:") && (
-                <div className="mt-3 p-3 rounded-md bg-destructive/10 border border-destructive/50 text-destructive text-sm">
-                    <Info className="inline h-4 w-4 mr-1.5 align-text-bottom"/> {error}
-                </div>
+        {/* Right Panel - Translation Output */}
+        <div className="flex-1 flex flex-col p-3 sm:p-4 border rounded-xl bg-background shadow-sm min-h-[250px] md:min-h-0">
+            <h3 className="text-sm font-semibold text-primary mb-2 flex items-center"><Languages className="h-4 w-4 mr-1.5"/>Translation ({LANGUAGES.find(l => l.value === targetLang)?.label || targetLang})</h3>
+            <ScrollArea ref={translationScrollRef} className="flex-grow border rounded-md p-2.5 bg-muted/30 min-h-[150px] text-sm shadow-inner">
+            {isLoadingAI && !aiResponse && <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto my-2" />}
+            {!isLoadingAI && !aiResponse && <p className="text-muted-foreground text-xs italic p-1">Translation will appear here...</p>}
+            {aiResponse && (
+                <>
+                    <p className={cn("whitespace-pre-wrap", aiResponse.text.startsWith("Error:") ? "text-destructive" : "")}>
+                        {aiResponse.text.replace(/^Error: /, '')}
+                    </p>
+                    {!aiResponse.text.startsWith("Error:") && (
+                        <Button onClick={speakResponse} variant="outline" size="xs" className="mt-2.5 shadow-sm hover:bg-accent/50">
+                        <Volume2 className="mr-1.5 h-3.5 w-3.5" /> Speak
+                        </Button>
+                    )}
+                </>
             )}
-        </ScrollArea>
-         <p className="text-xs text-muted-foreground text-center mt-2">
-            Recognition Language: {recognitionInstance?.lang || "default"}. AI will translate to/from your preferred language ({userProfile.preferredLanguage}).
-        </p>
+            </ScrollArea>
+        </div>
       </CardContent>
+      
+      <CardFooter className="flex flex-col items-center justify-between gap-2 p-3 border-t text-xs text-muted-foreground sm:flex-row">
+        <p className="flex items-center">
+            <svg className="mr-1.5 h-4 w-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12.0002 22.0002C17.523 22.0002 22.0002 17.523 22.0002 12.0002C22.0002 6.47731 17.523 2.00024 12.0002 2.00024C6.47731 2.00024 2.00024 6.47731 2.00024 12.0002C2.00024 17.523 6.47731 22.0002 12.0002 22.0002Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path><path d="M7.50024 12.0002L10.0962 14.5962L16.5002 8.19226" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path></svg>
+            Powered by EduAI Voice Engine
+        </p>
+        <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={()=>toast({title:"History", description:"History feature coming soon."})}>
+                <History className="h-4 w-4" />
+                <span className="sr-only">History</span>
+            </Button>
+             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={()=>toast({title:"Saved", description:"Saved translations feature coming soon."})}>
+                <Star className="h-4 w-4" />
+                 <span className="sr-only">Saved</span>
+            </Button>
+            <Button variant="link" size="xs" className="text-muted-foreground hover:text-primary p-0 h-auto text-xs" onClick={()=>toast({title:"Feedback", description:"Feedback system coming soon."})}>
+                Send feedback
+            </Button>
+        </div>
+      </CardFooter>
     </Card>
   );
 };
