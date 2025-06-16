@@ -9,7 +9,7 @@ import { getLessonsForSubject, GetLessonsForSubjectInput } from "@/ai/flows/get-
 import { getTopicsForLesson, GetTopicsForLessonInput } from "@/ai/flows/get-topics-for-lesson";
 import { getConversationById, addMessageToConversation } from "@/lib/chat-storage";
 import { interactiveQAndA } from "@/ai/flows/interactive-q-and-a";
-import { Loader2, AlertTriangle, ChevronRight, BookOpen, Lightbulb, CheckCircle, ChevronLeft, RefreshCw, Home } from "lucide-react";
+import { Loader2, AlertTriangle, ChevronRight, BookOpen, Lightbulb, CheckCircle, ChevronLeft, RefreshCw, Home, FolderOpen, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import dynamic from 'next/dynamic';
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const DynamicChatInterface = dynamic(async () =>
   import('../components/chat-interface').then((mod) => mod.ChatInterface),
@@ -46,7 +47,6 @@ export default function StudySessionPage() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(Date.now().toString());
 
-  // State for Q&A progression, passed to ChatInterface as initial values
   const [initialQAStageForChat, setInitialQAStageForChat] = useState<QAS_Stage>('initial_material');
   const [initialQuestionsInStageForChat, setInitialQuestionsInStageForChat] = useState<number>(0);
 
@@ -184,22 +184,41 @@ export default function StudySessionPage() {
 
           const lastAiMsg = [...conversation.messages].reverse().find(m => m.sender === 'ai');
           if (lastAiMsg?.aiNextStage) {
-            setInitialQAStageForChat(lastAiMsg.aiNextStage);
-            const currentStageFromLastMsg = lastAiMsg.aiNextStage;
-            let questionsInRestoredStage = 0;
-            if (lastAiMsg.aiIsStageComplete && currentStageFromLastMsg !== (lastAiMsg as any).previousStageInternal) { // previousStageInternal is not a real prop, this logic was potentially flawed
-                questionsInRestoredStage = 0;
+            const restoredStage = lastAiMsg.aiNextStage;
+            setCurrentClientStage(restoredStage);
+            
+            let answeredCount = 0;
+            const lastUserMsgIndex = findLastIndex(conversation.messages, m => m.sender === 'user');
+            const lastAIMsgIndex = findLastIndex(conversation.messages, m => m.sender === 'ai');
+
+            if (lastAIMsgIndex > -1 && lastAIMsgIndex > lastUserMsgIndex && lastAiMsg.aiIsStageComplete) {
+               answeredCount = 0;
             } else {
-                questionsInRestoredStage = conversation.messages.filter(
-                    m => m.sender === 'ai' && 
-                         m.aiNextStage === currentStageFromLastMsg && 
-                         !m.aiIsStageComplete 
-                ).length;
+              let aiQuestionForStagePending: MessageType | null = null;
+              for (const msg of conversation.messages) {
+                  if (msg.sender === 'ai' && msg.aiNextStage === restoredStage && !msg.aiIsStageComplete) {
+                      aiQuestionForStagePending = msg;
+                  } else if (msg.sender === 'user' && aiQuestionForStagePending && msg.timestamp > aiQuestionForStagePending.timestamp) {
+                      const aiMsgIndex = conversation.messages.indexOf(aiQuestionForStagePending);
+                      const userMsgIndex = conversation.messages.indexOf(msg);
+                      if (userMsgIndex > aiMsgIndex) { 
+                           answeredCount++;
+                      }
+                      aiQuestionForStagePending = null; 
+                  }
+              }
             }
-            setInitialQuestionsInStageForChat(questionsInRestoredStage);
-          } else {
+            setInitialQuestionsInStageForChat(answeredCount);
+
+            if (restoredStage === 'completed' && lastAiMsg.aiIsStageComplete) {
+              setIsTopicSessionCompleted(true);
+            } else {
+              setIsTopicSessionCompleted(false);
+            }
+          } else { 
             setInitialQAStageForChat('initial_material');
             setInitialQuestionsInStageForChat(0);
+            setIsTopicSessionCompleted(false);
           }
           setCurrentStep("chat");
           return;
@@ -338,27 +357,33 @@ export default function StudySessionPage() {
     switch (currentStep) {
       case "selectLesson":
         return (
-          <Card className="w-full max-w-3xl mx-auto shadow-xl">
-            <CardHeader className="pt-4">
-              <CardTitle className="text-xl sm:text-2xl mt-0">Choose a Lesson in {subjectName}</CardTitle>
-              <CardDescription>Select a lesson to explore its topics.</CardDescription>
+          <Card className="w-full max-w-3xl mx-auto shadow-xl border-border/60">
+            <CardHeader className="pt-5 pb-4">
+              <CardTitle className="text-xl sm:text-2xl mt-0 text-gradient-primary">Choose a Lesson in {subjectName}</CardTitle>
+              <CardDescription>Select a lesson to dive into its topics and begin learning.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[calc(100vh-24rem)] pr-3">
-                <div className="space-y-3">
+            <CardContent className="px-4 sm:px-6">
+              <ScrollArea className="h-[calc(100vh-26rem)] pr-3">
+                <div className="space-y-2.5">
                   {lessons.map((lesson, idx) => (
-                    <Button key={idx} variant="outline" className="w-full justify-between text-left h-auto py-3.5 px-4 hover:bg-primary/5 hover:border-primary transition-all duration-150 ease-in-out group" onClick={() => handleSelectLesson(lesson)}>
-                      <div className="flex-1">
-                        <p className="font-semibold text-md text-foreground group-hover:text-primary">{lesson.name}</p>
-                        {lesson.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{lesson.description}</p>}
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </Button>
+                    <Card 
+                      key={idx}
+                      className="group hover:shadow-md hover:border-primary/50 transition-all duration-200 ease-in-out cursor-pointer"
+                      onClick={() => handleSelectLesson(lesson)}
+                    >
+                      <CardContent className="p-3.5 sm:p-4 flex items-center justify-between">
+                        <div className="flex-1 mr-3">
+                          <p className="font-semibold text-base text-foreground group-hover:text-primary transition-colors">{lesson.name}</p>
+                          {lesson.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{lesson.description}</p>}
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors transform group-hover:translate-x-0.5" />
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               </ScrollArea>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="p-4 border-t">
                 <Button variant="ghost" onClick={() => router.push('/dashboard')} className="text-muted-foreground hover:text-primary">
                   <ChevronLeft className="mr-1 h-4 w-4"/> Back to Dashboard
                 </Button>
@@ -367,27 +392,33 @@ export default function StudySessionPage() {
         );
       case "selectTopic":
         return (
-          <Card className="w-full max-w-3xl mx-auto shadow-xl">
-            <CardHeader className="pt-4">
-              <CardTitle className="text-xl sm:text-2xl mt-0">Choose a Topic in "{selectedLesson?.name}"</CardTitle>
-              <CardDescription>Select a topic to begin your interactive Q&amp;A session.</CardDescription>
+          <Card className="w-full max-w-3xl mx-auto shadow-xl border-border/60">
+            <CardHeader className="pt-5 pb-4">
+              <CardTitle className="text-xl sm:text-2xl mt-0 text-gradient-primary">Choose a Topic in "{selectedLesson?.name}"</CardTitle>
+              <CardDescription>Select a specific topic to start your interactive Q&amp;A session.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[calc(100vh-24rem)] pr-3">
-                <div className="space-y-3">
+            <CardContent className="px-4 sm:px-6">
+              <ScrollArea className="h-[calc(100vh-26rem)] pr-3">
+                <div className="space-y-2.5">
                   {topics.map((topic, idx) => (
-                    <Button key={idx} variant="outline" className="w-full justify-between text-left h-auto py-3.5 px-4 group hover:bg-primary/5 hover:border-primary transition-all duration-150 ease-in-out" onClick={() => handleSelectTopic(topic)}>
-                       <div className="flex-1">
-                        <p className="font-semibold text-md text-foreground group-hover:text-primary">{topic.name}</p>
-                        {topic.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{topic.description}</p>}
-                      </div>
-                      <CheckCircle className="h-5 w-5 text-accent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                    </Button>
+                    <Card 
+                      key={idx}
+                      className="group hover:shadow-md hover:border-primary/50 transition-all duration-200 ease-in-out cursor-pointer"
+                      onClick={() => handleSelectTopic(topic)}
+                    >
+                      <CardContent className="p-3.5 sm:p-4 flex items-center justify-between">
+                        <div className="flex-1 mr-3">
+                          <p className="font-semibold text-base text-foreground group-hover:text-primary transition-colors">{topic.name}</p>
+                          {topic.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{topic.description}</p>}
+                        </div>
+                        <CheckCircle className="h-5 w-5 text-accent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               </ScrollArea>
             </CardContent>
-            <CardFooter className="flex justify-between">
+            <CardFooter className="p-4 border-t flex justify-between">
                 <Button variant="ghost" onClick={handleBackToLessons} className="text-muted-foreground hover:text-primary">
                   <ChevronLeft className="mr-1 h-4 w-4"/> Back to Lessons
                 </Button>
@@ -406,19 +437,24 @@ export default function StudySessionPage() {
         if (selectedTopic && selectedLesson && profile && currentConversationId && chatKey) {
           return (
             <div className="h-full flex flex-col">
-                <div className="mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                    <div className="mb-2 sm:mb-0">
-                        <Button variant="link" size="sm" className="text-muted-foreground hover:text-primary p-0 h-auto text-xs sm:text-sm mb-1" onClick={handleBackToTopics}>
-                            <ChevronLeft className="mr-1 h-3 w-3 sm:h-4 sm:w-4"/> Back to Topics in "{selectedLesson.name}"
+                <div className="mb-3 px-1">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                        <div className="mb-2 sm:mb-0 flex-grow min-w-0">
+                            <Button variant="link" size="sm" className="text-muted-foreground hover:text-primary p-0 h-auto text-xs sm:text-sm mb-1 hover:no-underline" onClick={handleBackToTopics}>
+                                <ChevronLeft className="mr-0.5 h-3 w-3 sm:h-4 sm:w-4"/> Back to Topics in "{selectedLesson.name}"
+                            </Button>
+                            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-primary flex items-center truncate">
+                                <Lightbulb className="mr-2 h-6 w-6 sm:h-7 sm:w-7 text-accent flex-shrink-0"/> 
+                                <span className="truncate" title={selectedTopic.name}>Interactive Q&A: {selectedTopic.name}</span>
+                            </h1>
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                                <span title={subjectName}>Subject: {subjectName}</span> &gt; <span title={selectedLesson.name}>Lesson: {selectedLesson.name}</span>
+                            </p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleNewChatForCurrentTopic} className="self-start sm:self-center mt-1 sm:mt-0">
+                            <RefreshCw className="mr-2 h-4 w-4"/> New Q&A on This Topic
                         </Button>
-                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-primary flex items-center">
-                            <Lightbulb className="mr-2 h-6 w-6 sm:h-7 sm:w-7 text-accent"/> Interactive Q&A: {selectedTopic.name}
-                        </h1>
-                        <p className="text-xs sm:text-sm text-muted-foreground">Subject: {subjectName} &gt; Lesson: {selectedLesson.name}</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleNewChatForCurrentTopic} className="self-start sm:self-center">
-                        <RefreshCw className="mr-2 h-4 w-4"/> New Q&A on This Topic
-                    </Button>
                 </div>
                  <div className="flex-grow min-h-0 max-w-4xl w-full mx-auto">
                     { chatKey && currentConversationId && (
@@ -447,8 +483,8 @@ export default function StudySessionPage() {
   return (
     <div className="h-full flex flex-col pt-0">
         {currentStep !== 'chat' && (
-             <div className="mb-4 text-center pt-0">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary flex items-center justify-center mt-0">
+             <div className="mb-4 text-center pt-2">
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center justify-center mt-0 text-gradient-primary">
                     <BookOpen className="mr-3 h-7 w-7 sm:h-8 sm:w-8"/> Study Session: {subjectName}
                 </h1>
              </div>
@@ -459,4 +495,3 @@ export default function StudySessionPage() {
     </div>
   );
 }
-

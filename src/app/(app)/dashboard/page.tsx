@@ -10,8 +10,9 @@ import type { Subject } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, BookOpen, AlertTriangle, Sparkles, ChevronRight, Presentation } from "lucide-react";
+import { Loader2, BookOpen, AlertTriangle, Sparkles, ChevronRight, Presentation, Rocket, Target, Lightbulb } from "lucide-react";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
@@ -104,7 +105,7 @@ export default function DashboardPage() {
     );
   }
   
-  if (error && subjects.length === 0) { // Show error only if no subjects are loaded
+  if (error && subjects.length === 0) { 
      return (
       <Alert variant="destructive" className="max-w-2xl mx-auto mt-10">
         <AlertTriangle className="h-4 w-4" />
@@ -121,77 +122,91 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="pt-0">
-      <div className="mb-6 text-center pt-0">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gradient-primary mt-0">Welcome, {profile.name}!</h1>
-        <p className="text-lg sm:text-xl text-muted-foreground mt-2">Here are your personalized study recommendations.</p>
+    <div className="pt-0 pb-8">
+      <div className="mb-8 text-center pt-2">
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gradient-primary mt-0">Welcome, {profile.name}!</h1>
+        <p className="text-lg sm:text-xl text-muted-foreground mt-2 max-w-xl mx-auto">
+          Your personalized learning journey starts here. Explore subjects tailored just for you.
+        </p>
       </div>
       {subjects.length === 0 && !isLoadingSubjects && (
-        <Card className="text-center py-8 shadow-lg max-w-2xl mx-auto bg-card/80 backdrop-blur-sm">
+        <Card className="text-center py-10 shadow-lg max-w-2xl mx-auto bg-card/80 backdrop-blur-sm">
           <CardHeader className="p-4">
-            <div className="mx-auto bg-accent/10 rounded-full p-3 w-fit">
-             <Sparkles className="h-10 w-10 text-accent" />
+            <div className="mx-auto bg-accent/10 rounded-full p-4 w-fit">
+             <Lightbulb className="h-12 w-12 text-accent" />
             </div>
-            <CardTitle className="mt-4 text-2xl">No Subjects Found Yet</CardTitle>
+            <CardTitle className="mt-6 text-2xl">No Personalized Subjects Yet</CardTitle>
           </CardHeader>
           <CardContent className="p-4">
             <p className="text-muted-foreground">
-              We couldn't find any specific subject recommendations for you at the moment.
-              This might be due to your unique profile combination or a temporary issue.
-              You can still explore general topics using our AI Tutor or try reloading.
+              It seems we couldn't generate specific subject recommendations based on your profile right now.
+              Don't worry! You can still explore a wide range of topics with our General AI Tutor or try reloading.
             </p>
           </CardContent>
-          <CardFooter className="justify-center p-4 gap-2">
-             <Button asChild variant="default">
-                <Link href="/general-tutor">Explore General Tutor</Link>
+          <CardFooter className="justify-center p-4 gap-3">
+             <Button asChild variant="default" size="lg">
+                <Link href="/general-tutor"><Rocket className="mr-2 h-5 w-5"/> Explore General Tutor</Link>
              </Button>
-             <Button onClick={() => window.location.reload()} variant="outline">Reload Subjects</Button>
+             <Button onClick={() => window.location.reload()} variant="outline" size="lg">Reload Subjects</Button>
           </CardFooter>
         </Card>
       )}
       {subjects.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {subjects.map((subject, index) => (
-            <Card key={index} className="flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 bg-card/90 backdrop-blur-sm border-border/50 hover:border-primary/50">
-              <CardHeader className="p-4 pb-2">
-                <div className="relative h-40 w-full mb-3 rounded-lg overflow-hidden group">
+            <Card 
+              key={index} 
+              className={cn(
+                "flex flex-col overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out",
+                "bg-card/90 backdrop-blur-sm border-border/50 hover:border-primary/60 hover:scale-[1.02]"
+              )}
+            >
+              <CardHeader className="p-0">
+                <div className="relative aspect-[16/10] w-full group">
                   <Image 
-                    src={`https://placehold.co/600x300.png`} 
+                    src={`https://placehold.co/600x375.png`} 
                     alt={subject.name} 
                     fill
                     style={{ objectFit: "cover" }}
-                    data-ai-hint={subject.name.toLowerCase().includes("math") ? "mathematics abstract" : subject.name.toLowerCase().includes("physics") ? "physics science" : subject.name.toLowerCase().includes("history") ? "history books" : "education study"}
-                    className="transition-transform duration-300 group-hover:scale-105"
-                    priority={index < 3} // Prioritize loading images for first few cards
+                    data-ai-hint={subject.name.toLowerCase().includes("math") ? "abstract mathematics" : subject.name.toLowerCase().includes("physics") ? "science experiment" : subject.name.toLowerCase().includes("history") ? "historical artifacts" : "study books"}
+                    className="transition-transform duration-300 group-hover:scale-105 rounded-t-lg"
+                    priority={index < 3} 
                   />
-                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-                   <div className="absolute bottom-2 left-2 bg-primary/80 text-primary-foreground text-xs px-2 py-1 rounded-full backdrop-blur-sm flex items-center">
-                       <Presentation className="w-3 h-3 mr-1.5" />
-                       Personalized
+                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent rounded-t-lg"></div>
+                   <div className="absolute bottom-3 left-3 bg-primary/80 text-primary-foreground text-xs px-2.5 py-1 rounded-full backdrop-blur-sm flex items-center shadow-md">
+                       <Target className="w-3.5 h-3.5 mr-1.5" />
+                       Tailored for You
                    </div>
                 </div>
-                <CardTitle className="text-xl font-semibold text-foreground">{subject.name}</CardTitle>
-                <CardDescription className="text-sm text-muted-foreground h-16 line-clamp-3">{subject.description}</CardDescription>
               </CardHeader>
-              <CardContent className="flex-grow p-4 pt-2">
+              <div className="p-5 flex flex-col flex-grow">
+                <CardTitle className="text-xl font-semibold text-foreground mb-1.5">{subject.name}</CardTitle>
+                <CardDescription className="text-sm text-muted-foreground mb-4 h-16 line-clamp-3">{subject.description}</CardDescription>
+              
                 {subject.studyMaterials && subject.studyMaterials.length > 0 && (
-                  <div>
-                    <h4 className="font-semibold mb-1.5 text-sm text-primary">Key Topics:</h4>
-                    <ul className="list-disc list-inside text-xs text-muted-foreground space-y-1">
+                  <div className="mb-5">
+                    <h4 className="font-semibold mb-1.5 text-sm text-primary">Key Focus Areas:</h4>
+                    <ul className="space-y-1">
                       {subject.studyMaterials.slice(0, 3).map((material, i) => (
-                        <li key={i} className="truncate">{material}</li>
+                        <li key={i} className="text-xs text-muted-foreground flex items-center">
+                           <ChevronRight className="w-3 h-3 mr-1 text-primary/70 flex-shrink-0"/> 
+                           <span className="truncate">{material}</span>
+                        </li>
                       ))}
-                       {subject.studyMaterials.length > 3 && <li className="italic">...and more</li>}
+                       {subject.studyMaterials.length > 3 && <li className="text-xs italic text-muted-foreground/80 pl-4">...and more topics</li>}
                     </ul>
                   </div>
                 )}
-              </CardContent>
-              <CardFooter className="p-4 pt-2 border-t mt-auto">
-                <Button asChild className="w-full" variant="default">
+              </div>
+              <CardFooter className="p-5 pt-0 mt-auto border-t">
+                <Button asChild className="w-full" variant="default" size="lg">
                   <Link
                     href={`/study-session/${encodeURIComponent(subject.name)}`}
+                    className="group"
                   >
-                    <BookOpen className="mr-2 h-4 w-4" /> Start Studying <ChevronRight className="ml-auto h-4 w-4"/>
+                    <BookOpen className="mr-2 h-5 w-5 transition-transform duration-200 group-hover:scale-110" /> 
+                    Start Learning 
+                    <ChevronRight className="ml-auto h-5 w-5 transition-transform duration-200 group-hover:translate-x-1" />
                   </Link>
                 </Button>
               </CardFooter>

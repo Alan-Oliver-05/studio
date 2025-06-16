@@ -10,19 +10,19 @@ export default {
   ],
   theme: {
     fontSize: {
-      'xs': ['0.75rem', { lineHeight: '1rem' }],      // 12px
-      'sm': ['0.8125rem', { lineHeight: '1.125rem' }],// 13px (prev 14px)
-      'base': ['0.9375rem', { lineHeight: '1.375rem' }],// 15px (prev 16px)
-      'lg': ['1.0625rem', { lineHeight: '1.625rem' }], // 17px (prev 18px)
-      'xl': ['1.1875rem', { lineHeight: '1.75rem' }],  // 19px (prev 20px)
-      '2xl': ['1.375rem', { lineHeight: '1.875rem' }], // 22px (prev 24px)
-      '3xl': ['1.75rem', { lineHeight: '2.125rem' }],  // 28px (prev 30px)
-      '4xl': ['2.125rem', { lineHeight: '2.5rem' }],   // 34px (prev 36px)
-      '5xl': ['2.75rem', { lineHeight: '1' }],      // 44px (prev 48px)
-      '6xl': ['3.5rem', { lineHeight: '1' }],       // 56px (prev 60px)
-      '7xl': ['4.25rem', { lineHeight: '1' }],      // 68px (prev 72px)
-      '8xl': ['5.5rem', { lineHeight: '1' }],       // 88px (prev 96px)
-      '9xl': ['7.5rem', { lineHeight: '1' }],       // 120px (prev 128px)
+      'xs': ['0.75rem', { lineHeight: '1rem' }],      
+      'sm': ['0.8125rem', { lineHeight: '1.125rem' }],
+      'base': ['0.9375rem', { lineHeight: '1.375rem' }],
+      'lg': ['1.0625rem', { lineHeight: '1.625rem' }], 
+      'xl': ['1.1875rem', { lineHeight: '1.75rem' }],  
+      '2xl': ['1.375rem', { lineHeight: '1.875rem' }], 
+      '3xl': ['1.75rem', { lineHeight: '2.125rem' }],  
+      '4xl': ['2.125rem', { lineHeight: '2.5rem' }],   
+      '5xl': ['2.75rem', { lineHeight: '1' }],      
+      '6xl': ['3.5rem', { lineHeight: '1' }],       
+      '7xl': ['4.25rem', { lineHeight: '1' }],      
+      '8xl': ['5.5rem', { lineHeight: '1' }],       
+      '9xl': ['7.5rem', { lineHeight: '1' }],       
     },
   	extend: {
   		colors: {
@@ -66,7 +66,7 @@ export default {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			},
-  			sidebar: { // Added sidebar specific colors
+  			sidebar: { 
   				DEFAULT: 'hsl(var(--sidebar-background))',
   				background: 'hsl(var(--sidebar-background))',
   				foreground: 'hsl(var(--sidebar-foreground))',
@@ -105,11 +105,11 @@ export default {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out'
   		},
-      fontFamily: { // Added font family definition from globals.css
+      fontFamily: { 
         sans: ['var(--font-geist-sans)', 'Arial', 'Helvetica', 'sans-serif'],
         mono: ['var(--font-geist-mono)', 'monospace'],
       },
   	}
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")], // Added typography plugin
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")], 
 } satisfies Config;

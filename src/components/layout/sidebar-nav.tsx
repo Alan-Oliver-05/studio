@@ -39,7 +39,7 @@ const navItems = [
   { href: "/general-tutor", icon: Brain, label: "AI Learning Assistant" },
   { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
   { href: "/visual-learning", icon: PieChartIcon, label: "Visual Learning" },
-  { href: "/language-learning", icon: Languages, label: "Language Translator" }, 
+  { href: "/language-learning", icon: Languages, label: "Language Studio" }, 
   { href: "/summarizer", icon: FileText, label: "AI Note Taker" },
   { href: "/flashcards", icon: Sparkles, label: "AI Flashcards" }, 
   { href: "/todo", icon: ListChecks, label: "To-Do List" }, 
@@ -59,6 +59,8 @@ export function SidebarNav() {
     if (itemHref === "/dashboard") return pathname === itemHref || pathname === "/";
     if (itemHref === "/language-learning") return pathname.startsWith("/language-learning"); 
     if (itemHref === "/flashcards") return pathname.startsWith("/flashcards");
+    if (itemHref === "/visual-learning") return pathname.startsWith("/visual-learning");
+    if (itemHref === "/summarizer") return pathname.startsWith("/summarizer");
     return pathname.startsWith(itemHref);
   };
   
@@ -105,7 +107,7 @@ export function SidebarNav() {
                         className={cn(
                           "h-5 w-5 transition-colors", 
                           isActive 
-                            ? "text-sidebar-accent-foreground" 
+                            ? "text-sidebar-primary-foreground" // Use primary-foreground for active icon on accent button
                             : "text-sidebar-foreground/70 group-hover:text-sidebar-accent-foreground"
                         )} 
                       />
@@ -138,7 +140,7 @@ export function SidebarNav() {
                     className={cn(
                       "h-5 w-5 transition-colors", 
                       pathname === settingsItem.href 
-                        ? "text-sidebar-accent-foreground" 
+                        ? "text-sidebar-primary-foreground"
                         : "text-sidebar-foreground/70 group-hover:text-sidebar-accent-foreground"
                     )} 
                   />
