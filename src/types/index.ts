@@ -28,7 +28,7 @@ export interface EducationQualification {
 
 export type EducationCategory = 'board' | 'competitive' | 'university' | 'other' | '';
 export type LearningStyle = 'visual' | 'auditory' | 'kinesthetic' | 'reading_writing' | 'balanced' | '';
-export type LanguageLearningMode = "text" | "voice" | "conversation" | "camera" | "document";
+export type LanguageLearningMode = "voice" | "conversation" | "camera" | "document";
 
 
 export interface UserProfile {
@@ -131,6 +131,18 @@ export interface Note {
   updatedAt: number;
 }
 
+// Renaming from VisualLearningMode to more generic LanguageLearningMode if it was mistakenly named before.
+// export type LanguageLearningMode = "text" | "voice" | "conversation" | "camera" | "document";
+
+export interface ConversationSetupParams {
+  scenario: string;
+  userLanguage: string;
+  aiLanguage: string;
+  difficulty: 'basic' | 'intermediate' | 'advanced';
+  userRole?: string; // Optional role description
+  aiRole?: string;   // Optional role description
+}
+
 
 export interface InteractiveQAndAInput {
   studentProfile: {
@@ -153,6 +165,11 @@ export interface InteractiveQAndAInput {
   conversationHistory?: string | null;
   currentStage?: QAS_Stage; 
   questionsAskedInStage?: number; 
+  // Fields for conversation practice setup
+  conversationScenario?: string;
+  userLanguageRole?: string; // e.g., "English-speaking customer"
+  aiLanguageRole?: string;   // e.g., "French-speaking waiter"
+  conversationDifficulty?: 'basic' | 'intermediate' | 'advanced';
 }
 
 export interface InteractiveQAndAOutput {
@@ -163,3 +180,4 @@ export interface InteractiveQAndAOutput {
   nextStage?: QAS_Stage; 
   isStageComplete?: boolean; 
 }
+

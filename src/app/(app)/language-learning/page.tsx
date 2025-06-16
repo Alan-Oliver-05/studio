@@ -11,7 +11,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
-import type { UserProfile, InitialNodeData, LanguageLearningMode } from "@/types";
+import type { UserProfile, InitialNodeData, LanguageLearningMode, ConversationSetupParams } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
@@ -47,6 +47,14 @@ const ImageTextTranslatorInterface = dynamic(() =>
   }
 );
 
+const ConversationPracticeSetup = dynamic(() =>
+  import('./components/ConversationPracticeSetup').then((mod) => mod.default),
+  {
+    loading: () => <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
+    ssr: false
+  }
+);
+
 
 interface ModeConfig {
   id: LanguageLearningMode;
@@ -54,7 +62,7 @@ interface ModeConfig {
   icon: React.ElementType;
   description: string; 
   storageTopic: string; 
-  initialSystemMessageTemplate: string;
+  initialSystemMessageTemplate?: string; // Made optional for conversation mode
   placeholderTextTemplate: string;
   enableImageUpload: boolean;
 }
@@ -72,8 +80,8 @@ const languageLearningModes: ModeConfig[] = [
     id: "conversation", label: "Conversation", icon: MessagesSquare, 
     description: "Practice bilingual dialogues with an AI partner in various scenarios.", 
     storageTopic: "Language Conversation Practice",
-    initialSystemMessageTemplate: "Hi ${profileName}! Let's practice a conversation. Tell me the scenario, your role & language, and my role & language. E.g., 'I'm a tourist (English) asking for directions from a local (French).'",
-    placeholderTextTemplate: "Describe the conversation scenario here...",
+    // initialSystemMessageTemplate is now generated dynamically based on setup
+    placeholderTextTemplate: "Your turn to speak...", // Will be updated
     enableImageUpload: false
   },
   {
@@ -103,6 +111,10 @@ export default function LanguageLearningPage() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [chatKey, setChatKey] = useState<string>(Date.now().toString());
   const [mindMapConfig, setMindMapConfig] = useState<{ initialTopic?: string; initialNodes?: InitialNodeData[] } | null>(null);
+  
+  // State for conversation practice setup
+  const [isConversationSetupComplete, setIsConversationSetupComplete] = useState(false);
+  const [currentConversationParams, setCurrentConversationParams] = useState<ConversationSetupParams | null>(null);
 
 
   const getStorageTopicForMode = useCallback((mode: LanguageLearningMode): string => {
@@ -120,6 +132,8 @@ export default function LanguageLearningPage() {
       setChatKey(newId);
       
       setMindMapConfig(null); 
+      setIsConversationSetupComplete(false); // Reset conversation setup status
+      setCurrentConversationParams(null);
 
       if (searchParams.get('mode') !== mode || !searchParams.get('sessionId')) {
         router.push(`/language-learning?mode=${mode}`, { scroll: false });
@@ -139,7 +153,6 @@ export default function LanguageLearningPage() {
         targetMode = languageLearningModes[0].id;
     }
 
-
     if (sessionIdFromQuery) {
       const conversation = getConversationById(sessionIdFromQuery);
       if (conversation) {
@@ -150,6 +163,27 @@ export default function LanguageLearningPage() {
         setCurrentConversationId(sessionIdFromQuery);
         setChatKey(sessionIdFromQuery);
         setMindMapConfig(null); 
+        
+        if (conversationMode === "conversation") {
+            // For existing conversation sessions, assume setup was done.
+            // We might need to extract params from the first messages if we want to "resume" setup state.
+            // For now, just mark setup as complete to show chat.
+            setIsConversationSetupComplete(true);
+            // Extract/reconstruct params if possible, or use defaults
+            const firstUserMsg = conversation.messages.find(m => m.sender === 'user');
+            const firstAiMsg = conversation.messages.find(m => m.sender === 'ai');
+            // This is a simplified way to reconstruct, real params might be in AI context
+            setCurrentConversationParams({
+                scenario: conversation.topic || "Conversation Practice",
+                userLanguage: profile.preferredLanguage, // Guess
+                aiLanguage: languageLearningModes.find(l => l.id === 'conversation')?.initialSystemMessageTemplate?.includes('French') ? 'fr' : 'en', // Wild guess
+                difficulty: 'intermediate', // Default
+                // userRole and aiRole would be harder to get without specific storage
+            });
+        } else {
+            setIsConversationSetupComplete(false);
+        }
+
 
         if (modeFromQuery !== conversationMode) {
             router.replace(`/language-learning?sessionId=${sessionIdFromQuery}&mode=${conversationMode}`, { scroll: false });
@@ -169,7 +203,7 @@ export default function LanguageLearningPage() {
         initializeNewSession(targetMode);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, profile, profileLoading, initializeNewSession]); 
+  }, [searchParams, profile, profileLoading, router, initializeNewSession]); 
   
   const activeModeConfig = languageLearningModes.find(m => m.id === activeMode) || languageLearningModes[0];
 
@@ -184,7 +218,38 @@ export default function LanguageLearningPage() {
     initializeNewSession(activeMode);
   }, [activeMode, initializeNewSession]);
 
+  const handleConversationSetupComplete = useCallback((params: ConversationSetupParams) => {
+    setCurrentConversationParams(params);
+    setIsConversationSetupComplete(true);
+    // The DynamicChatInterface will be re-rendered by the parent with new props
+  }, []);
 
+
+  const getInitialMessageForMode = (modeConfig: ModeConfig, currentProfile: UserProfile, convParams?: ConversationSetupParams | null) => {
+    if (modeConfig.id === 'conversation' && convParams) {
+      let userRoleDesc = convParams.userRole ? ` as a ${convParams.userRole}` : "";
+      let aiRoleDesc = convParams.aiRole ? ` act as a ${convParams.aiRole}` : "";
+      return `Hi ${currentProfile.name}! Let's practice a conversation.
+Scenario: "${convParams.scenario}"
+Your Language${userRoleDesc}: ${LANGUAGES.find(l=>l.value === convParams.userLanguage)?.label || convParams.userLanguage}
+AI's Language${aiRoleDesc}: ${LANGUAGES.find(l=>l.value === convParams.aiLanguage)?.label || convParams.aiLanguage}
+Difficulty: ${convParams.difficulty.charAt(0).toUpperCase() + convParams.difficulty.slice(1)}
+The AI will start the conversation.`;
+    }
+    
+    let initialMessage = modeConfig.initialSystemMessageTemplate?.replace('${profileName}', currentProfile.name) || `Hi ${currentProfile.name}! Welcome to ${modeConfig.label}.`;
+     if (modeConfig.id === 'mindmaps' && currentConversationId && searchParams.get('sessionId')) { 
+        const conversation = getConversationById(currentConversationId);
+        const firstUserMessage = conversation?.messages.find(m => m.sender === 'user');
+        if(firstUserMessage?.text && (firstUserMessage.text.length < 100)) {
+             initialMessage = initialMessage.replace("what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'", `the canvas is ready for your topic: "${firstUserMessage.text}". You can add nodes or upload a document.`);
+        } else if (mindMapConfig?.initialTopic) {
+             initialMessage = initialMessage.replace("what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'", `the canvas is ready for your topic: "${mindMapConfig.initialTopic}".`);
+        }
+    }
+    return initialMessage;
+  };
+  
   if (profileLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full mt-0 pt-0">
@@ -217,20 +282,6 @@ export default function LanguageLearningPage() {
       </div>
     );
   }
-
-  const getInitialMessageForMode = (modeConfig: ModeConfig, currentProfile: UserProfile) => {
-    let initialMessage = modeConfig.initialSystemMessageTemplate.replace(/\$\{profileName\}/g, currentProfile.name);
-     if (modeConfig.id === 'mindmaps' && currentConversationId && searchParams.get('sessionId')) { 
-        const conversation = getConversationById(currentConversationId);
-        const firstUserMessage = conversation?.messages.find(m => m.sender === 'user');
-        if(firstUserMessage?.text && (firstUserMessage.text.length < 100)) {
-             initialMessage = initialMessage.replace("what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'", `the canvas is ready for your topic: "${firstUserMessage.text}". You can add nodes or upload a document.`);
-        } else if (mindMapConfig?.initialTopic) {
-             initialMessage = initialMessage.replace("what's your central idea for the mind map/flowchart? E.g., 'My Project Plan.'", `the canvas is ready for your topic: "${mindMapConfig.initialTopic}".`);
-        }
-    }
-    return initialMessage;
-  };
   
   return (
     <div className="h-full flex flex-col pt-0 bg-gradient-to-br from-background via-primary/5 to-background">
@@ -295,15 +346,41 @@ export default function LanguageLearningPage() {
                     conversationId={currentConversationId}
                     topic={getStorageTopicForMode("document")}
                 />
-            ) : activeMode === "camera" ? ( // Reverted to use ImageTextTranslatorInterface
+            ) : activeMode === "camera" ? ( 
                 <ImageTextTranslatorInterface
                     key={chatKey}
                     userProfile={profile}
                     conversationId={currentConversationId}
                     topic={getStorageTopicForMode("camera")}
                 />
-            ) : ( 
-              // Default to DynamicChatInterface for "conversation"
+            ) : activeMode === "conversation" ? (
+                !isConversationSetupComplete || !currentConversationParams ? (
+                    <ConversationPracticeSetup
+                        userPreferredLanguage={profile.preferredLanguage}
+                        onSetupComplete={handleConversationSetupComplete}
+                    />
+                ) : (
+                    <DynamicChatInterface
+                        key={chatKey}
+                        userProfile={profile}
+                        topic={activeModeConfig.storageTopic} 
+                        conversationId={currentConversationId}
+                        initialSystemMessage={getInitialMessageForMode(activeModeConfig, profile, currentConversationParams)}
+                        placeholderText={`Speak in ${LANGUAGES.find(l=>l.value === currentConversationParams.userLanguage)?.label || currentConversationParams.userLanguage}...`}
+                        enableImageUpload={activeModeConfig.enableImageUpload}
+                        // Pass conversation params to AI via context or new prop if ChatInterface is adapted
+                        context={{ // Example of passing context, actual implementation depends on ChatInterface/AI flow
+                            subject: "Language Practice",
+                            lesson: currentConversationParams.scenario,
+                            // Potentially add more structured context for the AI flow
+                            conversationScenario: currentConversationParams.scenario,
+                            userLanguageRole: `${LANGUAGES.find(l=>l.value === currentConversationParams.userLanguage)?.label || currentConversationParams.userLanguage}-speaking ${currentConversationParams.userRole || 'user'}`,
+                            aiLanguageRole: `${LANGUAGES.find(l=>l.value === currentConversationParams.aiLanguage)?.label || currentConversationParams.aiLanguage}-speaking ${currentConversationParams.aiRole || 'AI'}`,
+                            conversationDifficulty: currentConversationParams.difficulty,
+                        }}
+                    />
+                )
+            ) : (  // Fallback for any other mode or if none matched correctly
               <DynamicChatInterface
                 key={chatKey}
                 userProfile={profile}
