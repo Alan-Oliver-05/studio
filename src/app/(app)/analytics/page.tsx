@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { BarChartBig, BookOpen, Brain, CheckCircle, FileText, History, Languages, Layers, ListChecks, Loader2, MessageSquare, PenSquare, PieChartIcon, TrendingUp, Users, Info, Sparkles, Home as HomeIcon } from "lucide-react";
+import { BarChartBig, BookOpen, Brain, CheckCircle, FileText, History, Languages, Layers, ListChecks, Loader2, MessageSquare, PenSquare, PieChartIcon, TrendingUp, Users, Info, Sparkles, Home as HomeIcon, Type as TypeIcon, Mic, MessagesSquare as MessagesSquareIcon, Camera as CameraIcon, Wand2, HelpCircle, VideoIcon } from "lucide-react";
 import { getConversations } from "@/lib/chat-storage";
 import type { Conversation, Task, Note, TaskPriority } from "@/types";
 import {
@@ -49,6 +49,31 @@ export default function AnalyticsPage() {
     setIsClient(true);
   }, []);
 
+  const getAnalyticsGroupName = (convo: Conversation): string => {
+    // Specific feature topics
+    if (convo.topic === "AI Learning Assistant Chat") return "General AI Tutor";
+    if (convo.topic === "Homework Help") return "Homework Helper";
+    if (convo.topic?.startsWith("Visual Learning")) return "Visual Learning";
+    if (convo.topic === "Language Text Translation") return "Text Translator";
+    if (convo.topic === "Language Voice Translation") return "Voice Translator";
+    if (convo.topic === "Language Conversation Practice") return "Conversation Translator";
+    if (convo.topic === "Language Camera Translation") return "Camera Translator";
+    if (convo.topic === "LanguageTranslatorMode") return "Language Translator (Legacy)";
+    
+    if (convo.topic === "Text Content Summarization") return "Text Summarizer";
+    if (convo.topic === "PDF Content Summarization & Q&A") return "PDF Summarizer & Q&A";
+    if (convo.topic === "Audio Content Summarization & Q&A") return "Audio Summarizer & Q&A";
+    if (convo.topic === "Slide Content Summarization & Q&A") return "Slide Summarizer & Q&A";
+    if (convo.topic === "Video Content Summarization & Q&A") return "Video Summarizer & Q&A";
+    if (convo.topic === "Flashcard Generation") return "Flashcard Generator";
+    if (convo.topic === "MCQ Generation") return "MCQ Quiz Generator";
+
+    // Fallback to subject context or general topic
+    if (convo.subjectContext && convo.subjectContext !== convo.topic) return convo.subjectContext; // Prefer specific subject if it's different from a generic topic
+    return convo.topic || "Uncategorized";
+  };
+
+
   useEffect(() => {
     if (isClient) {
       setIsLoading(true);
@@ -62,12 +87,7 @@ export default function AnalyticsPage() {
       };
 
       conversations.forEach(convo => {
-        let typeKey = convo.subjectContext || convo.topic || "Uncategorized";
-        if (convo.topic === "AI Learning Assistant Chat") typeKey = "General AI Tutor";
-        else if (convo.topic === "LanguageTranslatorMode") typeKey = "Language Translator";
-        else if (convo.topic === "Homework Help") typeKey = "Homework Helper";
-        else if (convo.topic === "Visual Learning" || convo.topic === "Visual Learning Focus") typeKey = "Visual Learning";
-        else if (convo.subjectContext) typeKey = convo.subjectContext; 
+        let typeKey = getAnalyticsGroupName(convo);
 
         if (!newSessionStats.sessionsByType[typeKey]) {
           newSessionStats.sessionsByType[typeKey] = { count: 0, totalMessages: 0, summarizedCount: 0 };
@@ -78,7 +98,15 @@ export default function AnalyticsPage() {
           newSessionStats.sessionsByType[typeKey].summarizedCount++;
         }
 
-        if (convo.subjectContext && convo.topic !== "AI Learning Assistant Chat" && convo.topic !== "LanguageTranslatorMode" && convo.topic !== "Homework Help" && convo.topic !== "Visual Learning" && convo.topic !== "Visual Learning Focus") {
+        // Separate logic for 'studySubjects' focusing on academic curriculum sessions
+        const academicSessionTopics = [
+            "General AI Tutor", "Homework Helper", "Visual Learning", 
+            // Add any other topics that are clearly academic subject related but not specific tools
+        ];
+        const isSpecificToolSession = !academicSessionTopics.includes(typeKey) && typeKey !== "Uncategorized" && typeKey !== convo.subjectContext;
+
+
+        if (convo.subjectContext && !isSpecificToolSession) {
            if (!newSessionStats.studySubjects[convo.subjectContext]) {
              newSessionStats.studySubjects[convo.subjectContext] = { count: 0, totalMessages: 0, summarizedCount: 0 };
            }
@@ -132,7 +160,7 @@ export default function AnalyticsPage() {
   }
 
   const sessionsChartData = sessionStats ? Object.entries(sessionStats.sessionsByType).map(([name, data]) => ({
-    name: name.length > 20 ? name.substring(0,17) + '...' : name, // Truncate long names
+    name: name.length > 20 ? name.substring(0,17) + '...' : name, 
     sessions: data.count,
   })).sort((a,b) => b.sessions - a.sessions) : [];
 
@@ -193,6 +221,18 @@ export default function AnalyticsPage() {
                            (!noteStats || noteStats.totalNotes === 0);
 
 
+  const getSessionTypeIcon = (type: string) => {
+    if (type === "General AI Tutor") return <Brain className="inline mr-2 h-4 w-4"/>;
+    if (type === "Language Translator" || type === "Text Translator" || type === "Voice Translator" || type === "Conversation Translator" || type === "Camera Translator") return <Languages className="inline mr-2 h-4 w-4"/>;
+    if (type === "Homework Helper") return <PenSquare className="inline mr-2 h-4 w-4"/>;
+    if (type === "Visual Learning") return <PieChartIcon className="inline mr-2 h-4 w-4"/>;
+    if (type === "Text Summarizer" || type === "PDF Summarizer & Q&A" || type === "Audio Summarizer & Q&A" || type === "Slide Summarizer & Q&A" || type === "Video Summarizer & Q&A") return <Wand2 className="inline mr-2 h-4 w-4"/>;
+    if (type === "Flashcard Generator") return <Sparkles className="inline mr-2 h-4 w-4"/>;
+    if (type === "MCQ Quiz Generator") return <HelpCircle className="inline mr-2 h-4 w-4"/>;
+    return <BookOpen className="inline mr-2 h-4 w-4"/>;
+  };
+
+
   return (
     <div className="pb-4 pt-0">
       <div className="mb-6 pt-0">
@@ -228,10 +268,10 @@ export default function AnalyticsPage() {
 
       {!noDataAvailable && sessionStats && sessionStats.totalSessions > 0 && (
         <section className="mb-8">
-          <h2 className="text-xl sm:text-2xl font-semibold text-primary mb-4 flex items-center"><MessageSquare className="mr-2 h-5 w-5 sm:h-6 sm:w-6"/>Chat Activity</h2>
+          <h2 className="text-xl sm:text-2xl font-semibold text-primary mb-4 flex items-center"><MessageSquare className="mr-2 h-5 w-5 sm:h-6 sm:w-6"/>Usage Activity</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <StatCard title="Total Chat Sessions" value={sessionStats.totalSessions} icon={<History />} description="All recorded chat interactions." />
-            <StatCard title="Total Messages" value={sessionStats.totalMessages} icon={<FileText />} description="Sum of messages by you and AI." />
+            <StatCard title="Total Sessions" value={sessionStats.totalSessions} icon={<History />} description="All recorded interactions." />
+            <StatCard title="Total Messages" value={sessionStats.totalMessages} icon={<FileText />} description="Sum of messages (user & AI)." />
             <StatCard title="Avg Messages / Session" value={(sessionStats.totalMessages / (sessionStats.totalSessions || 1)).toFixed(1)} icon={<TrendingUp />} description="Average conversation length."/>
           </div>
           
@@ -239,7 +279,7 @@ export default function AnalyticsPage() {
             <Card className="mt-6 shadow-lg bg-card/80 backdrop-blur-sm border-border/50">
               <CardHeader>
                 <CardTitle className="text-lg sm:text-xl flex items-center text-foreground"><Layers className="mr-2 h-5 w-5 text-primary"/>Session Types</CardTitle>
-                <CardDescription>Number of sessions per category.</CardDescription>
+                <CardDescription>Number of sessions per category/tool.</CardDescription>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={sessionsChartConfig} className="h-[300px] md:h-[350px] w-full">
@@ -275,12 +315,7 @@ export default function AnalyticsPage() {
               <Card key={type} className="shadow-md bg-card/80 backdrop-blur-sm border-border/50">
                 <CardHeader className="py-3 px-4">
                   <CardTitle className="text-sm sm:text-base font-semibold text-accent flex items-center">
-                    {type === "General AI Tutor" ? <Brain className="inline mr-2 h-4 w-4"/> : 
-                     type === "Language Learning" || type === "Language Translator" ? <Languages className="inline mr-2 h-4 w-4"/> : 
-                     type === "Homework Helper" ? <PenSquare className="inline mr-2 h-4 w-4"/> :
-                     type === "Visual Learning" ? <PieChartIcon className="inline mr-2 h-4 w-4"/> :
-                     <BookOpen className="inline mr-2 h-4 w-4"/> 
-                    }
+                    {getSessionTypeIcon(type)}
                     {type}
                   </CardTitle>
                 </CardHeader>
@@ -365,6 +400,3 @@ export default function AnalyticsPage() {
     </div>
   );
 }
-
-
-    

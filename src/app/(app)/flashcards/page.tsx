@@ -7,13 +7,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, FileUp, AlertTriangle, Sparkles as SparklesIcon, Layers, HelpCircle, Settings2, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/contexts/user-profile-context';
-import type { UserProfile, DocumentFileCategory, Flashcard, MCQItem } from '@/types';
+import type { UserProfile, DocumentFileCategory, Flashcard, MCQItem, Message as MessageType } from '@/types';
 import { generateFlashcardsFromDocument, GenerateFlashcardsInput } from '@/ai/flows/generate-flashcards-from-document-flow';
 import { generateMcqsFromDocument, GenerateMcqsInput } from '@/ai/flows/generate-mcqs-from-document-flow';
 import FileUploadZone from './components/FileUploadZone';
 import FlashcardViewer from './components/FlashcardViewer'; 
 import McqQuizzer from './components/McqQuizzer'; 
 import Link from "next/link";
+import { addMessageToConversation } from '@/lib/chat-storage';
+
 
 type ProcessingState = 
   | 'idle' 
@@ -65,6 +67,17 @@ export default function FlashcardsPage() {
         setFlashcards(result.flashcards);
         setProcessingState('showing_flashcards');
         toast({ title: "Flashcards Generated!", description: `Created ${result.flashcards.length} flashcards based on "${selectedFile.name}".` });
+        
+        const conversationId = `flashcards-gen-${profile.id}-${selectedFile.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}`;
+        const userMessage: MessageType = {
+          id: crypto.randomUUID(), sender: 'user', text: `Request for flashcards from: ${selectedFile.name} (Type: ${fileCategory})`, timestamp: Date.now(),
+        };
+        const aiMessage: MessageType = {
+          id: crypto.randomUUID(), sender: 'ai', text: `Generated ${result.flashcards.length} flashcards. First card front: "${result.flashcards[0]?.front || 'N/A'}"`, timestamp: Date.now(),
+        };
+        addMessageToConversation(conversationId, "Flashcard Generation", userMessage, profile);
+        addMessageToConversation(conversationId, "Flashcard Generation", aiMessage, profile);
+
       } else {
         setErrorMessage("AI could not generate flashcards for this document. Please try a different file or topic.");
         setProcessingState('error');
@@ -92,6 +105,17 @@ export default function FlashcardsPage() {
         setMcqs(result.mcqs);
         setProcessingState('showing_mcqs');
         toast({ title: "MCQ Quiz Ready!", description: `Created ${result.mcqs.length} MCQs based on "${selectedFile.name}".` });
+
+        const conversationId = `mcqs-gen-${profile.id}-${selectedFile.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}`;
+        const userMessage: MessageType = {
+          id: crypto.randomUUID(), sender: 'user', text: `Request for MCQs from: ${selectedFile.name} (Type: ${fileCategory})`, timestamp: Date.now(),
+        };
+        const aiMessage: MessageType = {
+          id: crypto.randomUUID(), sender: 'ai', text: `Generated ${result.mcqs.length} MCQs. First question: "${result.mcqs[0]?.question || 'N/A'}"`, timestamp: Date.now(),
+        };
+        addMessageToConversation(conversationId, "MCQ Generation", userMessage, profile);
+        addMessageToConversation(conversationId, "MCQ Generation", aiMessage, profile);
+
       } else {
         setErrorMessage("AI could not generate MCQs for this document. Please try a different file or topic.");
         setProcessingState('error');
@@ -204,7 +228,6 @@ export default function FlashcardsPage() {
           </Card>
         )}
         
-        {/* Placeholder for actual FlashcardViewer and McqQuizzer */}
         {processingState === 'showing_flashcards' && flashcards.length > 0 && (
           <div className="mt-8 w-full">
             <FlashcardViewer flashcards={flashcards} onReset={resetAll} documentName={selectedFile?.name || "Document"}/>

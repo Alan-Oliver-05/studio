@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef, ChangeEvent } from "react";
+import React, { useState, useEffect, useRef, ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,10 +12,11 @@ import { summarizeText, SummarizeTextInput, SummarizeTextOutput } from "@/ai/flo
 import { aiGuidedStudySession, AIGuidedStudySessionInput, AIGuidedStudySessionOutput } from "@/ai/flows/ai-guided-study-session";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { cn } from "@/lib/utils";
-import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { addMessageToConversation } from "@/lib/chat-storage";
+import type { Message as MessageType } from "@/types";
 
 
 type InputType = "text" | "recording" | "pdf" | "powerpoint" | "video";
@@ -28,14 +29,15 @@ interface InputTypeOption {
   description: string;
   placeholder: string;
   title: string;
+  storageTopic: string;
 }
 
 const inputTypeOptions: InputTypeOption[] = [
-  { value: "text", label: "Text", icon: Type, title:"AI Text Summarizer & Note Taker", description: "Paste any text — articles, essays, or research papers — and get concise summaries, key takeaways, and organized notes instantly.", placeholder: "Paste your article, essay, research paper, or any text here..." },
-  { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary, and then ask specific questions about its content. *AI responds based on filename and your questions.*", placeholder: "Upload your PDF document." },
-  { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload audio file, Sai (conceptually) transcribes and summarizes, pinpointing key discussions and insights. *AI responds based on filename.*", placeholder: "Upload your audio file (e.g., .mp3, .wav)." },
-  { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer & Q&A", description: "Ace presentations. Sai converts PPT or PDF slides into actionable study notes, detailing core messages, narrative flow, and key takeaways. *AI responds based on filename.*", placeholder: "Upload your PPT or PDF slide deck." },
-  { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer & Q&A", description: "Learn faster. Paste a YouTube link or upload a local video file. Sai (conceptually) summarizes key topics and allows Q&A. *AI responds based on URL/filename.*", placeholder: "https://www.youtube.com/watch?v=..." },
+  { value: "text", label: "Text", icon: Type, title:"AI Text Summarizer & Note Taker", description: "Paste any text — articles, essays, or research papers — and get concise summaries, key takeaways, and organized notes instantly.", placeholder: "Paste your article, essay, research paper, or any text here...", storageTopic: "Text Content Summarization" },
+  { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary, and then ask specific questions about its content. *AI responds based on filename and your questions.*", placeholder: "Upload your PDF document.", storageTopic: "PDF Content Summarization & Q&A" },
+  { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload audio file, Sai (conceptually) transcribes and summarizes, pinpointing key discussions and insights. *AI responds based on filename.*", placeholder: "Upload your audio file (e.g., .mp3, .wav).", storageTopic: "Audio Content Summarization & Q&A" },
+  { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer & Q&A", description: "Ace presentations. Sai converts PPT or PDF slides into actionable study notes, detailing core messages, narrative flow, and key takeaways. *AI responds based on filename.*", placeholder: "Upload your PPT or PDF slide deck.", storageTopic: "Slide Content Summarization & Q&A" },
+  { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer & Q&A", description: "Learn faster. Paste a YouTube link or upload a local video file. Sai (conceptually) summarizes key topics and allows Q&A. *AI responds based on URL/filename.*", placeholder: "https://www.youtube.com/watch?v=...", storageTopic: "Video Content Summarization & Q&A" },
 ];
 
 const MAX_CHARACTERS = 10000;
@@ -76,12 +78,14 @@ export default function SummarizerPage() {
   const [isProcessingVideo, setIsProcessingVideo] = useState<boolean>(false);
   const [videoInputMethod, setVideoInputMethod] = useState<VideoInputMethod>('url');
 
-
-  const [isLoading, setIsLoading] = useState<boolean>(false); 
+  const [isLoading, setIsLoadingState] = useState<boolean>(false); 
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const [activeInputType, setActiveInputType] = useState<InputType>("text");
   const [characterCount, setCharacterCount] = useState<number>(0);
+  
+  const [currentMediaConversationId, setCurrentMediaConversationId] = useState<string | null>(null);
+
 
   const currentInputTypeConfig = inputTypeOptions.find(opt => opt.value === activeInputType) || inputTypeOptions[0];
 
@@ -94,6 +98,7 @@ export default function SummarizerPage() {
   }, [inputText, activeInputType]);
   
   useEffect(() => {
+    setCurrentMediaConversationId(null); // Reset conversation ID when mode changes
     if (activeInputType !== 'pdf') {
       setUploadedPdfFile(null);
       setPdfProcessingOutput(null);
@@ -124,6 +129,10 @@ export default function SummarizerPage() {
 
 
   const handleSummarizeText = async () => {
+    if (!profile) {
+      toast({ title: "Profile Error", description: "User profile not found.", variant: "destructive" });
+      return;
+    }
     if (inputText.trim().length < 10) {
       toast({ title: "Input too short", description: "Please enter at least 10 characters.", variant: "destructive" });
       return;
@@ -133,7 +142,7 @@ export default function SummarizerPage() {
       return;
     }
 
-    setIsLoading(true);
+    setIsLoadingState(true);
     setError(null);
     setGeneratedNoteOutput(null);
 
@@ -142,13 +151,24 @@ export default function SummarizerPage() {
       const result = await summarizeText(input);
       setGeneratedNoteOutput(result);
       toast({ title: "Note Generated", description: "Your content has been successfully processed." });
+      
+      const conversationId = `summarizer-text-${profile.id}-${Date.now()}`;
+      const userMessage: MessageType = {
+        id: crypto.randomUUID(), sender: 'user', text: `Summarize text: "${inputText.substring(0, 100)}..."`, timestamp: Date.now(),
+      };
+      const aiMessage: MessageType = {
+        id: crypto.randomUUID(), sender: 'ai', text: result.summary, suggestions: result.keywords, timestamp: Date.now(),
+      };
+      addMessageToConversation(conversationId, currentInputTypeConfig.storageTopic, userMessage, profile);
+      addMessageToConversation(conversationId, currentInputTypeConfig.storageTopic, aiMessage, profile);
+
     } catch (e) {
       console.error("Summarization error:", e);
       const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
       setError(errorMessage);
       toast({ title: "Summarization Failed", description: errorMessage, variant: "destructive" });
     } finally {
-      setIsLoading(false);
+      setIsLoadingState(false);
     }
   };
 
@@ -171,6 +191,7 @@ export default function SummarizerPage() {
       setPdfProcessingOutput(null); 
       setPdfQuestionHistory([]);
       setCurrentPdfQuestion("");
+      setCurrentMediaConversationId(null);
       setError(null);
       toast({ title: "PDF Selected", description: `Ready to process "${file.name}".`});
     }
@@ -186,6 +207,14 @@ export default function SummarizerPage() {
     setPdfProcessingOutput(null);
     setPdfQuestionHistory([]);
 
+    const newConversationId = `summarizer-pdf-${profile.id}-${uploadedPdfFile.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}`;
+    setCurrentMediaConversationId(newConversationId);
+
+    const userPromptMessage: MessageType = {
+      id: crypto.randomUUID(), sender: 'user', text: `Summarize PDF: ${uploadedPdfFile.name}`, timestamp: Date.now()
+    };
+    addMessageToConversation(newConversationId, currentInputTypeConfig.storageTopic, userPromptMessage, profile);
+
     try {
       const aiInput: AIGuidedStudySessionInput = {
         studentProfile: { ...profile, age: Number(profile.age) },
@@ -195,6 +224,11 @@ export default function SummarizerPage() {
       };
       const result = await aiGuidedStudySession(aiInput);
       setPdfProcessingOutput(result);
+      
+      const aiResponseMessage: MessageType = {
+        id: crypto.randomUUID(), sender: 'ai', text: result.response, suggestions: result.suggestions, timestamp: Date.now()
+      };
+      addMessageToConversation(newConversationId, currentInputTypeConfig.storageTopic, aiResponseMessage, profile);
       toast({ title: "PDF Summary Generated", description: `Summary for "${uploadedPdfFile.name}" is ready.` });
     } catch (e) {
       console.error("PDF Summarization error:", e);
@@ -207,12 +241,17 @@ export default function SummarizerPage() {
   };
 
   const handleAskPdfQuestion = async () => {
-    if (!currentPdfQuestion.trim() || !uploadedPdfFile || !profile) {
-      toast({ title: "Missing Input", description: "Please type a question and ensure a PDF is loaded.", variant: "destructive" });
+    if (!currentPdfQuestion.trim() || !uploadedPdfFile || !profile || !currentMediaConversationId) {
+      toast({ title: "Missing Input", description: "Please type a question and ensure a PDF is loaded and a session is active.", variant: "destructive" });
       return;
     }
     setIsProcessingPdf(true); 
     setError(null);
+
+    const userQuestionMessage: MessageType = {
+      id: crypto.randomUUID(), sender: 'user', text: currentPdfQuestion, timestamp: Date.now()
+    };
+    addMessageToConversation(currentMediaConversationId, currentInputTypeConfig.storageTopic, userQuestionMessage, profile);
 
     try {
       const aiInput: AIGuidedStudySessionInput = {
@@ -225,6 +264,11 @@ export default function SummarizerPage() {
       setPdfProcessingOutput(result); 
       setPdfQuestionHistory(prev => [...prev, { question: currentPdfQuestion, answer: result.response, id: crypto.randomUUID() }]);
       setCurrentPdfQuestion(""); 
+      
+      const aiAnswerMessage: MessageType = {
+        id: crypto.randomUUID(), sender: 'ai', text: result.response, suggestions: result.suggestions, timestamp: Date.now()
+      };
+      addMessageToConversation(currentMediaConversationId, currentInputTypeConfig.storageTopic, aiAnswerMessage, profile);
       toast({ title: "Answer Received", description: "AI has responded to your question." });
     } catch (e) {
       console.error("PDF Q&A error:", e);
@@ -255,6 +299,7 @@ export default function SummarizerPage() {
       setAudioProcessingOutput(null);
       setAudioQuestionHistory([]);
       setCurrentAudioQuestion("");
+      setCurrentMediaConversationId(null);
       setError(null);
       toast({ title: "Audio File Selected", description: `Ready to process "${file.name}".`});
     }
@@ -269,6 +314,14 @@ export default function SummarizerPage() {
     setError(null);
     setAudioProcessingOutput(null);
     setAudioQuestionHistory([]);
+    
+    const newConversationId = `summarizer-audio-${profile.id}-${uploadedAudioFile.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}`;
+    setCurrentMediaConversationId(newConversationId);
+
+    const userPromptMessage: MessageType = {
+      id: crypto.randomUUID(), sender: 'user', text: `Summarize audio: ${uploadedAudioFile.name}`, timestamp: Date.now()
+    };
+    addMessageToConversation(newConversationId, currentInputTypeConfig.storageTopic, userPromptMessage, profile);
 
     try {
       const aiInput: AIGuidedStudySessionInput = {
@@ -279,6 +332,11 @@ export default function SummarizerPage() {
       };
       const result = await aiGuidedStudySession(aiInput);
       setAudioProcessingOutput(result);
+      
+      const aiResponseMessage: MessageType = {
+        id: crypto.randomUUID(), sender: 'ai', text: result.response, suggestions: result.suggestions, timestamp: Date.now()
+      };
+      addMessageToConversation(newConversationId, currentInputTypeConfig.storageTopic, aiResponseMessage, profile);
       toast({ title: "Audio Summary Generated", description: `Summary for "${uploadedAudioFile.name}" is ready.` });
     } catch (e) {
       console.error("Audio Summarization error:", e);
@@ -291,12 +349,17 @@ export default function SummarizerPage() {
   };
 
   const handleAskAudioQuestion = async () => {
-    if (!currentAudioQuestion.trim() || !uploadedAudioFile || !profile) {
-      toast({ title: "Missing Input", description: "Please type a question and ensure an audio file is loaded.", variant: "destructive" });
+    if (!currentAudioQuestion.trim() || !uploadedAudioFile || !profile || !currentMediaConversationId) {
+      toast({ title: "Missing Input", description: "Please type a question and ensure an audio file is loaded and a session active.", variant: "destructive" });
       return;
     }
     setIsProcessingAudio(true);
     setError(null);
+
+    const userQuestionMessage: MessageType = {
+      id: crypto.randomUUID(), sender: 'user', text: currentAudioQuestion, timestamp: Date.now()
+    };
+    addMessageToConversation(currentMediaConversationId, currentInputTypeConfig.storageTopic, userQuestionMessage, profile);
 
     try {
       const aiInput: AIGuidedStudySessionInput = {
@@ -309,6 +372,11 @@ export default function SummarizerPage() {
       setAudioProcessingOutput(result);
       setAudioQuestionHistory(prev => [...prev, { question: currentAudioQuestion, answer: result.response, id: crypto.randomUUID() }]);
       setCurrentAudioQuestion("");
+
+      const aiAnswerMessage: MessageType = {
+        id: crypto.randomUUID(), sender: 'ai', text: result.response, suggestions: result.suggestions, timestamp: Date.now()
+      };
+      addMessageToConversation(currentMediaConversationId, currentInputTypeConfig.storageTopic, aiAnswerMessage, profile);
       toast({ title: "Answer Received", description: "AI has responded to your question about the audio." });
     } catch (e) {
       console.error("Audio Q&A error:", e);
@@ -340,6 +408,7 @@ export default function SummarizerPage() {
       setSlideProcessingOutput(null);
       setSlideQuestionHistory([]);
       setCurrentSlideQuestion("");
+      setCurrentMediaConversationId(null);
       setError(null);
       toast({ title: "Slide File Selected", description: `Ready to process "${file.name}".`});
     }
@@ -355,6 +424,14 @@ export default function SummarizerPage() {
     setSlideProcessingOutput(null);
     setSlideQuestionHistory([]);
 
+    const newConversationId = `summarizer-slides-${profile.id}-${uploadedSlideFile.name.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}`;
+    setCurrentMediaConversationId(newConversationId);
+
+    const userPromptMessage: MessageType = {
+      id: crypto.randomUUID(), sender: 'user', text: `Summarize slides: ${uploadedSlideFile.name}`, timestamp: Date.now()
+    };
+    addMessageToConversation(newConversationId, currentInputTypeConfig.storageTopic, userPromptMessage, profile);
+
     try {
       const aiInput: AIGuidedStudySessionInput = {
         studentProfile: { ...profile, age: Number(profile.age) },
@@ -364,6 +441,11 @@ export default function SummarizerPage() {
       };
       const result = await aiGuidedStudySession(aiInput);
       setSlideProcessingOutput(result);
+      
+      const aiResponseMessage: MessageType = {
+        id: crypto.randomUUID(), sender: 'ai', text: result.response, suggestions: result.suggestions, timestamp: Date.now()
+      };
+      addMessageToConversation(newConversationId, currentInputTypeConfig.storageTopic, aiResponseMessage, profile);
       toast({ title: "Slide Summary Generated", description: `Summary for "${uploadedSlideFile.name}" is ready.` });
     } catch (e) {
       console.error("Slide Summarization error:", e);
@@ -376,12 +458,17 @@ export default function SummarizerPage() {
   };
 
   const handleAskSlideQuestion = async () => {
-    if (!currentSlideQuestion.trim() || !uploadedSlideFile || !profile) {
-      toast({ title: "Missing Input", description: "Please type a question and ensure a slide file is loaded.", variant: "destructive" });
+    if (!currentSlideQuestion.trim() || !uploadedSlideFile || !profile || !currentMediaConversationId) {
+      toast({ title: "Missing Input", description: "Please type a question, ensure a slide file is loaded, and session active.", variant: "destructive" });
       return;
     }
     setIsProcessingSlides(true);
     setError(null);
+
+    const userQuestionMessage: MessageType = {
+      id: crypto.randomUUID(), sender: 'user', text: currentSlideQuestion, timestamp: Date.now()
+    };
+    addMessageToConversation(currentMediaConversationId, currentInputTypeConfig.storageTopic, userQuestionMessage, profile);
 
     try {
       const aiInput: AIGuidedStudySessionInput = {
@@ -394,6 +481,11 @@ export default function SummarizerPage() {
       setSlideProcessingOutput(result);
       setSlideQuestionHistory(prev => [...prev, { question: currentSlideQuestion, answer: result.response, id: crypto.randomUUID() }]);
       setCurrentSlideQuestion("");
+
+      const aiAnswerMessage: MessageType = {
+        id: crypto.randomUUID(), sender: 'ai', text: result.response, suggestions: result.suggestions, timestamp: Date.now()
+      };
+      addMessageToConversation(currentMediaConversationId, currentInputTypeConfig.storageTopic, aiAnswerMessage, profile);
       toast({ title: "Answer Received", description: "AI has responded to your question about the slides." });
     } catch (e) {
       console.error("Slide Q&A error:", e);
@@ -424,6 +516,7 @@ export default function SummarizerPage() {
       setVideoProcessingOutput(null);
       setVideoQuestionHistory([]);
       setCurrentVideoQuestion("");
+      setCurrentMediaConversationId(null);
       setError(null);
       toast({ title: "Video File Selected", description: `Ready to process "${file.name}".`});
     }
@@ -447,6 +540,16 @@ export default function SummarizerPage() {
     setError(null);
     setVideoProcessingOutput(null);
     setVideoQuestionHistory([]);
+    
+    const videoIdentifier = videoInputMethod === 'url' ? videoUrl : uploadedLocalVideoFile?.name.replace(/[^a-zA-Z0-9]/g, '_');
+    const newConversationId = `summarizer-video-${profile.id}-${videoIdentifier}-${Date.now()}`;
+    setCurrentMediaConversationId(newConversationId);
+
+    const userPromptMessageText = videoInputMethod === 'url' ? `Summarize YouTube video: ${videoUrl}` : `Summarize local video: ${uploadedLocalVideoFile?.name}`;
+    const userPromptMessage: MessageType = {
+      id: crypto.randomUUID(), sender: 'user', text: userPromptMessageText, timestamp: Date.now()
+    };
+    addMessageToConversation(newConversationId, currentInputTypeConfig.storageTopic, userPromptMessage, profile);
 
     try {
       const aiInput: AIGuidedStudySessionInput = {
@@ -457,6 +560,11 @@ export default function SummarizerPage() {
       };
       const result = await aiGuidedStudySession(aiInput);
       setVideoProcessingOutput(result);
+      
+      const aiResponseMessage: MessageType = {
+        id: crypto.randomUUID(), sender: 'ai', text: result.response, suggestions: result.suggestions, timestamp: Date.now()
+      };
+      addMessageToConversation(newConversationId, currentInputTypeConfig.storageTopic, aiResponseMessage, profile);
       const sourceName = videoInputMethod === 'url' ? "the YouTube video" : `"${uploadedLocalVideoFile?.name}"`;
       toast({ title: "Video Summary Generated", description: `Summary for ${sourceName} is ready.` });
     } catch (e) {
@@ -470,12 +578,17 @@ export default function SummarizerPage() {
   };
   
   const handleAskVideoQuestion = async () => {
-    if (!currentVideoQuestion.trim() || !profile || (!videoUrl.trim() && !uploadedLocalVideoFile)) {
-      toast({ title: "Missing Input", description: "Please type a question and ensure a video source is provided.", variant: "destructive" });
+    if (!currentVideoQuestion.trim() || !profile || (!videoUrl.trim() && !uploadedLocalVideoFile) || !currentMediaConversationId) {
+      toast({ title: "Missing Input", description: "Please type a question, ensure a video source is provided and session active.", variant: "destructive" });
       return;
     }
     setIsProcessingVideo(true);
     setError(null);
+
+    const userQuestionMessage: MessageType = {
+      id: crypto.randomUUID(), sender: 'user', text: currentVideoQuestion, timestamp: Date.now()
+    };
+    addMessageToConversation(currentMediaConversationId, currentInputTypeConfig.storageTopic, userQuestionMessage, profile);
 
     try {
       const aiInput: AIGuidedStudySessionInput = {
@@ -488,6 +601,11 @@ export default function SummarizerPage() {
       setVideoProcessingOutput(result);
       setVideoQuestionHistory(prev => [...prev, { question: currentVideoQuestion, answer: result.response, id: crypto.randomUUID() }]);
       setCurrentVideoQuestion("");
+      
+      const aiAnswerMessage: MessageType = {
+        id: crypto.randomUUID(), sender: 'ai', text: result.response, suggestions: result.suggestions, timestamp: Date.now()
+      };
+      addMessageToConversation(currentMediaConversationId, currentInputTypeConfig.storageTopic, aiAnswerMessage, profile);
       toast({ title: "Answer Received", description: "AI has responded to your question about the video." });
     } catch (e) {
       console.error("Video Q&A error:", e);
@@ -525,7 +643,7 @@ export default function SummarizerPage() {
               onChange={(e) => setInputText(e.target.value)}
               rows={10}
               className="resize-none w-full !border-0 focus-visible:!ring-0 focus-visible:!ring-offset-0 p-2 bg-transparent placeholder:text-muted-foreground/70 text-sm"
-              disabled={isLoading}
+              disabled={isLoadingState}
               maxLength={MAX_CHARACTERS}
               aria-label="Text to summarize"
             />
@@ -592,7 +710,7 @@ export default function SummarizerPage() {
       case "video":
         return (
             <div className="p-4 sm:p-6 border-2 border-dashed border-primary/30 rounded-xl bg-card shadow-sm">
-                <RadioGroup value={videoInputMethod} onValueChange={(value: VideoInputMethod) => setVideoInputMethod(value)} className="flex space-x-4 mb-4 justify-center">
+                <RadioGroup value={videoInputMethod} onValueChange={(value: string) => setVideoInputMethod(value as VideoInputMethod)} className="flex space-x-4 mb-4 justify-center">
                     <div className="flex items-center space-x-2">
                         <RadioGroupItem value="url" id="video-url" />
                         <Label htmlFor="video-url" className="flex items-center cursor-pointer"><Youtube className="mr-1.5 h-4 w-4 text-red-600"/>YouTube URL</Label>
@@ -612,7 +730,7 @@ export default function SummarizerPage() {
                             value={videoUrl}
                             onChange={(e) => setVideoUrl(e.target.value)}
                             className="pl-10 text-sm h-11"
-                            disabled={isLoading || isProcessingVideo} 
+                            disabled={isLoadingState || isProcessingVideo} 
                             aria-label="YouTube video URL"
                         />
                     </div>
@@ -680,7 +798,7 @@ export default function SummarizerPage() {
         <div className="mt-6 text-center">
             <Button
             onClick={handleMainGenerateClick}
-            disabled={isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo ||
+            disabled={isLoadingState || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo ||
               (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
               (activeInputType === "pdf" && !uploadedPdfFile) ||
               (activeInputType === "recording" && !uploadedAudioFile) ||
@@ -690,16 +808,18 @@ export default function SummarizerPage() {
             size="lg"
             className="px-8 py-3 text-base"
             >
-            {(isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo) ? (
+            {(isLoadingState || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo) ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : (
                 <Wand2 className="mr-2 h-5 w-5" />
             )}
-            {activeInputType === 'pdf' ? "Summarize PDF & Start Q&A" 
+            {activeInputType === 'text' ? "Generate Notes"
+              : activeInputType === 'pdf' ? "Summarize PDF & Start Q&A" 
               : activeInputType === 'recording' ? "Summarize Audio & Start Q&A" 
               : activeInputType === 'powerpoint' ? "Summarize Slides & Start Q&A"
               : activeInputType === 'video' ? "Summarize Video & Start Q&A"
-              : "Generate Notes"}
+              : "Generate"
+            }
             </Button>
         </div>
       </div>
@@ -712,8 +832,7 @@ export default function SummarizerPage() {
         </Alert>
       )}
 
-      {/* Display for Text Summarization Output */}
-      {activeInputType === 'text' && generatedNoteOutput && !isLoading && (
+      {activeInputType === 'text' && generatedNoteOutput && !isLoadingState && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center text-xl sm:text-2xl"><Brain className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>AI-Generated Notes from Text</CardTitle>
@@ -760,8 +879,8 @@ export default function SummarizerPage() {
         </Card>
       )}
 
-      {/* Display for PDF Summarization & Q&A Output */}
-      {activeInputType === 'pdf' && uploadedPdfFile && !isProcessingPdf && (
+      {/* Q&A UI for PDF */}
+      {activeInputType === 'pdf' && uploadedPdfFile && !isProcessingPdf && (pdfProcessingOutput || pdfQuestionHistory.length > 0) && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center text-xl sm:text-2xl">
@@ -774,14 +893,13 @@ export default function SummarizerPage() {
             {pdfProcessingOutput?.response && (
               <div>
                 <h3 className="font-semibold text-lg text-primary mb-1.5">
-                  {pdfQuestionHistory.length === 0 ? "Summary:" : "Latest Answer:"}
+                  {pdfQuestionHistory.length === 0 && !currentPdfQuestion ? "Summary:" : "Latest Answer:"}
                 </h3>
                 <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">
                   {pdfProcessingOutput.response}
                 </div>
               </div>
             )}
-
             {pdfProcessingOutput?.suggestions && pdfProcessingOutput.suggestions.length > 0 && (
               <div>
                 <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center">
@@ -790,13 +908,7 @@ export default function SummarizerPage() {
                 <ul className="space-y-1.5">
                     {pdfProcessingOutput.suggestions.map((suggestion, idx) => (
                         <li key={idx} className="text-xs">
-                        <Button
-                            variant="link"
-                            className="p-0 h-auto text-accent hover:text-accent/80 text-left"
-                            onClick={() => {
-                                setCurrentPdfQuestion(suggestion);
-                            }}
-                        >
+                        <Button variant="link" className="p-0 h-auto text-accent hover:text-accent/80 text-left" onClick={() => setCurrentPdfQuestion(suggestion)}>
                             <ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}
                         </Button>
                         </li>
@@ -804,314 +916,163 @@ export default function SummarizerPage() {
                 </ul>
               </div>
             )}
-            
             {pdfQuestionHistory.length > 0 && (
               <div className="pt-4 border-t">
                 <h3 className="font-semibold text-lg text-primary mb-2">Q&A History:</h3>
-                <ScrollArea className="max-h-60 pr-2">
-                <div className="space-y-4">
+                <ScrollArea className="max-h-60 pr-2"><div className="space-y-4">
                   {pdfQuestionHistory.map(item => (
                     <div key={item.id} className="text-sm">
                       <p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p>
                       <p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p>
                     </div>
                   ))}
-                </div>
-                </ScrollArea>
+                </div></ScrollArea>
               </div>
             )}
-
-            {pdfProcessingOutput && ( 
+            {(pdfProcessingOutput || pdfQuestionHistory.length > 0) && ( 
               <div className="pt-6 border-t">
                  <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about "{uploadedPdfFile.name}":</h3>
                 <div className="flex items-center gap-2">
-                  <Input
-                    value={currentPdfQuestion}
-                    onChange={(e) => setCurrentPdfQuestion(e.target.value)}
-                    placeholder="Type your question here..."
-                    className="flex-grow"
-                    disabled={isProcessingPdf}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentPdfQuestion.trim()) { e.preventDefault(); handleAskPdfQuestion(); } }}
-                  />
+                  <Input value={currentPdfQuestion} onChange={(e) => setCurrentPdfQuestion(e.target.value)} placeholder="Type your question here..." className="flex-grow" disabled={isProcessingPdf} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentPdfQuestion.trim()) { e.preventDefault(); handleAskPdfQuestion(); } }}/>
                   <Button onClick={handleAskPdfQuestion} disabled={isProcessingPdf || !currentPdfQuestion.trim()}>
-                    {isProcessingPdf && currentPdfQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>}
-                    Ask
+                    {isProcessingPdf && currentPdfQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>} Ask
                   </Button>
                 </div>
               </div>
             )}
-            <div className="text-xs text-muted-foreground pt-4 border-t mt-2">
-                <Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>
-                AI responses for PDFs are based on filename and your questions, not actual PDF content processing.
+             <div className="text-xs text-muted-foreground pt-4 border-t mt-2">
+                <Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/> AI responses for PDFs are based on filename and your questions, not actual PDF content processing.
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Display for Audio Summarization & Q&A Output */}
-      {activeInputType === 'recording' && uploadedAudioFile && !isProcessingAudio && (
+      {/* Q&A UI for Audio */}
+      {activeInputType === 'recording' && uploadedAudioFile && !isProcessingAudio && (audioProcessingOutput || audioQuestionHistory.length > 0) && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center text-xl sm:text-2xl">
-              <Mic2 className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>
-              Audio Analysis: <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[200px] sm:max-w-xs" title={uploadedAudioFile.name}>{uploadedAudioFile.name}</span>
+              <Mic2 className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/> Audio Analysis: <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[200px] sm:max-w-xs" title={uploadedAudioFile.name}>{uploadedAudioFile.name}</span>
             </CardTitle>
             <CardDescription>AI summary and Q&A for your audio file.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {audioProcessingOutput?.response && (
               <div>
-                <h3 className="font-semibold text-lg text-primary mb-1.5">
-                  {audioQuestionHistory.length === 0 ? "Summary:" : "Latest Answer:"}
-                </h3>
-                <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">
-                  {audioProcessingOutput.response}
-                </div>
+                <h3 className="font-semibold text-lg text-primary mb-1.5">{audioQuestionHistory.length === 0 && !currentAudioQuestion ? "Summary:" : "Latest Answer:"}</h3>
+                <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">{audioProcessingOutput.response}</div>
               </div>
             )}
-
             {audioProcessingOutput?.suggestions && audioProcessingOutput.suggestions.length > 0 && (
               <div>
-                <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center">
-                  <Sparkles className="mr-2 h-4 w-4 text-accent"/>Suggested Questions:
-                </h3>
-                 <ul className="space-y-1.5">
-                    {audioProcessingOutput.suggestions.map((suggestion, idx) => (
-                        <li key={idx} className="text-xs">
-                        <Button
-                            variant="link"
-                            className="p-0 h-auto text-accent hover:text-accent/80 text-left"
-                            onClick={() => {
-                                setCurrentAudioQuestion(suggestion);
-                            }}
-                        >
-                            <ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}
-                        </Button>
-                        </li>
-                    ))}
-                </ul>
+                <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center"><Sparkles className="mr-2 h-4 w-4 text-accent"/>Suggested Questions:</h3>
+                <ul className="space-y-1.5">{audioProcessingOutput.suggestions.map((suggestion, idx) => (<li key={idx} className="text-xs"><Button variant="link" className="p-0 h-auto text-accent hover:text-accent/80 text-left" onClick={() => setCurrentAudioQuestion(suggestion)}><ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}</Button></li>))}</ul>
               </div>
             )}
-            
             {audioQuestionHistory.length > 0 && (
               <div className="pt-4 border-t">
                 <h3 className="font-semibold text-lg text-primary mb-2">Q&A History:</h3>
-                <ScrollArea className="max-h-60 pr-2">
-                <div className="space-y-4">
-                  {audioQuestionHistory.map(item => (
-                    <div key={item.id} className="text-sm">
-                      <p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p>
-                      <p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p>
-                    </div>
-                  ))}
-                </div>
-                </ScrollArea>
+                <ScrollArea className="max-h-60 pr-2"><div className="space-y-4">{audioQuestionHistory.map(item => (<div key={item.id} className="text-sm"><p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p><p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p></div>))}</div></ScrollArea>
               </div>
             )}
-
-            {audioProcessingOutput && ( 
+            {(audioProcessingOutput || audioQuestionHistory.length > 0) && ( 
               <div className="pt-6 border-t">
                  <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about "{uploadedAudioFile.name}":</h3>
                 <div className="flex items-center gap-2">
-                  <Input
-                    value={currentAudioQuestion}
-                    onChange={(e) => setCurrentAudioQuestion(e.target.value)}
-                    placeholder="Type your question here..."
-                    className="flex-grow"
-                    disabled={isProcessingAudio}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentAudioQuestion.trim()) { e.preventDefault(); handleAskAudioQuestion(); } }}
-                  />
-                  <Button onClick={handleAskAudioQuestion} disabled={isProcessingAudio || !currentAudioQuestion.trim()}>
-                    {isProcessingAudio && currentAudioQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>}
-                    Ask
-                  </Button>
+                  <Input value={currentAudioQuestion} onChange={(e) => setCurrentAudioQuestion(e.target.value)} placeholder="Type your question here..." className="flex-grow" disabled={isProcessingAudio} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentAudioQuestion.trim()) { e.preventDefault(); handleAskAudioQuestion(); } }}/>
+                  <Button onClick={handleAskAudioQuestion} disabled={isProcessingAudio || !currentAudioQuestion.trim()}>{isProcessingAudio && currentAudioQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>} Ask</Button>
                 </div>
               </div>
             )}
-            <div className="text-xs text-muted-foreground pt-4 border-t mt-2">
-                <Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>
-                AI responses for audio are based on filename and your questions, not actual audio content processing.
-            </div>
+             <div className="text-xs text-muted-foreground pt-4 border-t mt-2"><Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>AI responses for audio are based on filename and your questions, not actual audio content.</div>
           </CardContent>
         </Card>
       )}
 
-      {/* Display for Slide Summarization & Q&A Output */}
-      {activeInputType === 'powerpoint' && uploadedSlideFile && !isProcessingSlides && (
+      {/* Q&A UI for Slides */}
+      {activeInputType === 'powerpoint' && uploadedSlideFile && !isProcessingSlides && (slideProcessingOutput || slideQuestionHistory.length > 0) && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="flex items-center text-xl sm:text-2xl">
-              <Presentation className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>
-              Slide Analysis: <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[200px] sm:max-w-xs" title={uploadedSlideFile.name}>{uploadedSlideFile.name}</span>
-            </CardTitle>
+            <CardTitle className="flex items-center text-xl sm:text-2xl"><Presentation className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>Slide Analysis: <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[200px] sm:max-w-xs" title={uploadedSlideFile.name}>{uploadedSlideFile.name}</span></CardTitle>
             <CardDescription>AI summary and Q&A for your slide presentation.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {slideProcessingOutput?.response && (
               <div>
-                <h3 className="font-semibold text-lg text-primary mb-1.5">
-                  {slideQuestionHistory.length === 0 ? "Summary:" : "Latest Answer:"}
-                </h3>
-                <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">
-                  {slideProcessingOutput.response}
-                </div>
+                <h3 className="font-semibold text-lg text-primary mb-1.5">{slideQuestionHistory.length === 0 && !currentSlideQuestion ? "Summary:" : "Latest Answer:"}</h3>
+                <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">{slideProcessingOutput.response}</div>
               </div>
             )}
-
             {slideProcessingOutput?.suggestions && slideProcessingOutput.suggestions.length > 0 && (
               <div>
-                <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center">
-                  <Sparkles className="mr-2 h-4 w-4 text-accent"/>Suggested Questions:
-                </h3>
-                 <ul className="space-y-1.5">
-                    {slideProcessingOutput.suggestions.map((suggestion, idx) => (
-                        <li key={idx} className="text-xs">
-                        <Button
-                            variant="link"
-                            className="p-0 h-auto text-accent hover:text-accent/80 text-left"
-                            onClick={() => {
-                                setCurrentSlideQuestion(suggestion);
-                            }}
-                        >
-                            <ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}
-                        </Button>
-                        </li>
-                    ))}
-                </ul>
+                <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center"><Sparkles className="mr-2 h-4 w-4 text-accent"/>Suggested Questions:</h3>
+                <ul className="space-y-1.5">{slideProcessingOutput.suggestions.map((suggestion, idx) => (<li key={idx} className="text-xs"><Button variant="link" className="p-0 h-auto text-accent hover:text-accent/80 text-left" onClick={() => setCurrentSlideQuestion(suggestion)}><ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}</Button></li>))}</ul>
               </div>
             )}
-            
             {slideQuestionHistory.length > 0 && (
               <div className="pt-4 border-t">
                 <h3 className="font-semibold text-lg text-primary mb-2">Q&A History:</h3>
-                <ScrollArea className="max-h-60 pr-2">
-                <div className="space-y-4">
-                  {slideQuestionHistory.map(item => (
-                    <div key={item.id} className="text-sm">
-                      <p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p>
-                      <p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p>
-                    </div>
-                  ))}
-                </div>
-                </ScrollArea>
+                <ScrollArea className="max-h-60 pr-2"><div className="space-y-4">{slideQuestionHistory.map(item => (<div key={item.id} className="text-sm"><p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p><p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p></div>))}</div></ScrollArea>
               </div>
             )}
-
-            {slideProcessingOutput && ( 
+            {(slideProcessingOutput || slideQuestionHistory.length > 0) && (
               <div className="pt-6 border-t">
                  <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about "{uploadedSlideFile.name}":</h3>
                 <div className="flex items-center gap-2">
-                  <Input
-                    value={currentSlideQuestion}
-                    onChange={(e) => setCurrentSlideQuestion(e.target.value)}
-                    placeholder="Type your question here..."
-                    className="flex-grow"
-                    disabled={isProcessingSlides}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentSlideQuestion.trim()) { e.preventDefault(); handleAskSlideQuestion(); } }}
-                  />
-                  <Button onClick={handleAskSlideQuestion} disabled={isProcessingSlides || !currentSlideQuestion.trim()}>
-                    {isProcessingSlides && currentSlideQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>}
-                    Ask
-                  </Button>
+                  <Input value={currentSlideQuestion} onChange={(e) => setCurrentSlideQuestion(e.target.value)} placeholder="Type your question here..." className="flex-grow" disabled={isProcessingSlides} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentSlideQuestion.trim()) { e.preventDefault(); handleAskSlideQuestion(); } }}/>
+                  <Button onClick={handleAskSlideQuestion} disabled={isProcessingSlides || !currentSlideQuestion.trim()}>{isProcessingSlides && currentSlideQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>} Ask</Button>
                 </div>
               </div>
             )}
-            <div className="text-xs text-muted-foreground pt-4 border-t mt-2">
-                <Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>
-                AI responses for slides are based on filename and your questions, not actual slide content processing.
-            </div>
+            <div className="text-xs text-muted-foreground pt-4 border-t mt-2"><Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>AI responses for slides are based on filename and your questions, not actual slide content.</div>
           </CardContent>
         </Card>
       )}
 
-      {/* Display for Video Summarization & Q&A Output */}
-      {activeInputType === 'video' && (videoUrl.trim() || uploadedLocalVideoFile) && !isProcessingVideo && (
+       {/* Q&A UI for Video */}
+      {activeInputType === 'video' && (videoUrl.trim() || uploadedLocalVideoFile) && !isProcessingVideo && (videoProcessingOutput || videoQuestionHistory.length > 0) && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center text-xl sm:text-2xl">
-              <Film className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>
-              Video Analysis: <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[200px] sm:max-w-xs" title={videoInputMethod === 'url' ? videoUrl : uploadedLocalVideoFile?.name}>{videoInputMethod === 'url' ? videoUrl : uploadedLocalVideoFile?.name}</span>
+              <Film className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>Video Analysis: 
+              <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[150px] sm:max-w-xs" title={videoInputMethod === 'url' ? videoUrl : uploadedLocalVideoFile?.name}>
+                {videoInputMethod === 'url' ? videoUrl : uploadedLocalVideoFile?.name}
+              </span>
             </CardTitle>
             <CardDescription>AI summary and Q&A for your video content.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {videoProcessingOutput?.response && (
               <div>
-                <h3 className="font-semibold text-lg text-primary mb-1.5">
-                  {videoQuestionHistory.length === 0 ? "Summary:" : "Latest Answer:"}
-                </h3>
-                <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">
-                  {videoProcessingOutput.response}
-                </div>
+                <h3 className="font-semibold text-lg text-primary mb-1.5">{videoQuestionHistory.length === 0 && !currentVideoQuestion ? "Summary:" : "Latest Answer:"}</h3>
+                <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">{videoProcessingOutput.response}</div>
               </div>
             )}
-
             {videoProcessingOutput?.suggestions && videoProcessingOutput.suggestions.length > 0 && (
               <div>
-                <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center">
-                  <Sparkles className="mr-2 h-4 w-4 text-accent"/>Suggested Questions:
-                </h3>
-                 <ul className="space-y-1.5">
-                    {videoProcessingOutput.suggestions.map((suggestion, idx) => (
-                        <li key={idx} className="text-xs">
-                        <Button
-                            variant="link"
-                            className="p-0 h-auto text-accent hover:text-accent/80 text-left"
-                            onClick={() => {
-                                setCurrentVideoQuestion(suggestion);
-                            }}
-                        >
-                            <ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}
-                        </Button>
-                        </li>
-                    ))}
-                </ul>
+                <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center"><Sparkles className="mr-2 h-4 w-4 text-accent"/>Suggested Questions:</h3>
+                <ul className="space-y-1.5">{videoProcessingOutput.suggestions.map((suggestion, idx) => (<li key={idx} className="text-xs"><Button variant="link" className="p-0 h-auto text-accent hover:text-accent/80 text-left" onClick={() => setCurrentVideoQuestion(suggestion)}><ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}</Button></li>))}</ul>
               </div>
             )}
-            
             {videoQuestionHistory.length > 0 && (
               <div className="pt-4 border-t">
                 <h3 className="font-semibold text-lg text-primary mb-2">Q&A History:</h3>
-                <ScrollArea className="max-h-60 pr-2">
-                <div className="space-y-4">
-                  {videoQuestionHistory.map(item => (
-                    <div key={item.id} className="text-sm">
-                      <p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p>
-                      <p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p>
-                    </div>
-                  ))}
-                </div>
-                </ScrollArea>
+                <ScrollArea className="max-h-60 pr-2"><div className="space-y-4">{videoQuestionHistory.map(item => (<div key={item.id} className="text-sm"><p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p><p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p></div>))}</div></ScrollArea>
               </div>
             )}
-
-            {videoProcessingOutput && ( 
+            {(videoProcessingOutput || videoQuestionHistory.length > 0) && ( 
               <div className="pt-6 border-t">
                  <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about the video:</h3>
                 <div className="flex items-center gap-2">
-                  <Input
-                    value={currentVideoQuestion}
-                    onChange={(e) => setCurrentVideoQuestion(e.target.value)}
-                    placeholder="Type your question here..."
-                    className="flex-grow"
-                    disabled={isProcessingVideo}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentVideoQuestion.trim()) { e.preventDefault(); handleAskVideoQuestion(); } }}
-                  />
-                  <Button onClick={handleAskVideoQuestion} disabled={isProcessingVideo || !currentVideoQuestion.trim()}>
-                    {isProcessingVideo && currentVideoQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>}
-                    Ask
-                  </Button>
+                  <Input value={currentVideoQuestion} onChange={(e) => setCurrentVideoQuestion(e.target.value)} placeholder="Type your question here..." className="flex-grow" disabled={isProcessingVideo} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentVideoQuestion.trim()) { e.preventDefault(); handleAskVideoQuestion(); } }}/>
+                  <Button onClick={handleAskVideoQuestion} disabled={isProcessingVideo || !currentVideoQuestion.trim()}>{isProcessingVideo && currentVideoQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>} Ask</Button>
                 </div>
               </div>
             )}
-            <div className="text-xs text-muted-foreground pt-4 border-t mt-2">
-                <Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>
-                AI responses for videos are based on the URL/filename and your questions, not actual video content processing.
-            </div>
+            <div className="text-xs text-muted-foreground pt-4 border-t mt-2"><Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>AI responses for videos are based on URL/filename and your questions, not actual video content.</div>
           </CardContent>
         </Card>
       )}
-
     </div>
   );
 }

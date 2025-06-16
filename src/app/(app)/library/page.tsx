@@ -7,7 +7,7 @@ import { summarizeConversation } from "@/ai/flows/summarize-conversation";
 import type { Conversation, Message } from "@/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox"; // Added Checkbox import
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Accordion,
   AccordionContent,
@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2, PieChartIcon, Sparkles, ChevronDown, ChevronUp, Type as TypeIcon, Mic, MessagesSquare as MessagesSquareIcon, Camera as CameraIcon, BrainCircuit } from "lucide-react";
+import { Loader2, LibraryBig, AlertTriangle, MessageSquareText, CalendarDays, FileText, Layers, BookCopy, Languages, Brain, PenSquare, Edit3, Trash2, PieChartIcon, Sparkles, ChevronDown, ChevronUp, Type as TypeIcon, Mic, MessagesSquare as MessagesSquareIcon, Camera as CameraIcon, Wand2, HelpCircle, BrainCircuit, VideoIcon } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -53,7 +53,6 @@ export default function LibraryPage() {
   const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]); 
   
-  // State for multi-select and bulk delete
   const [selectedConversationIds, setSelectedConversationIds] = useState<string[]>([]);
   const [showDeleteSelectedDialog, setShowDeleteSelectedDialog] = useState(false);
 
@@ -70,10 +69,17 @@ export default function LibraryPage() {
     if (topic === "Visual Learning - Graphs & Charts") return "graphs";
     if (topic === "Visual Learning - Conceptual Diagrams") return "diagrams";
     if (topic === "Visual Learning - Mind Maps") return "mindmaps";
+
+    if (topic === "Text Content Summarization") return "text";
+    if (topic === "PDF Content Summarization & Q&A") return "pdf";
+    if (topic === "Audio Content Summarization & Q&A") return "recording";
+    if (topic === "Slide Content Summarization & Q&A") return "powerpoint";
+    if (topic === "Video Content Summarization & Q&A") return "video";
     return undefined;
   }
 
   const getGroupNameForConvo = useCallback((convo: Conversation): string => {
+    // Existing groups
     if (convo.topic === "AI Learning Assistant Chat") return "General AI Tutor";
     if (convo.topic === "Homework Help") return "Homework Helper";
     if (convo.topic?.startsWith("Visual Learning")) return "Visual Learning";
@@ -82,6 +88,18 @@ export default function LibraryPage() {
     if (convo.topic === "Language Conversation Practice") return "Conversation Translator";
     if (convo.topic === "Language Camera Translation") return "Camera Translator";
     if (convo.topic === "LanguageTranslatorMode") return "Language Translator (Legacy)"; 
+    
+    // New Summarizer Groups
+    if (convo.topic === "Text Content Summarization") return "Text Summarizer";
+    if (convo.topic === "PDF Content Summarization & Q&A") return "PDF Summarizer & Q&A";
+    if (convo.topic === "Audio Content Summarization & Q&A") return "Audio Summarizer & Q&A";
+    if (convo.topic === "Slide Content Summarization & Q&A") return "Slide Summarizer & Q&A";
+    if (convo.topic === "Video Content Summarization & Q&A") return "Video Summarizer & Q&A";
+
+    // New Flashcard/MCQ Groups
+    if (convo.topic === "Flashcard Generation") return "Flashcard Generator";
+    if (convo.topic === "MCQ Generation") return "MCQ Quiz Generator";
+    
     return convo.subjectContext || convo.topic || "Uncategorized Study Session";
   }, []);
 
@@ -101,7 +119,7 @@ export default function LibraryPage() {
         setGroupedConversations(groups);
         
         const firstGroupKey = Object.keys(groups)[0];
-        if (firstGroupKey && expandedGroups.length === 0 && convos.length > 0) { // Ensure convos exist
+        if (firstGroupKey && expandedGroups.length === 0 && convos.length > 0) {
             setExpandedGroups([firstGroupKey]);
         }
         setError(null);
@@ -186,13 +204,12 @@ export default function LibraryPage() {
     if (conversationToDelete) {
       deleteConversation(conversationToDelete.id);
       toast({ title: "Conversation Deleted", description: `"${getConversationDisplayTitle(conversationToDelete, getGroupNameForConvo(conversationToDelete!))}" has been deleted.`, variant: "default" });
-      setSelectedConversationIds(prev => prev.filter(id => id !== conversationToDelete.id)); // Also remove from selected
+      setSelectedConversationIds(prev => prev.filter(id => id !== conversationToDelete.id));
       setConversationToDelete(null); 
       loadConversations(); 
     }
   };
 
-  // --- Multi-select and Bulk Delete Logic ---
   const isConversationSelected = (convoId: string) => selectedConversationIds.includes(convoId);
 
   const isGroupFullySelected = (groupName: string): boolean => {
@@ -219,10 +236,8 @@ export default function LibraryPage() {
     const allCurrentlySelectedInGroup = convosInGroupIds.every(id => selectedConversationIds.includes(id));
 
     if (allCurrentlySelectedInGroup) {
-      // Deselect all in this group
       setSelectedConversationIds(prev => prev.filter(id => !convosInGroupIds.includes(id)));
     } else {
-      // Select all in this group
       setSelectedConversationIds(prev => [...new Set([...prev, ...convosInGroupIds])]);
     }
   };
@@ -285,6 +300,15 @@ export default function LibraryPage() {
         baseHref = "/homework-assistant";
     } else if (convo.topic === "AI Learning Assistant Chat") {
         baseHref = "/general-tutor";
+    } else if (convo.topic?.startsWith("Text Content Sum") || 
+               convo.topic?.startsWith("PDF Content Sum") || 
+               convo.topic?.startsWith("Audio Content Sum") || 
+               convo.topic?.startsWith("Slide Content Sum") ||
+               convo.topic?.startsWith("Video Content Sum")) {
+        baseHref = "/summarizer";
+        if (modeFromTopic) queryParams.set("mode", modeFromTopic);
+    } else if (convo.topic === "Flashcard Generation" || convo.topic === "MCQ Generation") {
+        baseHref = "/flashcards";
     } else if (convo.subjectContext && convo.lessonContext && convo.topic) {
       baseHref = `/study-session/${encodeURIComponent(convo.subjectContext)}`;
     } else { 
@@ -296,7 +320,9 @@ export default function LibraryPage() {
   const sortedGroupNames = Object.keys(groupedConversations).sort((a, b) => {
     const priority = [
       "General AI Tutor", "Homework Helper", "Visual Learning", 
-      "Text Translator", "Voice Translator", "Conversation Translator", "Camera Translator"
+      "Text Translator", "Voice Translator", "Conversation Translator", "Camera Translator",
+      "Text Summarizer", "PDF Summarizer & Q&A", "Audio Summarizer & Q&A", "Slide Summarizer & Q&A", "Video Summarizer & Q&A",
+      "Flashcard Generator", "MCQ Quiz Generator"
     ];
     const indexA = priority.indexOf(a);
     const indexB = priority.indexOf(b);
@@ -315,6 +341,17 @@ export default function LibraryPage() {
     if (groupName === "Conversation Translator") return <MessagesSquareIcon className="mr-2 h-5 w-5 text-indigo-500" />;
     if (groupName === "Camera Translator") return <CameraIcon className="mr-2 h-5 w-5 text-pink-500" />;
     if (groupName.includes("Translator")) return <Languages className="mr-2 h-5 w-5 text-green-500" />;
+
+    if (groupName === "Text Summarizer") return <FileText className="mr-2 h-5 w-5 text-yellow-600" />;
+    if (groupName === "PDF Summarizer & Q&A") return <FileText className="mr-2 h-5 w-5 text-red-500" />;
+    if (groupName === "Audio Summarizer & Q&A") return <Mic className="mr-2 h-5 w-5 text-sky-500" />;
+    if (groupName === "Slide Summarizer & Q&A") return <Layers className="mr-2 h-5 w-5 text-orange-600" />;
+    if (groupName === "Video Summarizer & Q&A") return <VideoIcon className="mr-2 h-5 w-5 text-rose-500" />;
+    if (groupName.includes("Summarizer")) return <Wand2 className="mr-2 h-5 w-5 text-gray-500" />;
+    
+    if (groupName === "Flashcard Generator") return <Sparkles className="mr-2 h-5 w-5 text-amber-500" />;
+    if (groupName === "MCQ Quiz Generator") return <HelpCircle className="mr-2 h-5 w-5 text-cyan-500" />;
+
     return <BookCopy className="mr-2 h-5 w-5 text-gray-500" />;
   };
 
@@ -329,6 +366,15 @@ export default function LibraryPage() {
     if (groupName === "Camera Translator") return `Camera Session ${dateSuffix}`;
     if (groupName === "General AI Tutor") return `General Chat ${dateSuffix}`;
     if (groupName === "Homework Helper") return `Homework Session ${dateSuffix}`;
+    
+    if (groupName === "Text Summarizer") return `Text Summary ${dateSuffix}`;
+    if (groupName === "PDF Summarizer & Q&A") return `PDF Session ${dateSuffix}`;
+    if (groupName === "Audio Summarizer & Q&A") return `Audio Session ${dateSuffix}`;
+    if (groupName === "Slide Summarizer & Q&A") return `Slides Session ${dateSuffix}`;
+    if (groupName === "Video Summarizer & Q&A") return `Video Session ${dateSuffix}`;
+    if (groupName === "Flashcard Generator") return `Flashcards ${dateSuffix}`;
+    if (groupName === "MCQ Quiz Generator") return `MCQ Quiz ${dateSuffix}`;
+
     if (groupName === "Visual Learning") {
         if (convo.topic === "Visual Learning - Mind Maps") return `Mind Map Session ${dateSuffix}`;
         if (convo.topic === "Visual Learning - Graphs & Charts") return `Graphs/Charts Session ${dateSuffix}`;
@@ -336,7 +382,15 @@ export default function LibraryPage() {
         return `Visual Session ${dateSuffix}`;
     }
     
-    if (firstUserMessage && !["Text Translator", "Voice Translator", "Conversation Translator", "Camera Translator", "General AI Tutor", "Homework Helper", "Visual Learning"].includes(groupName)) {
+    const nonContextualGroups = [
+      "Text Translator", "Voice Translator", "Conversation Translator", "Camera Translator", 
+      "General AI Tutor", "Homework Helper", "Visual Learning",
+      "Text Summarizer", "PDF Summarizer & Q&A", "Audio Summarizer & Q&A", 
+      "Slide Summarizer & Q&A", "Video Summarizer & Q&A",
+      "Flashcard Generator", "MCQ Quiz Generator"
+    ];
+
+    if (firstUserMessage && !nonContextualGroups.includes(groupName)) {
       return `${firstUserMessage}... ${dateSuffix}`;
     }
     
@@ -463,6 +517,13 @@ export default function LibraryPage() {
                                     {convo.topic && 
                                      !convo.topic.startsWith("Language ") && 
                                      !convo.topic.startsWith("Visual Learning") &&
+                                     !convo.topic.startsWith("Text Content Sum") &&
+                                     !convo.topic.startsWith("PDF Content Sum") &&
+                                     !convo.topic.startsWith("Audio Content Sum") &&
+                                     !convo.topic.startsWith("Slide Content Sum") &&
+                                     !convo.topic.startsWith("Video Content Sum") &&
+                                     !convo.topic.startsWith("Flashcard Gen") &&
+                                     !convo.topic.startsWith("MCQ Gen") &&
                                      !["AI Learning Assistant Chat", "Homework Help"].includes(convo.topic) &&
                                      convo.topic !== groupName && 
                                      convo.topic !== convo.subjectContext && 
@@ -542,7 +603,4 @@ export default function LibraryPage() {
     </div>
   );
 }
-    
-
-
     
