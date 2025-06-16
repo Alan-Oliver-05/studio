@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIconLucide, FileUp, UploadCloud, Youtube, Key, Brain, Info, Sparkles, SendHorizonal, MessageSquare, ChevronRightSquare, Link as LinkIcon } from "lucide-react";
+import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIconLucide, FileUp, UploadCloud, Youtube, Key, Brain, Info, Sparkles, SendHorizonal, MessageSquare, ChevronRightSquare, Link as LinkIcon, Film, FolderClosed } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { summarizeText, SummarizeTextInput, SummarizeTextOutput } from "@/ai/flows/summarize-text-flow";
 import { aiGuidedStudySession, AIGuidedStudySessionInput, AIGuidedStudySessionOutput } from "@/ai/flows/ai-guided-study-session";
@@ -14,9 +14,12 @@ import { useUserProfile } from "@/contexts/user-profile-context";
 import { cn } from "@/lib/utils";
 import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 
 
 type InputType = "text" | "recording" | "pdf" | "powerpoint" | "video";
+type VideoInputMethod = 'url' | 'upload';
 
 interface InputTypeOption {
   value: InputType;
@@ -29,18 +32,18 @@ interface InputTypeOption {
 
 const inputTypeOptions: InputTypeOption[] = [
   { value: "text", label: "Text", icon: Type, title:"AI Text Summarizer & Note Taker", description: "Paste any text — articles, essays, or research papers — and get concise summaries, key takeaways, and organized notes instantly.", placeholder: "Paste your article, essay, research paper, or any text here..." },
-  { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary, and then ask specific questions about its content. *Please note: PDF content is not actually read; AI responds based on filename and your questions.*", placeholder: "Upload your PDF document." },
-  { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload audio file, Sai (conceptually) transcribes and summarizes, pinpointing key discussions and insights.", placeholder: "Upload your audio file (e.g., .mp3, .wav)." },
+  { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary, and then ask specific questions about its content. *AI responds based on filename and your questions.*", placeholder: "Upload your PDF document." },
+  { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload audio file, Sai (conceptually) transcribes and summarizes, pinpointing key discussions and insights. *AI responds based on filename.*", placeholder: "Upload your audio file (e.g., .mp3, .wav)." },
   { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer & Q&A", description: "Ace presentations. Sai converts PPT or PDF slides into actionable study notes, detailing core messages, narrative flow, and key takeaways. *AI responds based on filename.*", placeholder: "Upload your PPT or PDF slide deck." },
-  { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer", description: "Learn faster from videos. Paste any YouTube link, and Sai extracts crucial topics, arguments, and examples into concise study notes.", placeholder: "https://www.youtube.com/watch?v=..." },
+  { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer & Q&A", description: "Learn faster. Paste a YouTube link or upload a local video file. Sai (conceptually) summarizes key topics and allows Q&A. *AI responds based on URL/filename.*", placeholder: "https://www.youtube.com/watch?v=..." },
 ];
 
 const MAX_CHARACTERS = 10000;
+const MAX_LOCAL_VIDEO_SIZE_MB = 25; 
 
 export default function SummarizerPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const [inputText, setInputText] = useState<string>("");
-  const [videoUrl, setVideoUrl] = useState<string>("");
   const [generatedNoteOutput, setGeneratedNoteOutput] = useState<SummarizeTextOutput | null>(null); 
   
   const [uploadedPdfFile, setUploadedPdfFile] = useState<File | null>(null);
@@ -63,6 +66,15 @@ export default function SummarizerPage() {
   const [slideQuestionHistory, setSlideQuestionHistory] = useState<Array<{ question: string; answer: string; id: string }>>([]);
   const [currentSlideQuestion, setCurrentSlideQuestion] = useState<string>("");
   const [isProcessingSlides, setIsProcessingSlides] = useState<boolean>(false);
+
+  const [videoUrl, setVideoUrl] = useState<string>("");
+  const [uploadedLocalVideoFile, setUploadedLocalVideoFile] = useState<File | null>(null);
+  const localVideoFileInputRef = useRef<HTMLInputElement>(null);
+  const [videoProcessingOutput, setVideoProcessingOutput] = useState<AIGuidedStudySessionOutput | null>(null);
+  const [videoQuestionHistory, setVideoQuestionHistory] = useState<Array<{ question: string; answer: string; id: string }>>([]);
+  const [currentVideoQuestion, setCurrentVideoQuestion] = useState<string>("");
+  const [isProcessingVideo, setIsProcessingVideo] = useState<boolean>(false);
+  const [videoInputMethod, setVideoInputMethod] = useState<VideoInputMethod>('url');
 
 
   const [isLoading, setIsLoading] = useState<boolean>(false); 
@@ -99,6 +111,14 @@ export default function SummarizerPage() {
       setSlideProcessingOutput(null);
       setSlideQuestionHistory([]);
       setCurrentSlideQuestion("");
+    }
+    if (activeInputType !== 'video') {
+      setVideoUrl("");
+      setUploadedLocalVideoFile(null);
+      setVideoProcessingOutput(null);
+      setVideoQuestionHistory([]);
+      setCurrentVideoQuestion("");
+      setVideoInputMethod('url');
     }
   }, [activeInputType]);
 
@@ -310,7 +330,7 @@ export default function SummarizerPage() {
         if(slideFileInputRef.current) slideFileInputRef.current.value = "";
         return;
       }
-      if (file.size > 15 * 1024 * 1024) { // 15MB limit for slides
+      if (file.size > 15 * 1024 * 1024) { 
         toast({ title: "File too large", description: "Please upload a slide file smaller than 15MB.", variant: "destructive" });
         setUploadedSlideFile(null);
         if(slideFileInputRef.current) slideFileInputRef.current.value = "";
@@ -385,14 +405,100 @@ export default function SummarizerPage() {
     }
   };
 
-
-  const handleFeatureUnderDevelopment = (inputTypeLabel: string) => {
-    toast({
-        title: `${inputTypeLabel} Summarization - Coming Soon!`,
-        description: `Generating notes from ${inputTypeLabel} is a feature we're actively developing. Please use Text, PDF or Audio input for now.`,
-        variant: "default",
-      });
+  const handleLocalVideoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("video/")) {
+        toast({ title: "Invalid File Type", description: "Please upload a video file.", variant: "destructive" });
+        setUploadedLocalVideoFile(null);
+        if(localVideoFileInputRef.current) localVideoFileInputRef.current.value = "";
+        return;
+      }
+      if (file.size > MAX_LOCAL_VIDEO_SIZE_MB * 1024 * 1024) { 
+        toast({ title: "File too large", description: `Please upload a video smaller than ${MAX_LOCAL_VIDEO_SIZE_MB}MB.`, variant: "destructive" });
+        setUploadedLocalVideoFile(null);
+        if(localVideoFileInputRef.current) localVideoFileInputRef.current.value = "";
+        return;
+      }
+      setUploadedLocalVideoFile(file);
+      setVideoProcessingOutput(null);
+      setVideoQuestionHistory([]);
+      setCurrentVideoQuestion("");
+      setError(null);
+      toast({ title: "Video File Selected", description: `Ready to process "${file.name}".`});
+    }
   };
+
+  const handleSummarizeVideo = async () => {
+    if (!profile) {
+        toast({title: "Profile Missing", description: "Please ensure you are logged in.", variant: "destructive"});
+        return;
+    }
+    if (videoInputMethod === 'url' && !videoUrl.trim()) {
+      toast({ title: "Missing Input", description: "Please enter a YouTube video URL.", variant: "destructive" });
+      return;
+    }
+    if (videoInputMethod === 'upload' && !uploadedLocalVideoFile) {
+      toast({ title: "Missing Input", description: "Please upload a local video file.", variant: "destructive" });
+      return;
+    }
+
+    setIsProcessingVideo(true);
+    setError(null);
+    setVideoProcessingOutput(null);
+    setVideoQuestionHistory([]);
+
+    try {
+      const aiInput: AIGuidedStudySessionInput = {
+        studentProfile: { ...profile, age: Number(profile.age) },
+        specificTopic: "Video Content Summarization & Q&A",
+        question: videoInputMethod === 'url' ? videoUrl : `Summarize the video: ${uploadedLocalVideoFile?.name}`,
+        originalFileName: videoInputMethod === 'upload' ? uploadedLocalVideoFile?.name : undefined,
+      };
+      const result = await aiGuidedStudySession(aiInput);
+      setVideoProcessingOutput(result);
+      const sourceName = videoInputMethod === 'url' ? "the YouTube video" : `"${uploadedLocalVideoFile?.name}"`;
+      toast({ title: "Video Summary Generated", description: `Summary for ${sourceName} is ready.` });
+    } catch (e) {
+      console.error("Video Summarization error:", e);
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during video summarization.";
+      setError(errorMessage);
+      toast({ title: "Video Summarization Failed", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsProcessingVideo(false);
+    }
+  };
+  
+  const handleAskVideoQuestion = async () => {
+    if (!currentVideoQuestion.trim() || !profile || (!videoUrl.trim() && !uploadedLocalVideoFile)) {
+      toast({ title: "Missing Input", description: "Please type a question and ensure a video source is provided.", variant: "destructive" });
+      return;
+    }
+    setIsProcessingVideo(true);
+    setError(null);
+
+    try {
+      const aiInput: AIGuidedStudySessionInput = {
+        studentProfile: { ...profile, age: Number(profile.age) },
+        specificTopic: "Video Content Summarization & Q&A",
+        question: currentVideoQuestion,
+        originalFileName: videoInputMethod === 'upload' ? uploadedLocalVideoFile?.name : (videoInputMethod === 'url' && videoUrl.trim() ? videoUrl : undefined),
+      };
+      const result = await aiGuidedStudySession(aiInput);
+      setVideoProcessingOutput(result);
+      setVideoQuestionHistory(prev => [...prev, { question: currentVideoQuestion, answer: result.response, id: crypto.randomUUID() }]);
+      setCurrentVideoQuestion("");
+      toast({ title: "Answer Received", description: "AI has responded to your question about the video." });
+    } catch (e) {
+      console.error("Video Q&A error:", e);
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during video Q&A.";
+      setError(errorMessage);
+      toast({ title: "Video Q&A Failed", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsProcessingVideo(false);
+    }
+  };
+
 
   const handleMainGenerateClick = () => {
     if (activeInputType === "text") {
@@ -403,9 +509,8 @@ export default function SummarizerPage() {
       handleSummarizeAudio();
     } else if (activeInputType === "powerpoint") {
       handleSummarizeSlides();
-    }
-     else {
-      handleFeatureUnderDevelopment(currentInputTypeConfig.label);
+    } else if (activeInputType === "video") {
+      handleSummarizeVideo();
     }
   };
 
@@ -426,7 +531,7 @@ export default function SummarizerPage() {
             />
             <div className="mt-2 flex flex-col sm:flex-row justify-between items-center gap-2">
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleFeatureUnderDevelopment("File Upload")} className="text-xs">
+                <Button variant="outline" size="sm" onClick={() => {/* Placeholder for file upload */}} className="text-xs">
                   <FileUp className="mr-1.5 h-3.5 w-3.5" /> Upload .txt / .docx
                 </Button>
               </div>
@@ -486,21 +591,45 @@ export default function SummarizerPage() {
         );
       case "video":
         return (
-            <div className="p-4 sm:p-6 border-2 border-dashed border-primary/30 rounded-xl bg-card shadow-sm text-center">
-                <VideoIconLucide className="h-12 w-12 text-primary mx-auto mb-4 opacity-80" />
-                <div className="relative mb-2">
-                    <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                        type="url"
-                        placeholder={currentInputTypeConfig.placeholder}
-                        value={videoUrl}
-                        onChange={(e) => setVideoUrl(e.target.value)}
-                        className="pl-10 text-sm h-11"
-                        disabled={isLoading} 
-                        aria-label="YouTube video URL"
-                    />
-                </div>
-                 <p className="text-xs text-muted-foreground mt-1">Currently supports YouTube video links.</p>
+            <div className="p-4 sm:p-6 border-2 border-dashed border-primary/30 rounded-xl bg-card shadow-sm">
+                <RadioGroup value={videoInputMethod} onValueChange={(value: VideoInputMethod) => setVideoInputMethod(value)} className="flex space-x-4 mb-4 justify-center">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="url" id="video-url" />
+                        <Label htmlFor="video-url" className="flex items-center cursor-pointer"><Youtube className="mr-1.5 h-4 w-4 text-red-600"/>YouTube URL</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="upload" id="video-upload" />
+                        <Label htmlFor="video-upload" className="flex items-center cursor-pointer"><FolderClosed className="mr-1.5 h-4 w-4 text-blue-500"/>Upload Local Video</Label>
+                    </div>
+                </RadioGroup>
+
+                {videoInputMethod === 'url' && (
+                    <div className="relative mb-2">
+                        <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                            type="url"
+                            placeholder={currentInputTypeConfig.placeholder}
+                            value={videoUrl}
+                            onChange={(e) => setVideoUrl(e.target.value)}
+                            className="pl-10 text-sm h-11"
+                            disabled={isLoading || isProcessingVideo} 
+                            aria-label="YouTube video URL"
+                        />
+                    </div>
+                )}
+                {videoInputMethod === 'upload' && (
+                     <div className="flex flex-col items-center justify-center p-4 border border-dashed rounded-md bg-muted/30">
+                        <input type="file" ref={localVideoFileInputRef} onChange={handleLocalVideoFileChange} accept="video/*" className="hidden" id="local-video-upload-input" />
+                        <Button variant="secondary" size="sm" onClick={() => localVideoFileInputRef.current?.click()} className="mb-2">
+                            <UploadCloud className="mr-2 h-4 w-4" /> Choose Local Video File
+                        </Button>
+                        {uploadedLocalVideoFile && (
+                            <p className="text-xs text-muted-foreground">Selected: <span className="font-medium text-primary">{uploadedLocalVideoFile.name}</span></p>
+                        )}
+                        {!uploadedLocalVideoFile && <p className="text-xs text-muted-foreground">Max file size: {MAX_LOCAL_VIDEO_SIZE_MB}MB</p>}
+                    </div>
+                )}
+                 <p className="text-xs text-muted-foreground mt-2 text-center">AI will summarize based on URL or filename.</p>
             </div>
         );
       default:
@@ -527,10 +656,11 @@ export default function SummarizerPage() {
               variant={activeInputType === option.value ? "secondary" : "ghost"}
               onClick={() => {
                 setActiveInputType(option.value);
-                setGeneratedNoteOutput(null); setError(null); setInputText(""); setVideoUrl("");
+                setGeneratedNoteOutput(null); setError(null); setInputText("");
                 setUploadedPdfFile(null); setPdfProcessingOutput(null); setPdfQuestionHistory([]); setCurrentPdfQuestion("");
                 setUploadedAudioFile(null); setAudioProcessingOutput(null); setAudioQuestionHistory([]); setCurrentAudioQuestion("");
                 setUploadedSlideFile(null); setSlideProcessingOutput(null); setSlideQuestionHistory([]); setCurrentSlideQuestion("");
+                setVideoUrl(""); setUploadedLocalVideoFile(null); setVideoProcessingOutput(null); setVideoQuestionHistory([]); setCurrentVideoQuestion(""); setVideoInputMethod('url');
               }}
               className={cn(
                 "px-3 py-1.5 h-auto text-xs sm:text-sm rounded-md flex items-center gap-1.5 sm:gap-2",
@@ -550,17 +680,17 @@ export default function SummarizerPage() {
         <div className="mt-6 text-center">
             <Button
             onClick={handleMainGenerateClick}
-            disabled={isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides ||
+            disabled={isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo ||
               (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
               (activeInputType === "pdf" && !uploadedPdfFile) ||
               (activeInputType === "recording" && !uploadedAudioFile) ||
               (activeInputType === "powerpoint" && !uploadedSlideFile) ||
-              (activeInputType === "video" && !videoUrl.trim())
+              (activeInputType === "video" && ((videoInputMethod === 'url' && !videoUrl.trim()) || (videoInputMethod === 'upload' && !uploadedLocalVideoFile)))
             }
             size="lg"
             className="px-8 py-3 text-base"
             >
-            {(isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides) ? (
+            {(isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo) ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : (
                 <Wand2 className="mr-2 h-5 w-5" />
@@ -568,6 +698,7 @@ export default function SummarizerPage() {
             {activeInputType === 'pdf' ? "Summarize PDF & Start Q&A" 
               : activeInputType === 'recording' ? "Summarize Audio & Start Q&A" 
               : activeInputType === 'powerpoint' ? "Summarize Slides & Start Q&A"
+              : activeInputType === 'video' ? "Summarize Video & Start Q&A"
               : "Generate Notes"}
             </Button>
         </div>
@@ -893,6 +1024,95 @@ export default function SummarizerPage() {
         </Card>
       )}
 
+      {/* Display for Video Summarization & Q&A Output */}
+      {activeInputType === 'video' && (videoUrl.trim() || uploadedLocalVideoFile) && !isProcessingVideo && (
+        <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center text-xl sm:text-2xl">
+              <Film className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>
+              Video Analysis: <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[200px] sm:max-w-xs" title={videoInputMethod === 'url' ? videoUrl : uploadedLocalVideoFile?.name}>{videoInputMethod === 'url' ? videoUrl : uploadedLocalVideoFile?.name}</span>
+            </CardTitle>
+            <CardDescription>AI summary and Q&A for your video content.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {videoProcessingOutput?.response && (
+              <div>
+                <h3 className="font-semibold text-lg text-primary mb-1.5">
+                  {videoQuestionHistory.length === 0 ? "Summary:" : "Latest Answer:"}
+                </h3>
+                <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">
+                  {videoProcessingOutput.response}
+                </div>
+              </div>
+            )}
+
+            {videoProcessingOutput?.suggestions && videoProcessingOutput.suggestions.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center">
+                  <Sparkles className="mr-2 h-4 w-4 text-accent"/>Suggested Questions:
+                </h3>
+                 <ul className="space-y-1.5">
+                    {videoProcessingOutput.suggestions.map((suggestion, idx) => (
+                        <li key={idx} className="text-xs">
+                        <Button
+                            variant="link"
+                            className="p-0 h-auto text-accent hover:text-accent/80 text-left"
+                            onClick={() => {
+                                setCurrentVideoQuestion(suggestion);
+                            }}
+                        >
+                            <ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}
+                        </Button>
+                        </li>
+                    ))}
+                </ul>
+              </div>
+            )}
+            
+            {videoQuestionHistory.length > 0 && (
+              <div className="pt-4 border-t">
+                <h3 className="font-semibold text-lg text-primary mb-2">Q&A History:</h3>
+                <ScrollArea className="max-h-60 pr-2">
+                <div className="space-y-4">
+                  {videoQuestionHistory.map(item => (
+                    <div key={item.id} className="text-sm">
+                      <p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p>
+                      <p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p>
+                    </div>
+                  ))}
+                </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {videoProcessingOutput && ( 
+              <div className="pt-6 border-t">
+                 <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about the video:</h3>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={currentVideoQuestion}
+                    onChange={(e) => setCurrentVideoQuestion(e.target.value)}
+                    placeholder="Type your question here..."
+                    className="flex-grow"
+                    disabled={isProcessingVideo}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentVideoQuestion.trim()) { e.preventDefault(); handleAskVideoQuestion(); } }}
+                  />
+                  <Button onClick={handleAskVideoQuestion} disabled={isProcessingVideo || !currentVideoQuestion.trim()}>
+                    {isProcessingVideo && currentVideoQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>}
+                    Ask
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="text-xs text-muted-foreground pt-4 border-t mt-2">
+                <Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>
+                AI responses for videos are based on the URL/filename and your questions, not actual video content processing.
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
     </div>
   );
 }
+

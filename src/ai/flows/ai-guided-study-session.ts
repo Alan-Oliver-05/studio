@@ -44,10 +44,10 @@ const AIGuidedStudySessionInputSchema = z.object({
   }).describe("The student profile information from the onboarding form."),
   subject: z.string().optional().describe('The main subject of study (e.g., "Physics for 12th Standard CBSE").'),
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
-  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps", "PDF Content Summarization & Q&A", "Audio Content Summarization & Q&A", "Slide Content Summarization & Q&A").'),
+  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps", "PDF Content Summarization & Q&A", "Audio Content Summarization & Q&A", "Slide Content Summarization & Q&A", "Video Content Summarization & Q&A").'),
   question: z.string().describe("The student's question or request for the study session."),
   photoDataUri: z.string().optional().nullable().describe("An optional photo (or document content as image) uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
-  originalFileName: z.string().optional().nullable().describe("The name of the original file uploaded by the user, if applicable (e.g., for document translation mode, PDF summarization, audio summarization, slide summarization)."),
+  originalFileName: z.string().optional().nullable().describe("The name of the original file uploaded by the user, if applicable (e.g., for document translation mode, PDF summarization, audio summarization, slide summarization, video summarization)."),
   // New fields for conversation practice setup
   conversationScenario: z.string().optional().describe("The scenario for language conversation practice."),
   userLanguageRole: z.string().optional().describe("The user's role and language in the conversation (e.g., 'English-speaking tourist')."),
@@ -82,8 +82,8 @@ const VisualElementSchema = z.object({
 
 
 const AIGuidedStudySessionOutputSchema = z.object({
-  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. If an 'interactive_mind_map_canvas' is being set up from an uploaded document, this response should inform the user about the auto-generated initial structure. For Q&A about the map, this contains the textual explanation. For PDF/Audio/Slide Summarization, this is the summary or answer to a question about the PDF/Audio/Slide."),
-  suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results. For PDF/Audio/Slide Summarization, these could be suggested follow-up questions."),
+  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. If an 'interactive_mind_map_canvas' is being set up from an uploaded document, this response should inform the user about the auto-generated initial structure. For Q&A about the map, this contains the textual explanation. For PDF/Audio/Slide/Video Summarization, this is the summary or answer to a question about the content."),
+  suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results. For PDF/Audio/Slide/Video Summarization, these could be suggested follow-up questions."),
   visualElement: VisualElementSchema.optional().nullable().describe("An optional visual element to aid understanding. For interactive mind map canvas requests (via Visual Learning - Mind Maps mode), this MUST have type 'interactive_mind_map_canvas'. If based on an uploaded file, its 'content' field can include an 'initialNodes' array."),
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
@@ -104,8 +104,10 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isInitialPdfSummarizationRequest: z.boolean().optional(),
     isAudioProcessingMode: z.boolean().optional(), 
     isInitialAudioSummarizationRequest: z.boolean().optional(), 
-    isSlideProcessingMode: z.boolean().optional(), // New flag for Slides
-    isInitialSlideSummarizationRequest: z.boolean().optional(), // New flag for Slides
+    isSlideProcessingMode: z.boolean().optional(),
+    isInitialSlideSummarizationRequest: z.boolean().optional(),
+    isVideoProcessingMode: z.boolean().optional(), // New flag for Video
+    isInitialVideoSummarizationRequest: z.boolean().optional(), // New flag for Video
     isCurriculumSpecificMode: z.boolean().optional(),
 });
 
@@ -267,6 +269,44 @@ Use 'performWebSearch' tool if needed for facts/formulas relevant to curriculum.
   Example 'response': "Regarding your question about [specific aspect] in '{{{originalFileName}}}', the slides indicate that [answer based on slide content]..."
   Example 'suggestions': ["How does the information on slide A relate to slide B in '{{{originalFileName}}}'?", "What visual aids were (conceptually) used to support this point in '{{{originalFileName}}}'?"]
   'visualElement' MUST be null.
+  {{/if}}
+
+{{else if isVideoProcessingMode}}
+  You are an AI assistant specialized in processing video content.
+  {{#if originalFileName}}
+    The user has uploaded a local video file named '{{{originalFileName}}}'. Assume you have (conceptually) watched and understood this video.
+  {{else if question}}
+    The user has provided a video URL: "{{{question}}}". Assume you have (conceptually) watched and understood this video.
+  {{/if}}
+  Your task is to assist the user with it.
+
+  {{#if isInitialVideoSummarizationRequest}}
+    {{#if originalFileName}}
+      The user's initial request is related to summarizing the local video '{{{originalFileName}}}'.
+    {{else}}
+      The user's initial request is to summarize the video from the URL: "{{{question}}}".
+    {{/if}}
+    1.  Provide a comprehensive summary of the video.
+        Your summary should cover:
+        *   Main topic or theme of the video.
+        *   Key points, arguments, or segments discussed.
+        *   Important examples, demonstrations, or conclusions, if any.
+    2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the content of the video based on your summary.
+    Example 'response' (for URL): "The video at '{{{question}}}' is about [main topic]... Key points discussed include [point 1] and [point 2]... The video concludes by [conclusion]."
+    Example 'response' (for file): "The video '{{{originalFileName}}}' discusses [main topic]... Key points include [point 1]... It concludes with [conclusion]."
+    Example 'suggestions': ["Can you elaborate on [specific point] mentioned in the video?", "What are the implications of the arguments made in the video?"]
+    'visualElement' MUST be null.
+  {{else}}
+    {{#if originalFileName}}
+      The user is asking a specific question about the local video '{{{originalFileName}}}': "{{{question}}}"
+    {{else}}
+      The user is asking a specific question about the video from URL: "{{{question}}}" (Assume the URL itself is not the question, but rather context. The question is part of the broader "question" input field along with the URL if it was the first message.)
+    {{/if}}
+    1.  Answer this question based on your understanding of the video's content. Be concise and directly address the query.
+    2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask, or suggest exploring a related concept from the video.
+    Example 'response': "Regarding your question about [specific aspect] in the video, the discussion covered that [answer based on video content]..."
+    Example 'suggestions': ["How does this relate to [another concept] also discussed in the video?", "What were the main counter-arguments presented?"]
+    'visualElement' MUST be null.
   {{/if}}
 
 {{else if isLanguageTranslatorMode}}
@@ -432,11 +472,11 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
                            specificTopicFromInput === "Language Camera Translation" ||
                            specificTopicFromInput === "Language Document Translation";
     
+    const initialFileSummarizationTrigger = "Summarize the"; 
     const isPdfMode = specificTopicFromInput === "PDF Content Summarization & Q&A";
-    const initialFileSummarizationTrigger = "Summarize the"; // General trigger for file summarization
-
     const isAudioMode = specificTopicFromInput === "Audio Content Summarization & Q&A";
     const isSlideMode = specificTopicFromInput === "Slide Content Summarization & Q&A";
+    const isVideoMode = specificTopicFromInput === "Video Content Summarization & Q&A";
 
 
     const promptInput: z.infer<typeof PromptInputSchema> = {
@@ -473,7 +513,14 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
       isSlideProcessingMode: isSlideMode,
       isInitialSlideSummarizationRequest: isSlideMode && input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} slides`),
 
-      isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help"].includes(specificTopicFromInput) && !isLanguageMode && !specificTopicFromInput.startsWith("Visual Learning") && !isPdfMode && !isAudioMode && !isSlideMode,
+      isVideoProcessingMode: isVideoMode,
+      isInitialVideoSummarizationRequest: isVideoMode && 
+                                          (input.question.toLowerCase().includes("youtube.com/") || 
+                                           input.question.toLowerCase().includes("youtu.be/") ||
+                                           input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} video`)),
+
+
+      isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help"].includes(specificTopicFromInput) && !isLanguageMode && !specificTopicFromInput.startsWith("Visual Learning") && !isPdfMode && !isAudioMode && !isSlideMode && !isVideoMode,
       
       conversationScenario: input.conversationScenario,
       userLanguageRole: input.userLanguageRole,
@@ -513,11 +560,11 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
             }
         }
         
-        if(isPdfMode || isAudioMode || isSlideMode) { 
+        if(isPdfMode || isAudioMode || isSlideMode || isVideoMode) { 
             output.visualElement = null;
         }
 
-        const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "PDF Content Summarization & Q&A", "Audio Content Summarization & Q&A", "Slide Content Summarization & Q&A"];
+        const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "PDF Content Summarization & Q&A", "Audio Content Summarization & Q&A", "Slide Content Summarization & Q&A", "Video Content Summarization & Q&A"];
         const isVisualLearningMode = promptInput.isVisualLearningFocus;
 
         const shouldHaveMCQ = !nonMCQModes.includes(specificTopicFromInput) && 
