@@ -39,8 +39,6 @@ const DocumentTranslatorInterface = dynamic(() =>
   }
 );
 
-// This component is no longer directly used by the "camera" (Image Text) mode as per user's latest instruction.
-// It remains in the project for potential future use or if the user changes their mind.
 const ImageTextTranslatorInterface = dynamic(() =>
   import('./components/ImageTextTranslatorInterface').then((mod) => mod.default),
   {
@@ -236,7 +234,7 @@ export default function LanguageLearningPage() {
   
   return (
     <div className="h-full flex flex-col pt-0 bg-gradient-to-br from-background via-primary/5 to-background">
-       <div className="mb-4 pt-0 mt-0 px-4 sm:px-0"> {/* Added responsive padding */}
+       <div className="mb-4 pt-0 mt-0 px-4 sm:px-0">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
           <div className="flex items-center mb-2 sm:mb-0">
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-primary flex items-center">
@@ -256,7 +254,7 @@ export default function LanguageLearningPage() {
         </p>
       </div>
 
-      <div className="flex justify-center mb-4 sm:mb-6 px-4 sm:px-0"> {/* Added responsive padding */}
+      <div className="flex justify-center mb-4 sm:mb-6 px-4 sm:px-0">
         <div className="bg-muted p-1 rounded-lg shadow-sm flex flex-wrap justify-center gap-1">
           {languageLearningModes.map((mode) => {
             const Icon = mode.icon;
@@ -280,7 +278,7 @@ export default function LanguageLearningPage() {
         </div>
       </div>
 
-      <div className="flex-grow min-h-0 w-full max-w-4xl mx-auto bg-card shadow-xl rounded-xl border border-border/60 overflow-hidden px-0 sm:px-0"> {/* Ensure no extra padding here */}
+      <div className="flex-grow min-h-0 w-full max-w-4xl mx-auto bg-card shadow-xl rounded-xl border border-border/60 overflow-hidden px-0 sm:px-0">
         {profile && currentConversationId && chatKey && (
           <>
             {activeMode === "voice" ? (
@@ -312,7 +310,7 @@ export default function LanguageLearningPage() {
           </>
         )}
       </div>
-       <div className="text-center mt-6 py-2 px-4 sm:px-0"> {/* Added responsive padding */}
+       <div className="text-center mt-6 py-2 px-4 sm:px-0">
             <Sparkles className="h-5 w-5 text-accent mx-auto mb-1.5 opacity-80"/>
             <p className="text-xs text-muted-foreground">
               {activeModeConfig.description} Your preferred language is {profile.preferredLanguage}.
