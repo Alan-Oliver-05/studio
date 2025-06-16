@@ -30,7 +30,7 @@ interface InputTypeOption {
 const inputTypeOptions: InputTypeOption[] = [
   { value: "text", label: "Text", icon: Type, title:"AI Text Summarizer & Note Taker", description: "Paste any text — articles, essays, or research papers — and get concise summaries, key takeaways, and organized notes instantly.", placeholder: "Paste your article, essay, research paper, or any text here..." },
   { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary, and then ask specific questions about its content. *Please note: PDF content is not actually read; AI responds based on filename and your questions.*", placeholder: "Upload your PDF document." },
-  { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload audio or record live, and Sai transcribes and summarizes, pinpointing key discussions and insights.", placeholder: "Audio summarization coming soon!" },
+  { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload audio file, Sai (conceptually) transcribes and summarizes, pinpointing key discussions and insights.", placeholder: "Upload your audio file (e.g., .mp3, .wav)." },
   { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer", description: "Ace presentations. Sai converts PPT or PDF slides into actionable study notes, detailing core messages, narrative flow, and key takeaways.", placeholder: "Slide summarization coming soon!" },
   { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer", description: "Learn faster from videos. Paste any YouTube link, and Sai extracts crucial topics, arguments, and examples into concise study notes.", placeholder: "https://www.youtube.com/watch?v=..." },
 ];
@@ -41,16 +41,24 @@ export default function SummarizerPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const [inputText, setInputText] = useState<string>("");
   const [videoUrl, setVideoUrl] = useState<string>("");
-  const [generatedNoteOutput, setGeneratedNoteOutput] = useState<SummarizeTextOutput | null>(null); // For text mode
+  const [generatedNoteOutput, setGeneratedNoteOutput] = useState<SummarizeTextOutput | null>(null); 
   
   const [uploadedPdfFile, setUploadedPdfFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pdfProcessingOutput, setPdfProcessingOutput] = useState<AIGuidedStudySessionOutput | null>(null); // For PDF summary/Q&A
+  const pdfFileInputRef = useRef<HTMLInputElement>(null);
+  const [pdfProcessingOutput, setPdfProcessingOutput] = useState<AIGuidedStudySessionOutput | null>(null);
   const [pdfQuestionHistory, setPdfQuestionHistory] = useState<Array<{ question: string; answer: string; id: string }>>([]);
   const [currentPdfQuestion, setCurrentPdfQuestion] = useState<string>("");
   const [isProcessingPdf, setIsProcessingPdf] = useState<boolean>(false);
 
-  const [isLoading, setIsLoading] = useState<boolean>(false); // General loading for text, video etc.
+  const [uploadedAudioFile, setUploadedAudioFile] = useState<File | null>(null);
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
+  const [audioProcessingOutput, setAudioProcessingOutput] = useState<AIGuidedStudySessionOutput | null>(null);
+  const [audioQuestionHistory, setAudioQuestionHistory] = useState<Array<{ question: string; answer: string; id: string }>>([]);
+  const [currentAudioQuestion, setCurrentAudioQuestion] = useState<string>("");
+  const [isProcessingAudio, setIsProcessingAudio] = useState<boolean>(false);
+
+
+  const [isLoading, setIsLoading] = useState<boolean>(false); 
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const [activeInputType, setActiveInputType] = useState<InputType>("text");
@@ -67,12 +75,17 @@ export default function SummarizerPage() {
   }, [inputText, activeInputType]);
   
   useEffect(() => {
-    // Clear PDF specific states when switching away from PDF mode or when a new PDF is uploaded
     if (activeInputType !== 'pdf') {
       setUploadedPdfFile(null);
       setPdfProcessingOutput(null);
       setPdfQuestionHistory([]);
       setCurrentPdfQuestion("");
+    }
+    if (activeInputType !== 'recording') {
+      setUploadedAudioFile(null);
+      setAudioProcessingOutput(null);
+      setAudioQuestionHistory([]);
+      setCurrentAudioQuestion("");
     }
   }, [activeInputType]);
 
@@ -112,17 +125,17 @@ export default function SummarizerPage() {
       if (file.type !== "application/pdf") {
         toast({ title: "Invalid File Type", description: "Please upload a PDF file.", variant: "destructive" });
         setUploadedPdfFile(null);
-        if(fileInputRef.current) fileInputRef.current.value = "";
+        if(pdfFileInputRef.current) pdfFileInputRef.current.value = "";
         return;
       }
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit for PDF (conceptual)
+      if (file.size > 10 * 1024 * 1024) { 
         toast({ title: "File too large", description: "Please upload a PDF smaller than 10MB.", variant: "destructive" });
         setUploadedPdfFile(null);
-        if(fileInputRef.current) fileInputRef.current.value = "";
+        if(pdfFileInputRef.current) pdfFileInputRef.current.value = "";
         return;
       }
       setUploadedPdfFile(file);
-      setPdfProcessingOutput(null); // Clear previous summary/Q&A if a new file is chosen
+      setPdfProcessingOutput(null); 
       setPdfQuestionHistory([]);
       setCurrentPdfQuestion("");
       setError(null);
@@ -165,7 +178,7 @@ export default function SummarizerPage() {
       toast({ title: "Missing Input", description: "Please type a question and ensure a PDF is loaded.", variant: "destructive" });
       return;
     }
-    setIsProcessingPdf(true); // Reuse loading state
+    setIsProcessingPdf(true); 
     setError(null);
 
     try {
@@ -176,17 +189,101 @@ export default function SummarizerPage() {
         originalFileName: uploadedPdfFile.name,
       };
       const result = await aiGuidedStudySession(aiInput);
-      setPdfProcessingOutput(result); // Store latest AI response (answer & new suggestions)
+      setPdfProcessingOutput(result); 
       setPdfQuestionHistory(prev => [...prev, { question: currentPdfQuestion, answer: result.response, id: crypto.randomUUID() }]);
-      setCurrentPdfQuestion(""); // Clear input after asking
+      setCurrentPdfQuestion(""); 
       toast({ title: "Answer Received", description: "AI has responded to your question." });
     } catch (e) {
       console.error("PDF Q&A error:", e);
       const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during PDF Q&A.";
-      setError(errorMessage); // Show error related to Q&A
+      setError(errorMessage); 
       toast({ title: "PDF Q&A Failed", description: errorMessage, variant: "destructive" });
     } finally {
       setIsProcessingPdf(false);
+    }
+  };
+
+  const handleAudioFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("audio/")) {
+        toast({ title: "Invalid File Type", description: "Please upload an audio file (e.g., MP3, WAV).", variant: "destructive" });
+        setUploadedAudioFile(null);
+        if(audioFileInputRef.current) audioFileInputRef.current.value = "";
+        return;
+      }
+      if (file.size > 25 * 1024 * 1024) { // 25MB limit for audio (conceptual)
+        toast({ title: "File too large", description: "Please upload an audio file smaller than 25MB.", variant: "destructive" });
+        setUploadedAudioFile(null);
+        if(audioFileInputRef.current) audioFileInputRef.current.value = "";
+        return;
+      }
+      setUploadedAudioFile(file);
+      setAudioProcessingOutput(null);
+      setAudioQuestionHistory([]);
+      setCurrentAudioQuestion("");
+      setError(null);
+      toast({ title: "Audio File Selected", description: `Ready to process "${file.name}".`});
+    }
+  };
+
+  const handleSummarizeAudio = async () => {
+    if (!uploadedAudioFile || !profile) {
+      toast({ title: "Missing Input", description: "Please upload an audio file and ensure you are logged in.", variant: "destructive" });
+      return;
+    }
+    setIsProcessingAudio(true);
+    setError(null);
+    setAudioProcessingOutput(null);
+    setAudioQuestionHistory([]);
+
+    try {
+      const aiInput: AIGuidedStudySessionInput = {
+        studentProfile: { ...profile, age: Number(profile.age) },
+        specificTopic: "Audio Content Summarization & Q&A",
+        question: `Summarize the audio: ${uploadedAudioFile.name}`,
+        originalFileName: uploadedAudioFile.name,
+      };
+      const result = await aiGuidedStudySession(aiInput);
+      setAudioProcessingOutput(result);
+      toast({ title: "Audio Summary Generated", description: `Summary for "${uploadedAudioFile.name}" is ready.` });
+    } catch (e) {
+      console.error("Audio Summarization error:", e);
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during audio summarization.";
+      setError(errorMessage);
+      toast({ title: "Audio Summarization Failed", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsProcessingAudio(false);
+    }
+  };
+
+  const handleAskAudioQuestion = async () => {
+    if (!currentAudioQuestion.trim() || !uploadedAudioFile || !profile) {
+      toast({ title: "Missing Input", description: "Please type a question and ensure an audio file is loaded.", variant: "destructive" });
+      return;
+    }
+    setIsProcessingAudio(true);
+    setError(null);
+
+    try {
+      const aiInput: AIGuidedStudySessionInput = {
+        studentProfile: { ...profile, age: Number(profile.age) },
+        specificTopic: "Audio Content Summarization & Q&A",
+        question: currentAudioQuestion,
+        originalFileName: uploadedAudioFile.name,
+      };
+      const result = await aiGuidedStudySession(aiInput);
+      setAudioProcessingOutput(result);
+      setAudioQuestionHistory(prev => [...prev, { question: currentAudioQuestion, answer: result.response, id: crypto.randomUUID() }]);
+      setCurrentAudioQuestion("");
+      toast({ title: "Answer Received", description: "AI has responded to your question about the audio." });
+    } catch (e) {
+      console.error("Audio Q&A error:", e);
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during audio Q&A.";
+      setError(errorMessage);
+      toast({ title: "Audio Q&A Failed", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsProcessingAudio(false);
     }
   };
 
@@ -194,7 +291,7 @@ export default function SummarizerPage() {
   const handleFeatureUnderDevelopment = (inputTypeLabel: string) => {
     toast({
         title: `${inputTypeLabel} Summarization - Coming Soon!`,
-        description: `Generating notes from ${inputTypeLabel} is a feature we're actively developing. Please use Text or PDF input for now.`,
+        description: `Generating notes from ${inputTypeLabel} is a feature we're actively developing. Please use Text, PDF or Audio input for now.`,
         variant: "default",
       });
   };
@@ -204,6 +301,8 @@ export default function SummarizerPage() {
       handleSummarizeText();
     } else if (activeInputType === "pdf") {
       handleSummarizePdf();
+    } else if (activeInputType === "recording") {
+      handleSummarizeAudio();
     }
      else {
       handleFeatureUnderDevelopment(currentInputTypeConfig.label);
@@ -242,8 +341,8 @@ export default function SummarizerPage() {
             <div
                 className="flex flex-col items-center justify-center p-6 sm:p-8 border-2 border-dashed border-primary/30 rounded-xl min-h-[200px] bg-card shadow-sm"
             >
-                <input type="file" ref={fileInputRef} onChange={handlePdfFileChange} accept=".pdf" className="hidden" id="pdf-upload-input" />
-                <Button variant="outline" size="lg" onClick={() => fileInputRef.current?.click()} className="mb-3">
+                <input type="file" ref={pdfFileInputRef} onChange={handlePdfFileChange} accept=".pdf" className="hidden" id="pdf-upload-input" />
+                <Button variant="outline" size="lg" onClick={() => pdfFileInputRef.current?.click()} className="mb-3">
                     <UploadCloud className="mr-2 h-5 w-5" /> Upload PDF
                 </Button>
                 {uploadedPdfFile && (
@@ -251,6 +350,22 @@ export default function SummarizerPage() {
                 )}
                 {!uploadedPdfFile && <p className="text-xs text-muted-foreground">{currentInputTypeConfig.placeholder}</p>}
                  <p className="text-xs text-muted-foreground mt-2">Max file size: 10MB. AI will summarize based on filename and your questions.</p>
+            </div>
+        );
+      case "recording":
+        return (
+            <div
+                className="flex flex-col items-center justify-center p-6 sm:p-8 border-2 border-dashed border-primary/30 rounded-xl min-h-[200px] bg-card shadow-sm"
+            >
+                <input type="file" ref={audioFileInputRef} onChange={handleAudioFileChange} accept="audio/*" className="hidden" id="audio-upload-input" />
+                <Button variant="outline" size="lg" onClick={() => audioFileInputRef.current?.click()} className="mb-3">
+                    <UploadCloud className="mr-2 h-5 w-5" /> Upload Audio File
+                </Button>
+                {uploadedAudioFile && (
+                    <p className="text-sm text-muted-foreground mb-2">Selected: <span className="font-medium text-primary">{uploadedAudioFile.name}</span></p>
+                )}
+                {!uploadedAudioFile && <p className="text-xs text-muted-foreground">{currentInputTypeConfig.placeholder}</p>}
+                 <p className="text-xs text-muted-foreground mt-2">Max file size: 25MB. Supported: MP3, WAV, M4A etc. AI will summarize based on filename.</p>
             </div>
         );
       case "video":
@@ -272,7 +387,6 @@ export default function SummarizerPage() {
                  <p className="text-xs text-muted-foreground mt-1">Currently supports YouTube video links.</p>
             </div>
         );
-      case "recording":
       case "powerpoint":
          return (
             <div
@@ -318,6 +432,7 @@ export default function SummarizerPage() {
                 setActiveInputType(option.value);
                 setGeneratedNoteOutput(null); setError(null); setInputText(""); setVideoUrl("");
                 setUploadedPdfFile(null); setPdfProcessingOutput(null); setPdfQuestionHistory([]); setCurrentPdfQuestion("");
+                setUploadedAudioFile(null); setAudioProcessingOutput(null); setAudioQuestionHistory([]); setCurrentAudioQuestion("");
               }}
               className={cn(
                 "px-3 py-1.5 h-auto text-xs sm:text-sm rounded-md flex items-center gap-1.5 sm:gap-2",
@@ -337,22 +452,24 @@ export default function SummarizerPage() {
         <div className="mt-6 text-center">
             <Button
             onClick={handleMainGenerateClick}
-            disabled={isLoading || isProcessingPdf ||
+            disabled={isLoading || isProcessingPdf || isProcessingAudio ||
               (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
               (activeInputType === "pdf" && !uploadedPdfFile) ||
+              (activeInputType === "recording" && !uploadedAudioFile) ||
               (activeInputType === "video" && !videoUrl.trim()) ||
-              activeInputType === "recording" ||
-              activeInputType === "powerpoint"
+              activeInputType === "powerpoint" 
             }
             size="lg"
             className="px-8 py-3 text-base"
             >
-            {(isLoading || isProcessingPdf) ? (
+            {(isLoading || isProcessingPdf || isProcessingAudio) ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : (
                 <Wand2 className="mr-2 h-5 w-5" />
             )}
-            {activeInputType === 'pdf' ? "Summarize PDF & Start Q&A" : "Generate Notes"}
+            {activeInputType === 'pdf' ? "Summarize PDF & Start Q&A" 
+              : activeInputType === 'recording' ? "Summarize Audio & Start Q&A" 
+              : "Generate Notes"}
             </Button>
         </div>
       </div>
@@ -448,7 +565,6 @@ export default function SummarizerPage() {
                             className="p-0 h-auto text-accent hover:text-accent/80 text-left"
                             onClick={() => {
                                 setCurrentPdfQuestion(suggestion);
-                                // Optionally, auto-focus the input field here
                             }}
                         >
                             <ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}
@@ -475,7 +591,7 @@ export default function SummarizerPage() {
               </div>
             )}
 
-            {pdfProcessingOutput && ( // Show Q&A input only after initial summary
+            {pdfProcessingOutput && ( 
               <div className="pt-6 border-t">
                  <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about "{uploadedPdfFile.name}":</h3>
                 <div className="flex items-center gap-2">
@@ -497,6 +613,94 @@ export default function SummarizerPage() {
             <div className="text-xs text-muted-foreground pt-4 border-t mt-2">
                 <Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>
                 AI responses for PDFs are based on filename and your questions, not actual PDF content processing.
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Display for Audio Summarization & Q&A Output */}
+      {activeInputType === 'recording' && uploadedAudioFile && !isProcessingAudio && (
+        <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center text-xl sm:text-2xl">
+              <Mic2 className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>
+              Audio Analysis: <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[200px] sm:max-w-xs" title={uploadedAudioFile.name}>{uploadedAudioFile.name}</span>
+            </CardTitle>
+            <CardDescription>AI summary and Q&A for your audio file.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {audioProcessingOutput?.response && (
+              <div>
+                <h3 className="font-semibold text-lg text-primary mb-1.5">
+                  {audioQuestionHistory.length === 0 ? "Summary:" : "Latest Answer:"}
+                </h3>
+                <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">
+                  {audioProcessingOutput.response}
+                </div>
+              </div>
+            )}
+
+            {audioProcessingOutput?.suggestions && audioProcessingOutput.suggestions.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center">
+                  <Sparkles className="mr-2 h-4 w-4 text-accent"/>Suggested Questions:
+                </h3>
+                 <ul className="space-y-1.5">
+                    {audioProcessingOutput.suggestions.map((suggestion, idx) => (
+                        <li key={idx} className="text-xs">
+                        <Button
+                            variant="link"
+                            className="p-0 h-auto text-accent hover:text-accent/80 text-left"
+                            onClick={() => {
+                                setCurrentAudioQuestion(suggestion);
+                            }}
+                        >
+                            <ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}
+                        </Button>
+                        </li>
+                    ))}
+                </ul>
+              </div>
+            )}
+            
+            {audioQuestionHistory.length > 0 && (
+              <div className="pt-4 border-t">
+                <h3 className="font-semibold text-lg text-primary mb-2">Q&A History:</h3>
+                <ScrollArea className="max-h-60 pr-2">
+                <div className="space-y-4">
+                  {audioQuestionHistory.map(item => (
+                    <div key={item.id} className="text-sm">
+                      <p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p>
+                      <p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p>
+                    </div>
+                  ))}
+                </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {audioProcessingOutput && ( 
+              <div className="pt-6 border-t">
+                 <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about "{uploadedAudioFile.name}":</h3>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={currentAudioQuestion}
+                    onChange={(e) => setCurrentAudioQuestion(e.target.value)}
+                    placeholder="Type your question here..."
+                    className="flex-grow"
+                    disabled={isProcessingAudio}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentAudioQuestion.trim()) { e.preventDefault(); handleAskAudioQuestion(); } }}
+                  />
+                  <Button onClick={handleAskAudioQuestion} disabled={isProcessingAudio || !currentAudioQuestion.trim()}>
+                    {isProcessingAudio && currentAudioQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>}
+                    Ask
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="text-xs text-muted-foreground pt-4 border-t mt-2">
+                <Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>
+                AI responses for audio are based on filename and your questions, not actual audio content processing.
             </div>
           </CardContent>
         </Card>

@@ -44,10 +44,10 @@ const AIGuidedStudySessionInputSchema = z.object({
   }).describe("The student profile information from the onboarding form."),
   subject: z.string().optional().describe('The main subject of study (e.g., "Physics for 12th Standard CBSE").'),
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
-  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps", "PDF Content Summarization & Q&A").'),
+  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps", "PDF Content Summarization & Q&A", "Audio Content Summarization & Q&A").'),
   question: z.string().describe("The student's question or request for the study session."),
   photoDataUri: z.string().optional().nullable().describe("An optional photo (or document content as image) uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
-  originalFileName: z.string().optional().nullable().describe("The name of the original file uploaded by the user, if applicable (e.g., for document translation mode or PDF summarization)."),
+  originalFileName: z.string().optional().nullable().describe("The name of the original file uploaded by the user, if applicable (e.g., for document translation mode, PDF summarization, or audio summarization)."),
   // New fields for conversation practice setup
   conversationScenario: z.string().optional().describe("The scenario for language conversation practice."),
   userLanguageRole: z.string().optional().describe("The user's role and language in the conversation (e.g., 'English-speaking tourist')."),
@@ -82,8 +82,8 @@ const VisualElementSchema = z.object({
 
 
 const AIGuidedStudySessionOutputSchema = z.object({
-  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. If an 'interactive_mind_map_canvas' is being set up from an uploaded document, this response should inform the user about the auto-generated initial structure. For Q&A about the map, this contains the textual explanation. For PDF Summarization, this is the summary or answer to a question about the PDF."),
-  suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results. For PDF Summarization, these could be suggested follow-up questions."),
+  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. If an 'interactive_mind_map_canvas' is being set up from an uploaded document, this response should inform the user about the auto-generated initial structure. For Q&A about the map, this contains the textual explanation. For PDF/Audio Summarization, this is the summary or answer to a question about the PDF/Audio."),
+  suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results. For PDF/Audio Summarization, these could be suggested follow-up questions."),
   visualElement: VisualElementSchema.optional().nullable().describe("An optional visual element to aid understanding. For interactive mind map canvas requests (via Visual Learning - Mind Maps mode), this MUST have type 'interactive_mind_map_canvas'. If based on an uploaded file, its 'content' field can include an 'initialNodes' array."),
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
@@ -100,8 +100,10 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isVisualLearningGraphs: z.boolean().optional(),
     isVisualLearningDiagrams: z.boolean().optional(),
     isVisualLearningMindMaps: z.boolean().optional(),
-    isPdfProcessingMode: z.boolean().optional(), // New flag for PDF
-    isInitialPdfSummarizationRequest: z.boolean().optional(), // New flag for PDF
+    isPdfProcessingMode: z.boolean().optional(),
+    isInitialPdfSummarizationRequest: z.boolean().optional(),
+    isAudioProcessingMode: z.boolean().optional(), // New flag for Audio
+    isInitialAudioSummarizationRequest: z.boolean().optional(), // New flag for Audio
     isCurriculumSpecificMode: z.boolean().optional(),
 });
 
@@ -153,7 +155,7 @@ Current Study Focus:
 {{#if subject}}Subject: {{{subject}}}{{/if}}
 {{#if lesson}}Lesson: {{{lesson}}}{{/if}}
 Topic: {{{specificTopic}}}
-{{#if originalFileName}}Original Document Name (for context): {{{originalFileName}}}{{/if}}
+{{#if originalFileName}}Original Document/File Name (for context): {{{originalFileName}}}{{/if}}
 
 Student's Question/Request: "{{{question}}}"
 
@@ -212,6 +214,30 @@ Use 'performWebSearch' tool if needed for facts/formulas relevant to curriculum.
   2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask, or suggest exploring a related concept from '{{{originalFileName}}}'.
   Example 'response': "Regarding your question about [specific aspect] in '{{{originalFileName}}}', the document states that [answer based on document content]..."
   Example 'suggestions': ["How does this compare to [another concept] also discussed in '{{{originalFileName}}}'?", "What are the counter-arguments to this point within '{{{originalFileName}}}'?"]
+  'visualElement' MUST be null.
+  {{/if}}
+
+{{else if isAudioProcessingMode}}
+  You are an AI assistant specialized in processing audio content.
+  The user has indicated an audio file named '{{{originalFileName}}}'. Assume you have listened to and understood this audio. Your task is to assist the user with it.
+
+  {{#if isInitialAudioSummarizationRequest}}
+  The user's initial request is: "{{{question}}}" (This is likely a request to summarize the audio).
+  1.  Provide a comprehensive summary of the audio file '{{{originalFileName}}}'.
+      Your summary should cover:
+      *   Main topic or theme of the audio.
+      *   Key points, arguments, or segments discussed.
+      *   Important examples or conclusions, if any.
+  2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the content of '{{{originalFileName}}}' based on your summary. These should encourage deeper exploration.
+  Example 'response': "The audio file '{{{originalFileName}}}' appears to be a lecture on [main topic]... Key points discussed include [point 1] and [point 2]... The speaker concludes by [conclusion]."
+  Example 'suggestions': ["Can you elaborate on [specific point] mentioned in the audio '{{{originalFileName}}}'?", "What are the implications of the arguments made in '{{{originalFileName}}}'?"]
+  'visualElement' MUST be null.
+  {{else}}
+  The user is asking a specific question about the audio file '{{{originalFileName}}}': "{{{question}}}"
+  1.  Answer this question based on your understanding of the content of '{{{originalFileName}}}'. Be concise and directly address the query.
+  2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask, or suggest exploring a related concept from '{{{originalFileName}}}'.
+  Example 'response': "Regarding your question about [specific aspect] in the audio '{{{originalFileName}}}', the discussion covered that [answer based on audio content]..."
+  Example 'suggestions': ["How does this relate to [another concept] also discussed in '{{{originalFileName}}}'?", "What were the main counter-arguments presented in '{{{originalFileName}}}'?"]
   'visualElement' MUST be null.
   {{/if}}
 
@@ -381,6 +407,10 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     const isPdfMode = specificTopicFromInput === "PDF Content Summarization & Q&A";
     const initialPdfSummarizationTrigger = "Summarize the PDF:";
 
+    const isAudioMode = specificTopicFromInput === "Audio Content Summarization & Q&A";
+    const initialAudioSummarizationTrigger = "Summarize the audio:";
+
+
     const promptInput: z.infer<typeof PromptInputSchema> = {
       ...input,
       studentProfile: {
@@ -409,7 +439,10 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
       isPdfProcessingMode: isPdfMode,
       isInitialPdfSummarizationRequest: isPdfMode && input.question.toLowerCase().startsWith(initialPdfSummarizationTrigger.toLowerCase()),
 
-      isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help"].includes(specificTopicFromInput) && !isLanguageMode && !specificTopicFromInput.startsWith("Visual Learning") && !isPdfMode,
+      isAudioProcessingMode: isAudioMode,
+      isInitialAudioSummarizationRequest: isAudioMode && input.question.toLowerCase().startsWith(initialAudioSummarizationTrigger.toLowerCase()),
+
+      isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help"].includes(specificTopicFromInput) && !isLanguageMode && !specificTopicFromInput.startsWith("Visual Learning") && !isPdfMode && !isAudioMode,
       
       conversationScenario: input.conversationScenario,
       userLanguageRole: input.userLanguageRole,
@@ -449,11 +482,11 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
             }
         }
         
-        if(isPdfMode) { // For PDF mode, visualElement should always be null
+        if(isPdfMode || isAudioMode) { // For PDF/Audio mode, visualElement should always be null
             output.visualElement = null;
         }
 
-        const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "PDF Content Summarization & Q&A"];
+        const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "PDF Content Summarization & Q&A", "Audio Content Summarization & Q&A"];
         const isVisualLearningMode = promptInput.isVisualLearningFocus;
 
         const shouldHaveMCQ = !nonMCQModes.includes(specificTopicFromInput) && 
