@@ -44,10 +44,10 @@ const AIGuidedStudySessionInputSchema = z.object({
   }).describe("The student profile information from the onboarding form."),
   subject: z.string().optional().describe('The main subject of study (e.g., "Physics for 12th Standard CBSE").'),
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
-  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps").'),
+  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps", "PDF Content Summarization & Q&A").'),
   question: z.string().describe("The student's question or request for the study session."),
   photoDataUri: z.string().optional().nullable().describe("An optional photo (or document content as image) uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
-  originalFileName: z.string().optional().nullable().describe("The name of the original file uploaded by the user, if applicable (e.g., for document translation mode)."),
+  originalFileName: z.string().optional().nullable().describe("The name of the original file uploaded by the user, if applicable (e.g., for document translation mode or PDF summarization)."),
   // New fields for conversation practice setup
   conversationScenario: z.string().optional().describe("The scenario for language conversation practice."),
   userLanguageRole: z.string().optional().describe("The user's role and language in the conversation (e.g., 'English-speaking tourist')."),
@@ -82,8 +82,8 @@ const VisualElementSchema = z.object({
 
 
 const AIGuidedStudySessionOutputSchema = z.object({
-  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. If an 'interactive_mind_map_canvas' is being set up from an uploaded document, this response should inform the user about the auto-generated initial structure. For Q&A about the map, this contains the textual explanation."),
-  suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results."),
+  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. If an 'interactive_mind_map_canvas' is being set up from an uploaded document, this response should inform the user about the auto-generated initial structure. For Q&A about the map, this contains the textual explanation. For PDF Summarization, this is the summary or answer to a question about the PDF."),
+  suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results. For PDF Summarization, these could be suggested follow-up questions."),
   visualElement: VisualElementSchema.optional().nullable().describe("An optional visual element to aid understanding. For interactive mind map canvas requests (via Visual Learning - Mind Maps mode), this MUST have type 'interactive_mind_map_canvas'. If based on an uploaded file, its 'content' field can include an 'initialNodes' array."),
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
@@ -100,6 +100,8 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isVisualLearningGraphs: z.boolean().optional(),
     isVisualLearningDiagrams: z.boolean().optional(),
     isVisualLearningMindMaps: z.boolean().optional(),
+    isPdfProcessingMode: z.boolean().optional(), // New flag for PDF
+    isInitialPdfSummarizationRequest: z.boolean().optional(), // New flag for PDF
     isCurriculumSpecificMode: z.boolean().optional(),
 });
 
@@ -187,6 +189,31 @@ Refer to student's context: {{#with studentProfile.educationQualification}}{{#if
 If image provided, use it as primary source.
 Use 'performWebSearch' tool if needed for facts/formulas relevant to curriculum.
 'suggestions' can be related problems. 'visualElement' unlikely unless requested.
+
+{{else if isPdfProcessingMode}}
+  You are an AI assistant specialized in processing PDF documents.
+  The user has provided a document named '{{{originalFileName}}}'. Assume you have read and understood this document. Your task is to assist the user with it.
+
+  {{#if isInitialPdfSummarizationRequest}}
+  The user's initial request is: "{{{question}}}" (This is likely a request to summarize the document).
+  1.  Provide a comprehensive summary of the document '{{{originalFileName}}}'.
+      Your summary should cover:
+      *   Main purpose or thesis of the document.
+      *   Key arguments, findings, or sections.
+      *   Important data points or examples, if any.
+      *   Overall conclusions or takeaways.
+  2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the content of '{{{originalFileName}}}' based on your summary. These should encourage deeper exploration of the document.
+  Example 'response': "The document '{{{originalFileName}}}' primarily discusses [main topic]... It argues that [key argument]... Key findings include [finding 1] and [finding 2]... The document concludes by [conclusion]."
+  Example 'suggestions': ["What methodology was used to arrive at these findings in '{{{originalFileName}}}'?", "Can you elaborate on the implications of [specific point from summary] mentioned in '{{{originalFileName}}}'?"]
+  'visualElement' MUST be null.
+  {{else}}
+  The user is asking a specific question about the document '{{{originalFileName}}}': "{{{question}}}"
+  1.  Answer this question based on your understanding of the content of '{{{originalFileName}}}'. Be concise and directly address the query.
+  2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask, or suggest exploring a related concept from '{{{originalFileName}}}'.
+  Example 'response': "Regarding your question about [specific aspect] in '{{{originalFileName}}}', the document states that [answer based on document content]..."
+  Example 'suggestions': ["How does this compare to [another concept] also discussed in '{{{originalFileName}}}'?", "What are the counter-arguments to this point within '{{{originalFileName}}}'?"]
+  'visualElement' MUST be null.
+  {{/if}}
 
 {{else if isLanguageTranslatorMode}}
 You are an AI Language Translator. Student's preferred language: '{{{studentProfile.preferredLanguage}}}'. Request: "{{{question}}}".
@@ -350,6 +377,9 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
                            specificTopicFromInput === "Language Conversation Practice" ||
                            specificTopicFromInput === "Language Camera Translation" ||
                            specificTopicFromInput === "Language Document Translation";
+    
+    const isPdfMode = specificTopicFromInput === "PDF Content Summarization & Q&A";
+    const initialPdfSummarizationTrigger = "Summarize the PDF:";
 
     const promptInput: z.infer<typeof PromptInputSchema> = {
       ...input,
@@ -375,10 +405,12 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
       isVisualLearningGraphs: specificTopicFromInput === "Visual Learning - Graphs & Charts",
       isVisualLearningDiagrams: specificTopicFromInput === "Visual Learning - Conceptual Diagrams",
       isVisualLearningMindMaps: specificTopicFromInput === "Visual Learning - Mind Maps",
-
-      isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help"].includes(specificTopicFromInput) && !isLanguageMode && !specificTopicFromInput.startsWith("Visual Learning"),
       
-      // Pass conversation setup parameters if they exist in the input
+      isPdfProcessingMode: isPdfMode,
+      isInitialPdfSummarizationRequest: isPdfMode && input.question.toLowerCase().startsWith(initialPdfSummarizationTrigger.toLowerCase()),
+
+      isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help"].includes(specificTopicFromInput) && !isLanguageMode && !specificTopicFromInput.startsWith("Visual Learning") && !isPdfMode,
+      
       conversationScenario: input.conversationScenario,
       userLanguageRole: input.userLanguageRole,
       aiLanguageRole: input.aiLanguageRole,
@@ -416,9 +448,12 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
                  output.visualElement.content.initialNodes = undefined;
             }
         }
+        
+        if(isPdfMode) { // For PDF mode, visualElement should always be null
+            output.visualElement = null;
+        }
 
-
-        const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation"];
+        const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "PDF Content Summarization & Q&A"];
         const isVisualLearningMode = promptInput.isVisualLearningFocus;
 
         const shouldHaveMCQ = !nonMCQModes.includes(specificTopicFromInput) && 
@@ -435,7 +470,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
 
     console.warn(`AI output was malformed or missing for topic: "${specificTopicFromInput}". Input was:`, JSON.stringify(promptInput));
     return {
-        response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else? Please ensure your question is clear and any uploaded image is relevant.",
+        response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else? Please ensure your question is clear and any uploaded image/document context is relevant.",
         suggestions: [],
         visualElement: null
     };
