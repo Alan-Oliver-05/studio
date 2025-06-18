@@ -29,11 +29,14 @@ import { useUserProfile } from "@/contexts/user-profile-context";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
 import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, BOARD_STANDARDS, UNIVERSITY_YEARS, CENTRAL_BOARDS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE, LEARNING_STYLES, PROFESSIONAL_CERTIFICATION_EXAMS, PROFESSIONAL_CERTIFICATION_STAGES } from "@/lib/constants";
-import { ChevronLeft, ChevronRight, CheckCircle, CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, CalendarIcon, Loader2, MessageSquare } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format, parseISO, isValid } from "date-fns";
+import { generateOnboardingQuestions, GenerateOnboardingQuestionsInput } from "@/ai/flows/generate-onboarding-questions-flow";
+import { useToast } from "@/hooks/use-toast";
+
 
 const onboardingSteps = [
   { id: "personal", title: "Personal Details" },
@@ -75,7 +78,7 @@ const EducationDetailsSchema = z.object({
     boardExams: z.object({
       board: z.string().optional(),
       standard: z.string().optional(),
-      subjectSegment: z.string().optional(), // Added subjectSegment
+      subjectSegment: z.string().optional(), 
     }).optional(),
     competitiveExams: z.object({
       examType: z.string().optional(), 
@@ -103,7 +106,7 @@ const defaultValues: UserProfile = {
   learningStyle: LEARNING_STYLES[0]?.value || "",
   educationCategory: EDUCATION_CATEGORIES[0]?.value as EducationCategory,
   educationQualification: {
-    boardExams: { board: "", standard: "", subjectSegment: "" }, // Added subjectSegment
+    boardExams: { board: "", standard: "", subjectSegment: "" }, 
     competitiveExams: { examType: "", specificExam: "", stage: "", examDate: undefined },
     universityExams: { universityName: "", collegeName: "", course: "", currentYear: "" },
   },
@@ -112,8 +115,14 @@ const defaultValues: UserProfile = {
 export function OnboardingForm() {
   const { setProfile, profile: existingProfile } = useUserProfile();
   const router = useRouter();
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<StepId>("personal");
   const [currentExamStages, setCurrentExamStages] = useState<{ value: string; label: string }[]>([]);
+  
+  const [probingQuestions, setProbingQuestions] = useState<string[]>([]);
+  const [isShowingProbingQuestions, setIsShowingProbingQuestions] = useState(false);
+  const [isGeneratingProbingQuestions, setIsGeneratingProbingQuestions] = useState(false);
+
 
   const form = useForm<UserProfile>({
     resolver: zodResolver(FormSchema),
@@ -123,7 +132,7 @@ export function OnboardingForm() {
       learningStyle: existingProfile.learningStyle || LEARNING_STYLES[0]?.value || "",
       educationCategory: existingProfile.educationCategory || EDUCATION_CATEGORIES[0]?.value as EducationCategory,
       educationQualification: { 
-        boardExams: existingProfile.educationQualification?.boardExams || { board: "", standard: "", subjectSegment: "" }, // Added subjectSegment
+        boardExams: existingProfile.educationQualification?.boardExams || { board: "", standard: "", subjectSegment: "" }, 
         competitiveExams: {
            ...(existingProfile.educationQualification?.competitiveExams || { examType: "", specificExam: "", stage: "" }),
            examDate: existingProfile.educationQualification?.competitiveExams?.examDate && isValid(parseISO(existingProfile.educationQualification.competitiveExams.examDate)) 
@@ -281,7 +290,7 @@ export function OnboardingForm() {
     }
   };
 
-  function onSubmit(data: UserProfile) {
+  async function onSubmit(data: UserProfile) {
     const competitiveExamData = data.educationCategory === "competitive" 
         ? {
             ...data.educationQualification?.competitiveExams,
@@ -303,8 +312,21 @@ export function OnboardingForm() {
       }
     };
     setProfile(finalProfile);
-    router.push("/dashboard");
+    
+    setIsGeneratingProbingQuestions(true);
+    try {
+      const response = await generateOnboardingQuestions(finalProfile as GenerateOnboardingQuestionsInput);
+      setProbingQuestions(response.questions);
+      setIsShowingProbingQuestions(true);
+    } catch (err) {
+      console.error("Failed to generate probing questions:", err);
+      toast({ title: "Onboarding Complete!", description: "Could not load further reflection questions, but your profile is saved. Proceeding to dashboard.", variant: "default", duration: 5000 });
+      router.push("/dashboard"); 
+    } finally {
+      setIsGeneratingProbingQuestions(false);
+    }
   }
+
 
   const currentStepDetails = onboardingSteps.find(s => s.id === currentStep);
 
@@ -322,7 +344,6 @@ export function OnboardingForm() {
              selectedSpecificExam.includes("(Specify State)")
            ));
   }, [watchedEducationCategory, watchedCompetitiveExamType, form.watch("educationQualification.competitiveExams.specificExam")]);
-
 
 
   const getSpecificExamInputLabel = () => {
@@ -366,6 +387,53 @@ export function OnboardingForm() {
     return list;
   };
 
+  if (isGeneratingProbingQuestions) {
+    return (
+      <Card className="w-full max-w-2xl shadow-2xl my-8">
+        <CardHeader>
+          <CardTitle className="text-3xl font-bold text-center text-gradient-primary">Finalizing Setup</CardTitle>
+          <CardDescription className="text-center text-muted-foreground">
+            AI is generating some thought-provoking questions for you...
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="h-16 w-16 animate-spin text-primary" />
+          <p className="mt-6 text-lg text-muted-foreground">Please wait a moment.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isShowingProbingQuestions) {
+    return (
+      <Card className="w-full max-w-2xl shadow-2xl my-8">
+        <CardHeader>
+          <CardTitle className="text-3xl font-bold text-center text-gradient-primary">Onboarding Complete!</CardTitle>
+           <CardDescription className="text-center text-muted-foreground">
+            Your profile is saved. Here are some questions from MentorAI to kickstart your thinking:
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-4 border rounded-md shadow-inner bg-muted/50">
+            <ul className="space-y-3 list-decimal list-inside text-sm text-foreground">
+              {probingQuestions.map((q, index) => (
+                <li key={index} className="flex items-start">
+                  <MessageSquare className="h-4 w-4 mr-2 mt-0.5 text-primary flex-shrink-0"/> 
+                  <span>{q}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="text-xs text-muted-foreground text-center">Consider these questions as you begin your learning journey. You don't need to answer them here.</p>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <Button onClick={() => router.push("/dashboard")} className="gap-1 text-base px-8 py-3">
+            Continue to Dashboard <ChevronRight className="h-5 w-5" />
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-2xl shadow-2xl my-8">
@@ -953,3 +1021,5 @@ export function OnboardingForm() {
     </Card>
   );
 }
+
+```

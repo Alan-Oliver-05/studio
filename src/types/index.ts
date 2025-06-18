@@ -212,3 +212,11 @@ export interface GenerateDiagnosticQuizOutput {
   quizTitle: string;
   quizItems: DiagnosticQuizItem[];
 }
+
+// Types for Onboarding Probing Questions
+export type GenerateOnboardingQuestionsInput = UserProfile; // Input is the user's profile
+
+export interface GenerateOnboardingQuestionsOutput {
+  questions: string[]; // Expected to be an array of 5 strings
+}
+```

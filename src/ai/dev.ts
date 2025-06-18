@@ -16,5 +16,7 @@ import '@/ai/flows/interactive-q-and-a.ts';
 // import '@/ai/flows/generate-mcq.ts'; // Removed
 import '@/ai/flows/generate-flashcards-from-document-flow.ts';
 import '@/ai/flows/generate-mcqs-from-document-flow.ts';
-import '@/ai/flows/generate-diagnostic-quiz-flow.ts'; // Added new flow
+import '@/ai/flows/generate-diagnostic-quiz-flow.ts';
+import '@/ai/flows/generate-onboarding-questions-flow.ts'; // Added new flow
 
+```
