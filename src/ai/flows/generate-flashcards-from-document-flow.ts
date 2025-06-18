@@ -1,7 +1,6 @@
-
 'use server';
 /**
- * @fileOverview Generates conceptual flashcards based on a document's name and type.
+ * @fileOverview Generates conceptual flashcards based on a document's name and type, simulating RAG.
  *
  * - generateFlashcardsFromDocument - A function that generates flashcards.
  * - GenerateFlashcardsInput - The input type for the function.
@@ -20,12 +19,12 @@ export type GenerateFlashcardsInput = z.infer<typeof GenerateFlashcardsInputSche
 
 const FlashcardSchema = z.object({
   id: z.string().describe("A unique ID for the flashcard."),
-  front: z.string().describe('The front side of the flashcard (e.g., a question, term, or concept).'),
-  back: z.string().describe('The back side of the flashcard (e.g., the answer, definition, or explanation).'),
+  front: z.string().describe('The front side of the flashcard (e.g., a specific question, key term, or granular concept from the document).'),
+  back: z.string().describe('The back side of the flashcard (e.g., the detailed answer, precise definition, or in-depth explanation as if extracted from the document).'),
 });
 
 const GenerateFlashcardsOutputSchema = z.object({
-  flashcards: z.array(FlashcardSchema).describe('An array of generated flashcards.'),
+  flashcards: z.array(FlashcardSchema).describe('An array of generated flashcards, reflecting specific details conceptually found in the document.'),
 });
 export type GenerateFlashcardsOutput = z.infer<typeof GenerateFlashcardsOutputSchema>;
 
@@ -37,22 +36,27 @@ const prompt = ai.definePrompt({
   name: 'generateFlashcardsFromDocumentPrompt',
   input: {schema: GenerateFlashcardsInputSchema},
   output: {schema: GenerateFlashcardsOutputSchema},
-  prompt: `You are an AI expert at creating flashcards from various document types.
-The user has provided a file named '{{{documentName}}}' which is a '{{{documentType}}}' document.
-Although you cannot see the actual content, generate 5-7 high-quality, conceptually relevant flashcards that would typically be derived from such a document.
-Each flashcard must have an 'id' (unique string), a 'front' (a question, term, or concept), and a 'back' (the answer, definition, or detailed explanation).
-Focus on key information one might find in a document of this nature.
+  prompt: `You are an AI expert acting as a Retrieval Augmented Generation (RAG) agent for creating highly specific flashcards.
+Imagine you have thoroughly read and analyzed the document titled '{{{documentName}}}', which is a '{{{documentType}}}' file.
+Your task is to generate 5-7 flashcards that reflect **specific details, key definitions, nuanced concepts, or important data points** you would expect to find *within such a document*.
+Avoid overly generic flashcards. Instead, focus on creating questions and answers that seem like they were extracted directly from the document's text.
 
 For example:
-- If documentName is "Photosynthesis_Lecture.pptx" (slides), create flashcards about key photosynthesis concepts like "What is chlorophyll?", "Inputs of Photosynthesis", etc.
-- If documentName is "Chapter1_History_Rome.docx" (docx), create flashcards about early Roman history.
-- If documentName is "Introduction_To_Machine_Learning.pdf" (pdf), create flashcards about basic ML terms and concepts.
-- If documentName is "Economics_Lecture_Supply_Demand.mp3" (audio), create flashcards about supply and demand principles.
+- If documentName is "Advanced_Quantum_Physics_Chapter3.pdf" (pdf), a flashcard might be:
+    Front: "Explain the EPR paradox in the context of quantum entanglement as discussed in the chapter."
+    Back: "The EPR paradox, as detailed on page 12, highlights the apparent contradiction between quantum mechanics and local realism, where measurements on one entangled particle instantaneously influence another, regardless of distance. The chapter explores Bell's theorem as a resolution..."
+- If documentName is "Minutes_Project_Alpha_Meeting_June_2024.docx" (docx), a flashcard might be:
+    Front: "What was the key decision regarding the marketing budget for Q3 during the Project Alpha June meeting?"
+    Back: "Item 4.2 of the minutes indicates that the marketing budget for Q3 was approved at $50,000, with a focus on digital channels, following a proposal by Jane Doe."
+- If documentName is "Lecture_On_Mitochondrial_Respiration.pptx" (slides), a flashcard might be:
+    Front: "List the four main complexes involved in the electron transport chain as presented on slide 7."
+    Back: "Slide 7 outlines the four main complexes: Complex I (NADH dehydrogenase), Complex II (succinate dehydrogenase), Complex III (cytochrome bc1 complex), and Complex IV (cytochrome c oxidase)."
 
-Output the flashcards as a JSON array of objects, where each object has "id", "front", and "back" string properties. Ensure IDs are unique.
+Each flashcard must have an 'id' (unique string), a 'front' (highly specific question or term), and a 'back' (detailed answer/explanation as if from the document).
+Output the flashcards as a JSON array of objects. Ensure IDs are unique.
 `,
   config: {
-    temperature: 0.5, // Allow for some creativity while staying focused
+    temperature: 0.4, // Balance specificity with some plausible generation
   }
 });
 
@@ -65,7 +69,6 @@ const generateFlashcardsFromDocumentFlow = ai.defineFlow(
   async (input) => {
     const {output} = await prompt(input);
     if (output && Array.isArray(output.flashcards)) {
-      // Ensure IDs are unique if AI doesn't provide them or makes them non-unique
       return {
         flashcards: output.flashcards.map((card, index) => ({
           ...card,
@@ -74,6 +77,7 @@ const generateFlashcardsFromDocumentFlow = ai.defineFlow(
       };
     }
     console.warn("AI output for flashcards was malformed or missing. Input was:", JSON.stringify(input));
-    return { flashcards: [] }; // Fallback
+    return { flashcards: [] }; 
   }
 );
+

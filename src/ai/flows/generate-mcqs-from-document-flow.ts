@@ -1,7 +1,6 @@
-
 'use server';
 /**
- * @fileOverview Generates conceptual MCQs based on a document's name and type.
+ * @fileOverview Generates conceptual MCQs based on a document's name and type, simulating RAG.
  *
  * - generateMcqsFromDocument - A function that generates MCQs.
  * - GenerateMcqsInput - The input type for the function.
@@ -20,14 +19,14 @@ export type GenerateMcqsInput = z.infer<typeof GenerateMcqsInputSchema>;
 
 const McqItemSchema = z.object({
   id: z.string().describe("A unique ID for the MCQ."),
-  question: z.string().describe('The MCQ question text.'),
-  options: z.array(z.string()).min(3).max(4).describe('An array of 3-4 string options for the MCQ.'),
+  question: z.string().describe('The MCQ question text, focusing on a specific detail or concept from the document.'),
+  options: z.array(z.string()).min(3).max(4).describe('An array of 3-4 string options for the MCQ, including plausible distractors related to the document content.'),
   correctAnswer: z.string().describe('The string content of the correct option from the options array.'),
-  explanation: z.string().optional().describe('A brief explanation for why the correct answer is right.'),
+  explanation: z.string().optional().describe('A brief explanation for why the correct answer is right, referencing conceptual document details.'),
 });
 
 const GenerateMcqsOutputSchema = z.object({
-  mcqs: z.array(McqItemSchema).describe('An array of generated MCQs.'),
+  mcqs: z.array(McqItemSchema).describe('An array of generated MCQs, reflecting specific details conceptually found in the document.'),
 });
 export type GenerateMcqsOutput = z.infer<typeof GenerateMcqsOutputSchema>;
 
@@ -39,27 +38,34 @@ const prompt = ai.definePrompt({
   name: 'generateMcqsFromDocumentPrompt',
   input: {schema: GenerateMcqsInputSchema},
   output: {schema: GenerateMcqsOutputSchema},
-  prompt: `You are an AI quiz master specializing in generating multiple-choice questions (MCQs) from document concepts.
-The user has provided a file named '{{{documentName}}}' which is a '{{{documentType}}}' document.
-Based on the typical content of such a document (you cannot see the actual content), generate 3-5 MCQs.
+  prompt: `You are an AI quiz master acting as a Retrieval Augmented Generation (RAG) agent.
+Imagine you have thoroughly read and analyzed the document titled '{{{documentName}}}', which is a '{{{documentType}}}' file.
+Based on the **specific information, arguments, data, or nuanced points** you would expect to find *within such a document*, generate 3-5 multiple-choice questions (MCQs).
+Avoid generic questions. Each MCQ should test understanding of details that seem extracted directly from the document.
 
 Each MCQ must have:
-1.  'id': A unique string ID for the MCQ.
-2.  'question': The question text.
-3.  'options': An array of 3 or 4 string options.
-4.  'correctAnswer': The string content of the correct option, which must be one of the provided options.
-5.  'explanation': An optional brief explanation for why the correct answer is right.
+1.  'id': A unique string ID.
+2.  'question': The question text, targeted at a specific aspect of the conceptual document content.
+3.  'options': An array of 3 or 4 string options. Distractors should be plausible and related to the document's subject matter.
+4.  'correctAnswer': The exact string content of the correct option.
+5.  'explanation': An optional brief explanation clarifying the correct answer, ideally referencing conceptual points from the document.
 
 For instance:
-- If documentName is "Introduction_To_Economics.pdf" (pdf), create MCQs about basic economic principles like scarcity, supply/demand, etc.
-- If documentName is "Cell_Biology_Chapter.docx" (docx), create MCQs about cell structures, functions, or processes.
-- If documentName is "Project_Management_Basics.pptx" (slides), create MCQs on key project management terms or phases.
+- If documentName is "Renewable_Energy_Policy_Report_2023.pdf" (pdf), an MCQ might be:
+    Question: "According to the 2023 report, what was the primary challenge cited for solar panel adoption in rural areas?"
+    Options: ["High initial cost", "Lack of skilled technicians", "Grid instability", "Land acquisition issues"]
+    CorrectAnswer: "Lack of skilled technicians"
+    Explanation: "The report (conceptually Section 3.2) specifically identified the shortage of trained personnel for installation and maintenance as the main barrier for rural solar adoption, more so than initial cost in the surveyed regions."
+- If documentName is "Shakespeare_Hamlet_Critical_Analysis.docx" (docx), an MCQ could be:
+    Question: "Which critical theory, as discussed in the analysis, offers a unique perspective on Ophelia's madness?"
+    Options: ["Marxist theory", "Feminist psychoanalytic theory", "Post-structuralism", "New Historicism"]
+    CorrectAnswer: "Feminist psychoanalytic theory"
+    Explanation: "The document's chapter on Ophelia (conceptually Chapter 4) elaborates on how feminist psychoanalytic readings interpret her madness as a response to patriarchal pressures."
 
 Output as a JSON array of objects, each conforming to the structure described. Ensure IDs are unique.
-The options should be plausible distractors. The explanation should clarify the concept tested.
 `,
   config: {
-    temperature: 0.4, // Slightly more deterministic for quiz questions
+    temperature: 0.35, // Slightly lower for more focused MCQ generation
   }
 });
 
@@ -72,7 +78,6 @@ const generateMcqsFromDocumentFlow = ai.defineFlow(
   async (input) => {
     const {output} = await prompt(input);
     if (output && Array.isArray(output.mcqs)) {
-      // Ensure IDs and correct answer format
       return {
         mcqs: output.mcqs.map((mcq, index) => {
           const correctAnswerIsValid = mcq.options.includes(mcq.correctAnswer);
@@ -85,6 +90,7 @@ const generateMcqsFromDocumentFlow = ai.defineFlow(
       };
     }
     console.warn("AI output for MCQs was malformed or missing. Input was:", JSON.stringify(input));
-    return { mcqs: [] }; // Fallback
+    return { mcqs: [] }; 
   }
 );
+
