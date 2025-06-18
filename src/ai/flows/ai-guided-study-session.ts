@@ -106,8 +106,8 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isInitialAudioSummarizationRequest: z.boolean().optional(), 
     isSlideProcessingMode: z.boolean().optional(),
     isInitialSlideSummarizationRequest: z.boolean().optional(),
-    isVideoProcessingMode: z.boolean().optional(), // New flag for Video
-    isInitialVideoSummarizationRequest: z.boolean().optional(), // New flag for Video
+    isVideoProcessingMode: z.boolean().optional(),
+    isInitialVideoSummarizationRequest: z.boolean().optional(),
     isCurriculumSpecificMode: z.boolean().optional(),
 });
 
@@ -198,114 +198,114 @@ Use 'performWebSearch' tool if needed for facts/formulas relevant to curriculum.
 
 {{else if isPdfProcessingMode}}
   You are an AI assistant specialized in processing PDF documents.
-  The user has provided a document named '{{{originalFileName}}}'. Assume you have read and understood this document. Your task is to assist the user with it.
+  The user has provided a document conceptually named '{{{originalFileName}}}'. Imagine you have read and understood this document thoroughly. Your task is to assist the user with it.
 
   {{#if isInitialPdfSummarizationRequest}}
   The user's initial request is: "{{{question}}}" (This is likely a request to summarize the document).
-  1.  Provide a comprehensive summary of the document '{{{originalFileName}}}'.
+  1.  Provide a comprehensive summary of the document '{{{originalFileName}}}' as if you have read it.
       Your summary should cover:
-      *   Main purpose or thesis of the document.
-      *   Key arguments, findings, or sections.
-      *   Important data points or examples, if any.
-      *   Overall conclusions or takeaways.
-  2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the content of '{{{originalFileName}}}' based on your summary. These should encourage deeper exploration of the document.
-  Example 'response': "The document '{{{originalFileName}}}' primarily discusses [main topic]... It argues that [key argument]... Key findings include [finding 1] and [finding 2]... The document concludes by [conclusion]."
-  Example 'suggestions': ["What methodology was used to arrive at these findings in '{{{originalFileName}}}'?", "Can you elaborate on the implications of [specific point from summary] mentioned in '{{{originalFileName}}}'?"]
+      *   The main purpose or thesis of a document with such a title.
+      *   Key arguments, findings, or sections that would typically be present.
+      *   Plausible important data points or examples relevant to the document's supposed content.
+      *   Overall conclusions or takeaways one might expect from such a document.
+  2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the *conceptual content* of '{{{originalFileName}}}' based on your imagined summary. These should encourage deeper exploration of a document with that title.
+  Example 'response' for 'Annual_Financial_Report_2023.pdf': "The 'Annual_Financial_Report_2023.pdf' would typically detail the company's financial performance over the past year. It would likely include sections on revenue growth, profit margins, key investments, and future outlook. For instance, it might highlight a 15% increase in net profit and expansion into new markets... The report would conclude by assessing the company's financial health and strategic direction."
+  Example 'suggestions': ["What were the main drivers of revenue growth mentioned conceptually in 'Annual_Financial_Report_2023.pdf'?", "Can you elaborate on the conceptual risks and challenges outlined in 'Annual_Financial_Report_2023.pdf'?"]
   'visualElement' MUST be null.
   {{else}}
   The user is asking a specific question about the document '{{{originalFileName}}}': "{{{question}}}"
-  1.  Answer this question based on your understanding of the content of '{{{originalFileName}}}'. Be concise and directly address the query.
-  2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask, or suggest exploring a related concept from '{{{originalFileName}}}'.
-  Example 'response': "Regarding your question about [specific aspect] in '{{{originalFileName}}}', the document states that [answer based on document content]..."
-  Example 'suggestions': ["How does this compare to [another concept] also discussed in '{{{originalFileName}}}'?", "What are the counter-arguments to this point within '{{{originalFileName}}}'?"]
+  1.  Answer this question based on your *simulated understanding of the content* that would typically be in a document named '{{{originalFileName}}}'. Be concise and directly address the query, referencing plausible details.
+  2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask, or suggest exploring a related concept that might be in '{{{originalFileName}}}'.
+  Example 'response': "Regarding your question about the methodology in 'Research_Paper_On_Climate_Change.pdf', such a paper would typically describe its data collection methods, statistical analysis techniques, and any models used in the 'Methodology' section..."
+  Example 'suggestions': ["What are the likely limitations discussed in 'Research_Paper_On_Climate_Change.pdf'?", "How might 'Research_Paper_On_Climate_Change.pdf' define key terms like 'climate sensitivity'?"]
   'visualElement' MUST be null.
   {{/if}}
 
 {{else if isAudioProcessingMode}}
   You are an AI assistant specialized in processing audio content.
-  The user has indicated an audio file named '{{{originalFileName}}}'. Assume you have listened to and understood this audio. Your task is to assist the user with it.
+  The user has indicated an audio file named '{{{originalFileName}}}'. Imagine you have listened to and understood this audio file thoroughly. Your task is to assist the user with it.
 
   {{#if isInitialAudioSummarizationRequest}}
   The user's initial request is: "{{{question}}}" (This is likely a request to summarize the audio).
-  1.  Provide a comprehensive summary of the audio file '{{{originalFileName}}}'.
+  1.  Provide a comprehensive summary of the audio file '{{{originalFileName}}}' as if you have listened to it.
       Your summary should cover:
-      *   Main topic or theme of the audio.
-      *   Key points, arguments, or segments discussed.
-      *   Important examples or conclusions, if any.
-  2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the content of '{{{originalFileName}}}' based on your summary. These should encourage deeper exploration.
-  Example 'response': "The audio file '{{{originalFileName}}}' appears to be a lecture on [main topic]... Key points discussed include [point 1] and [point 2]... The speaker concludes by [conclusion]."
-  Example 'suggestions': ["Can you elaborate on [specific point] mentioned in the audio '{{{originalFileName}}}'?", "What are the implications of the arguments made in '{{{originalFileName}}}'?"]
+      *   The main topic or theme of an audio file with such a title.
+      *   Key points, arguments, or segments that would typically be discussed.
+      *   Important examples or conclusions one might expect from such audio content.
+  2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the *conceptual content* of '{{{originalFileName}}}' based on your imagined summary.
+  Example 'response' for 'Lecture_On_Quantum_Mechanics_Part1.mp3': "The audio 'Lecture_On_Quantum_Mechanics_Part1.mp3' likely introduces fundamental concepts of quantum mechanics, such as wave-particle duality, quantization of energy, and the uncertainty principle. It probably explains these with examples like the double-slit experiment... The lecture might conclude by setting the stage for more advanced topics in subsequent parts."
+  Example 'suggestions': ["Can you elaborate on the conceptual explanation of the double-slit experiment from 'Lecture_On_Quantum_Mechanics_Part1.mp3'?", "What foundational physicists might be mentioned in 'Lecture_On_Quantum_Mechanics_Part1.mp3'?"]
   'visualElement' MUST be null.
   {{else}}
   The user is asking a specific question about the audio file '{{{originalFileName}}}': "{{{question}}}"
-  1.  Answer this question based on your understanding of the content of '{{{originalFileName}}}'. Be concise and directly address the query.
-  2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask, or suggest exploring a related concept from '{{{originalFileName}}}'.
-  Example 'response': "Regarding your question about [specific aspect] in the audio '{{{originalFileName}}}', the discussion covered that [answer based on audio content]..."
-  Example 'suggestions': ["How does this relate to [another concept] also discussed in '{{{originalFileName}}}'?", "What were the main counter-arguments presented in '{{{originalFileName}}}'?"]
+  1.  Answer this question based on your *simulated understanding of the content* that would typically be in an audio file named '{{{originalFileName}}}'. Be concise and directly address the query.
+  2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask.
+  Example 'response': "Regarding your question about the speaker's main argument in 'Podcast_Episode_Future_of_AI.wav', such a podcast would likely argue that [plausible argument related to AI's future]..."
+  Example 'suggestions': ["What counter-arguments might be discussed in 'Podcast_Episode_Future_of_AI.wav'?", "What examples of current AI applications might be cited in 'Podcast_Episode_Future_of_AI.wav'?"]
   'visualElement' MUST be null.
   {{/if}}
 
 {{else if isSlideProcessingMode}}
   You are an AI assistant specialized in processing slide presentations (e.g., PPT, PDF slides).
-  The user has provided a slide deck named '{{{originalFileName}}}'. Assume you have reviewed and understood this presentation. Your task is to assist the user with it.
+  The user has provided a slide deck conceptually named '{{{originalFileName}}}'. Imagine you have reviewed and understood this presentation thoroughly. Your task is to assist the user with it.
 
   {{#if isInitialSlideSummarizationRequest}}
   The user's initial request is: "{{{question}}}" (This is likely a request to summarize the slide deck).
-  1.  Provide a comprehensive summary of the slide deck '{{{originalFileName}}}'.
+  1.  Provide a comprehensive summary of the slide deck '{{{originalFileName}}}' as if you have reviewed it.
       Your summary should cover:
-      *   Main topic or objective of the presentation.
-      *   Key themes or sections across the slides.
-      *   Important concepts, data points, or visuals (described textually) if mentioned.
-      *   Overall narrative flow or argument.
-      *   Main conclusions or calls to action.
-  2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the content of '{{{originalFileName}}}' based on your summary.
-  Example 'response': "The slide deck '{{{originalFileName}}}' presents [main topic]... It covers key areas such as [theme 1], [theme 2]... The presentation flows from [start] to [end], concluding with [conclusion]."
-  Example 'suggestions': ["Can you elaborate on the data presented on slide X (conceptually) in '{{{originalFileName}}}'?", "What are the key takeaways from the [specific section] of '{{{originalFileName}}}'?"]
+      *   The main topic or objective of a presentation with such a title.
+      *   Key themes or sections typically found across such slides.
+      *   Important concepts, data points (plausible), or visuals (described textually) that might be mentioned.
+      *   The overall narrative flow or argument expected.
+      *   Main conclusions or calls to action relevant to such a presentation.
+  2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the *conceptual content* of '{{{originalFileName}}}' based on your imagined summary.
+  Example 'response' for 'Marketing_Strategy_Q3.pptx': "The slide deck 'Marketing_Strategy_Q3.pptx' likely outlines the marketing goals for the third quarter, target audience analysis, key campaigns, budget allocation, and expected KPIs. It probably includes slides on SWOT analysis, competitor overview, and specific channel strategies... The presentation would conclude with a timeline and success metrics."
+  Example 'suggestions': ["What kind of budget allocation across channels would 'Marketing_Strategy_Q3.pptx' likely propose?", "Can you detail a conceptual key campaign from 'Marketing_Strategy_Q3.pptx'?"]
   'visualElement' MUST be null.
   {{else}}
   The user is asking a specific question about the slide deck '{{{originalFileName}}}': "{{{question}}}"
-  1.  Answer this question based on your understanding of the content of '{{{originalFileName}}}'. Be concise and directly address the query.
-  2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask, or suggest exploring a related concept from '{{{originalFileName}}}'.
-  Example 'response': "Regarding your question about [specific aspect] in '{{{originalFileName}}}', the slides indicate that [answer based on slide content]..."
-  Example 'suggestions': ["How does the information on slide A relate to slide B in '{{{originalFileName}}}'?", "What visual aids were (conceptually) used to support this point in '{{{originalFileName}}}'?"]
+  1.  Answer this question based on your *simulated understanding of the content* that would typically be in a slide deck named '{{{originalFileName}}}'. Be concise and directly address the query.
+  2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask.
+  Example 'response': "Regarding your question about the target audience in 'New_Product_Launch.pptx', such a presentation would likely define the primary demographic, psychographics, and user needs in an early section, perhaps with persona examples..."
+  Example 'suggestions': ["What would be the key selling points of the new product as presented in 'New_Product_Launch.pptx'?", "How might 'New_Product_Launch.pptx' address potential challenges?"]
   'visualElement' MUST be null.
   {{/if}}
 
 {{else if isVideoProcessingMode}}
   You are an AI assistant specialized in processing video content.
   {{#if originalFileName}}
-    The user has uploaded a local video file named '{{{originalFileName}}}'. Assume you have (conceptually) watched and understood this video.
+    The user has "provided" a video named '{{{originalFileName}}}'. Imagine you have (conceptually) watched and understood this video based on its title and typical content for such a title.
   {{else if question}}
-    The user has provided a video URL: "{{{question}}}". Assume you have (conceptually) watched and understood this video.
+    The user has provided a video URL: "{{{question}}}". Assume you have (conceptually) understood the content of a video from such a URL or with such a title.
   {{/if}}
   Your task is to assist the user with it.
 
   {{#if isInitialVideoSummarizationRequest}}
     {{#if originalFileName}}
-      The user's initial request is related to summarizing the local video '{{{originalFileName}}}'.
+      The user's initial request is related to summarizing a video titled '{{{originalFileName}}}'.
     {{else}}
-      The user's initial request is to summarize the video from the URL: "{{{question}}}".
+      The user's initial request is to summarize the video from the URL or implied by the title: "{{{question}}}".
     {{/if}}
-    1.  Provide a comprehensive summary of the video.
+    1.  Provide a comprehensive summary of the video, *as if you have watched it*.
         Your summary should cover:
-        *   Main topic or theme of the video.
-        *   Key points, arguments, or segments discussed.
-        *   Important examples, demonstrations, or conclusions, if any.
-    2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the content of the video based on your summary.
-    Example 'response' (for URL): "The video at '{{{question}}}' is about [main topic]... Key points discussed include [point 1] and [point 2]... The video concludes by [conclusion]."
-    Example 'response' (for file): "The video '{{{originalFileName}}}' discusses [main topic]... Key points include [point 1]... It concludes with [conclusion]."
-    Example 'suggestions': ["Can you elaborate on [specific point] mentioned in the video?", "What are the implications of the arguments made in the video?"]
+        *   The main topic or theme of a video with this title/URL.
+        *   Key points, arguments, or segments that would typically be discussed or shown.
+        *   Plausible important examples, demonstrations, or conclusions.
+    2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the *conceptual content* of the video.
+    Example 'response' (for a URL like 'youtube.com/watch?v=how_to_bake_bread'): "The video 'How to Bake Bread' likely demonstrates the step-by-step process of bread making, covering ingredients, kneading techniques, proofing, and baking. It probably shows visuals of each stage and might offer tips for beginners... The video likely concludes with a shot of the finished loaf."
+    Example 'response' (for a filename 'Documentary_Ancient_Egypt.mp4'): "The video 'Documentary_Ancient_Egypt.mp4' would typically explore the history, culture, and achievements of ancient Egyptian civilization, covering topics like pharaohs, pyramids, hieroglyphs, and daily life along the Nile. It might feature expert interviews and CGI reconstructions..."
+    Example 'suggestions': ["What specific kneading techniques might be shown in the 'How to Bake Bread' video?", "What are key dynasties or periods likely covered in 'Documentary_Ancient_Egypt.mp4'?"]
     'visualElement' MUST be null.
   {{else}}
     {{#if originalFileName}}
-      The user is asking a specific question about the local video '{{{originalFileName}}}': "{{{question}}}"
+      The user is asking a specific question about the video '{{{originalFileName}}}': "{{{question}}}"
     {{else}}
-      The user is asking a specific question about the video from URL: "{{{question}}}" (Assume the URL itself is not the question, but rather context. The question is part of the broader "question" input field along with the URL if it was the first message.)
+      The user is asking a specific question related to a video (identified by previous URL/title if any, or the current query): "{{{question}}}"
     {{/if}}
-    1.  Answer this question based on your understanding of the video's content. Be concise and directly address the query.
-    2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask, or suggest exploring a related concept from the video.
-    Example 'response': "Regarding your question about [specific aspect] in the video, the discussion covered that [answer based on video content]..."
-    Example 'suggestions': ["How does this relate to [another concept] also discussed in the video?", "What were the main counter-arguments presented?"]
+    1.  Answer this question based on your *simulated understanding of the content* of such a video. Be concise and directly address the query.
+    2.  For 'suggestions', provide 1-2 related follow-up questions.
+    Example 'response': "Regarding your question about the main tools used in 'DIY_Woodworking_Project.mov', such a video would likely feature common woodworking tools like saws, drills, sanders, and measuring tools, demonstrating their use for specific tasks in the project..."
+    Example 'suggestions': ["What safety precautions might be emphasized in 'DIY_Woodworking_Project.mov'?", "Could 'DIY_Woodworking_Project.mov' discuss different types of wood suitable for the project?"]
     'visualElement' MUST be null.
   {{/if}}
 
@@ -362,45 +362,54 @@ No image. 'response': "Please upload an image for camera translation."
 
 {{else if isLanguageDocumentTranslationMode}}
 You are an AI Language Translator for document text. Preferred lang: '{{{studentProfile.preferredLanguage}}}'.
-{{#if originalFileName}}Document name: '{{{originalFileName}}}'.{{/if}}
-Request with text: "{{{question}}}"
-Translate text from '{{{question}}}'. Determine source/target from query & preferred.
+{{#if originalFileName}}Document name: '{{{originalFileName}}}'. Assume you have read and understood this document's content.{{/if}}
+User provided this text from the document (or as a query): "{{{question}}}"
+Translate the core text provided by the user. Determine source/target from query & preferred.
 Your 'response' MUST contain ONLY the translated text. No extra phrases.
 'suggestions' can be empty. 'visualElement' null.
 
 {{else if isVisualLearningFocus}}
   {{#if isVisualLearningGraphs}}
   Act as Data Visualization Expert. Request: '{{{question}}}'
-  'response': "Okay, I can help visualize [concept] with a [chart type] comparing [items]. This chart will show..."
-  'visualElement.type': 'bar_chart_data' or 'line_chart_data'.
-  'visualElement.content': structured chart data e.g., '[{ "name": "A", "value": 10 }, ...]'.
-  'visualElement.caption': "Chart: [Concept] - [Items]".
+  1. Analyze the request: "{{{question}}}". Determine what data is being requested for visualization. 
+     If the request is generic like "show me a chart", infer plausible data based on the student's profile or common educational examples.
+     If specific data points are mentioned (e.g., "population of 5 countries"), use those.
+     If data needs to be conceptualized (e.g., "growth of internet users"), create a small, plausible dataset (3-5 points).
+  2. Determine the best chart type (bar, line, pie).
+  3. Construct the 'visualElement.content' with structured data. For bar/line, use format like: '[{ "name": "CategoryA", "value": 10 }, ...]' or '[{ "month": "Jan", "temp": 10 }, ...]'. For pie, use '[{ "name": "SliceA", "value": 40 }, {"name": "SliceB", "value": 60}]'.
+  4. 'response': "Okay, I can help visualize '{{{question}}}'. I'll create a [chart_type] showing [brief_description_of_data_and_axes]. This chart will illustrate [purpose_of_chart]."
+  5. 'visualElement.type': 'bar_chart_data' or 'line_chart_data' (select one, do not include "pie_chart_data" here).
+  6. 'visualElement.caption': "Chart: [Brief title based on the request]".
+  7. 'suggestions': Suggest one or two alternative ways to visualize or analyze related data.
+  Example: If asked "Show me student scores in different subjects", 'response' could be "I'll create a bar chart showing average scores in subjects like Math, Science, and English. This will help compare performance.", 'visualElement.content' would be [{name: "Math", score: 80}, {name: "Science", score: 75}], 'visualElement.type': 'bar_chart_data'.
   {{else if isVisualLearningDiagrams}}
   Act as Process Visualization Expert. Request: '{{{question}}}'
-  'response': "I'll create a diagram for [process/system]. It will show key stages: [Stage 1], [Stage 2]..."
-  'visualElement.type': 'image_generation_prompt'.
-  'visualElement.content': detailed prompt for image model for diagram, all text labels must be sharp & legible.
-  'visualElement.caption': "Diagram of [Process or System]".
+  1. Analyze the request: "{{{question}}}". Understand the process or concept to be diagrammed.
+  2. 'response': "I'll create a conceptual diagram for '{{{question}}}'. It will show key stages/components like [Component1], [Component2], [Component3], and their relationships." (Describe what the diagram will conceptually represent).
+  3. 'visualElement.type': 'image_generation_prompt'.
+  4. 'visualElement.content': A DETAILED text prompt for an image generation model to create the diagram. This prompt should describe the visual elements, layout, connections, and any text labels required. For example: "A clear, simple flowchart diagram illustrating the process of photosynthesis. Show inputs like sunlight, water, CO2 entering a plant leaf, and outputs like glucose and oxygen. Use arrows to show flow. Label all components clearly. Educational style."
+  5. 'visualElement.caption': "Conceptual Diagram: {{{question}}}".
+  6. 'suggestions': Suggest a related diagram or a different aspect to visualize.
   {{else if isVisualLearningMindMaps}}
   Act as Knowledge Organization Facilitator for mind map/flowchart on '{{{question}}}'.
     {{#if photoDataUri}}
     Student UPLOADED document/image.
-    1. Analyze uploaded content (from {{media url=photoDataUri}}). Extract 3-5 key concepts.
-    2. 'visualElement.content' MUST be object with 'initialTopic' (string, e.g., "Key Ideas from '{{{question}}}'") AND 'initialNodes' (array of node objects: {id, text, parentId?, type?, aiGenerated?}). Define a 'root' node.
-    3. 'response': "I've analyzed your upload and created an initial mind map structure on the canvas. Modify it or ask questions."
+    1. Analyze uploaded content (from {{media url=photoDataUri}}) conceptually. Extract 3-5 key concepts or section titles that would likely be present in a document with this image or implied by its visual content.
+    2. 'visualElement.content' MUST be an object with 'initialTopic' (string, e.g., "Key Ideas from Uploaded Image") AND 'initialNodes' (array of node objects: {id, text, parentId?, type?, aiGenerated:true, color: AI_NODE_COLOR}). Define a 'root' node which is 'initialTopic' and other nodes as children.
+    3. 'response': "I've (conceptually) analyzed your upload and created an initial mind map structure on the canvas. You can now edit it, add more nodes, or ask me questions about how to expand it based on the topic '{{{question}}}' or typical content from a document like '{{{originalFileName}}}'."
     4. 'visualElement.type': 'interactive_mind_map_canvas'.
-    5. 'visualElement.caption': "Interactive Mind Map from Uploaded Content".
+    5. 'visualElement.caption': "Interactive Mind Map from Uploaded Content: {{{originalFileName}}}".
     {{else}}
     Student wants to create MANUALLY or from typed topic '{{{question}}}'.
-    1. 'response': "Great! I've set up an interactive canvas for your mind map/flowchart on '{{{question}}}'."
+    1. 'response': "Great! I've set up an interactive canvas for your mind map/flowchart on '{{{question}}}'. You can start adding nodes. If you need ideas or want me to suggest some initial branches based on '{{{question}}}', just ask!"
     2. 'visualElement.type': 'interactive_mind_map_canvas'.
-    3. 'visualElement.content': object like '{ "initialTopic": "{{{question}}}" }'. No 'initialNodes'.
+    3. 'visualElement.content': object like '{ "initialTopic": "{{{question}}}" }'. No 'initialNodes' unless the user's question *itself* is a request to populate from the topic (e.g., "Create a mind map for 'Photosynthesis' with basic branches"). If so, generate 2-3 plausible top-level branches.
     4. 'visualElement.caption': "Interactive Mind Map for {{{question}}}".
     {{/if}}
-  For subsequent Q&A about the mind map/content, answer textually. Do NOT generate textual mind map outlines or image prompts when 'isVisualLearningMindMaps' is true.
+  For subsequent Q&A about the mind map/content, answer textually. Do NOT generate textual mind map outlines or image prompts when 'isVisualLearningMindMaps' is true UNLESS the user explicitly asks for a "list of ideas" or "text outline" to add to their map. The primary visual output for mind maps is the 'interactive_mind_map_canvas' type.
   {{else}}
-  You are Visual Learning Studio AI. Guide user: "I can help create Graphs & Charts, Conceptual Diagrams, or Mind Maps/Flowcharts. What visual for '{{{question}}}'?"
-  'visualElement' null unless clear implicit request for diagram/chart.
+  You are Visual Learning Studio AI. Guide user: "I can help create Graphs & Charts, Conceptual Diagrams, or Interactive Mind Maps/Flowcharts. What visual representation would be most helpful for understanding '{{{question}}}'?"
+  'visualElement' null unless clear implicit request for diagram/chart (not mind map, unless specified as textual).
   {{/if}}
 {{else}}
   1. Understand curriculum: Board: {{{studentProfile.educationQualification.boardExam.board}}}, Standard: {{{studentProfile.educationQualification.boardExam.standard}}}, Exam: {{{studentProfile.educationQualification.competitiveExam.specificExam}}}, Course: {{{studentProfile.educationQualification.universityExam.course}}}, Country: {{{studentProfile.country}}}.
@@ -485,9 +494,9 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
         ...studentProfile,
         learningStyle: studentProfile.learningStyle || 'balanced',
         educationQualification: {
-          boardExam: educationQualification.boardExam || {subjectSegment: ""},
-          competitiveExam: educationQualification.competitiveExam || { examType: undefined, specificExam: undefined, stage: undefined, examDate: undefined },
-          universityExam: educationQualification.universityExam || {},
+          boardExam: educationQualification.boardExams || {board: "", standard: "", subjectSegment: ""},
+          competitiveExam: educationQualification.competitiveExams || { examType: undefined, specificExam: undefined, stage: undefined, examDate: undefined },
+          universityExam: educationQualification.universityExams || {},
         },
       },
       isAiLearningAssistantChat: specificTopicFromInput === "AI Learning Assistant Chat" || specificTopicFromInput === "General Discussion",
@@ -505,19 +514,21 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
       isVisualLearningMindMaps: specificTopicFromInput === "Visual Learning - Mind Maps",
       
       isPdfProcessingMode: isPdfMode,
-      isInitialPdfSummarizationRequest: isPdfMode && input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} pdf`),
+      isInitialPdfSummarizationRequest: isPdfMode && (input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} pdf`) || input.question.toLowerCase() === `summarize the pdf: ${input.originalFileName?.toLowerCase()}`),
 
       isAudioProcessingMode: isAudioMode,
-      isInitialAudioSummarizationRequest: isAudioMode && input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} audio`),
+      isInitialAudioSummarizationRequest: isAudioMode && (input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} audio`) || input.question.toLowerCase() === `summarize the audio: ${input.originalFileName?.toLowerCase()}`),
 
       isSlideProcessingMode: isSlideMode,
-      isInitialSlideSummarizationRequest: isSlideMode && input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} slides`),
+      isInitialSlideSummarizationRequest: isSlideMode && (input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} slides`) || input.question.toLowerCase() === `summarize the slides: ${input.originalFileName?.toLowerCase()}`),
 
       isVideoProcessingMode: isVideoMode,
       isInitialVideoSummarizationRequest: isVideoMode && 
                                           (input.question.toLowerCase().includes("youtube.com/") || 
                                            input.question.toLowerCase().includes("youtu.be/") ||
-                                           input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} video`)),
+                                           input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} video`) ||
+                                           input.question.toLowerCase() === `summarize the video: ${input.originalFileName?.toLowerCase()}`
+                                          ),
 
 
       isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help"].includes(specificTopicFromInput) && !isLanguageMode && !specificTopicFromInput.startsWith("Visual Learning") && !isPdfMode && !isAudioMode && !isSlideMode && !isVideoMode,

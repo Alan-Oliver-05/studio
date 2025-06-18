@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview A Genkit flow to summarize a given piece of text.
+ * @fileOverview A Genkit flow to summarize a given piece of text, acting like a RAG agent.
  *
  * - summarizeText - A function that initiates the flow to summarize text.
  * - SummarizeTextInput - The input type for the summarizeText function.
@@ -17,10 +17,10 @@ const SummarizeTextInputSchema = z.object({
 export type SummarizeTextInput = z.infer<typeof SummarizeTextInputSchema>;
 
 const SummarizeTextOutputSchema = z.object({
-  summary: z.string().describe('The concise summary of the provided text.'),
-  keyEntities: z.array(z.string()).optional().describe('Key entities (people, places, organizations) mentioned in the text.'),
-  sentiment: z.string().optional().describe('Overall sentiment of the text (e.g., positive, negative, neutral), if discernible.'),
-  keywords: z.array(z.string()).optional().describe('Suggested keywords or tags for the text.'),
+  summary: z.string().describe('A highly detailed and specific summary, as if extracted directly from the core arguments of the text. It should cover the main purpose, key arguments/findings, critical data points or examples, and overall conclusions.'),
+  keyEntities: z.array(z.string()).optional().describe('Precisely identified key people, places, organizations, and core concepts mentioned in the text.'),
+  sentiment: z.string().optional().describe('Overall sentiment of the text (e.g., positive, negative, neutral towards its main subject), based on nuanced language analysis. State "Not clearly discernible" if truly ambiguous.'),
+  keywords: z.array(z.string()).optional().describe('A list of 3-5 highly relevant keywords or tags that capture the essence of the specific details in the text.'),
 });
 export type SummarizeTextOutput = z.infer<typeof SummarizeTextOutputSchema>;
 
@@ -32,21 +32,26 @@ const prompt = ai.definePrompt({
   name: 'summarizeTextPrompt',
   input: {schema: SummarizeTextInputSchema},
   output: {schema: SummarizeTextOutputSchema},
-  prompt: `You are an expert summarizer and information extractor. Please provide a concise, coherent, and well-structured summary of the following text.
-Your response should include:
-1.  **Summary**: The main idea or thesis, key arguments or points, critical supporting details or examples, and the overall takeaway or conclusion.
-2.  **Key Entities**: Identify key people, places, and organizations mentioned (if any).
-3.  **Sentiment**: If the text expresses a clear overall sentiment (e.g., positive, negative, neutral towards the main subject), briefly note it. Otherwise, state "Not clearly discernible".
-4.  **Keywords**: Suggest 3-5 relevant keywords or tags for this text.
-
-Ensure the summary is easy to understand and captures the essence of the original content. Avoid jargon where possible and aim for clarity suitable for quick understanding.
-Present this information in a clear, organized manner that is helpful and easy for a student to quickly understand and use for their studies.
+  prompt: `You are an expert AI analyst acting as a Retrieval Augmented Generation (RAG) agent. You have thoroughly read and deeply understood the following text.
+Your task is to provide a meticulous analysis and summary.
 
 Text to analyze:
 {{{textToSummarize}}}
+
+Based on your in-depth understanding of THIS SPECIFIC text, provide:
+1.  **Summary**: A comprehensive summary that meticulously covers:
+    *   The main purpose or thesis of the text.
+    *   The key arguments, findings, or critical sections.
+    *   Important data points, specific examples, or crucial evidence presented.
+    *   The overall conclusions or most significant takeaways *as if these were directly extracted or synthesized from the text itself*. Avoid generic statements.
+2.  **Key Entities**: Identify and list the most important people, places, organizations, and core concepts *explicitly mentioned or central to the text*.
+3.  **Sentiment**: Analyze the nuanced language to determine the overall sentiment (e.g., positive, negative, neutral) of the text concerning its main subject. If the sentiment is mixed or not clearly discernible, state that.
+4.  **Keywords**: Suggest 3-5 highly specific keywords or tags that precisely reflect the core themes and details discussed *within this text*.
+
+Present this information in a clear, organized manner. Your output must be structured according to the defined JSON schema.
   `,
   config: {
-    temperature: 0.3,
+    temperature: 0.2, 
   }
 });
 
@@ -59,13 +64,11 @@ const summarizeTextFlow = ai.defineFlow(
   async (input) => {
     const {output} = await prompt(input);
     if (!output || !output.summary) {
-        // Even if other fields are missing, summary is crucial
         console.warn("AI output for summarization was missing the summary field. Output:", JSON.stringify(output));
         throw new Error("Failed to generate summary or summary was empty.");
     }
+    output.keyEntities = output.keyEntities || [];
+    output.keywords = output.keywords || [];
     return output;
   }
 );
-
-
-    
