@@ -1,4 +1,5 @@
 
+
 export interface BoardExamInfo {
   board?: string;
   standard?: string;
@@ -191,3 +192,23 @@ export interface MCQItem {
 }
 
 export type DocumentFileCategory = 'pdf' | 'docx' | 'audio' | 'slides' | 'unknown';
+
+// Types for Diagnostic Quiz
+export interface GenerateDiagnosticQuizInput {
+  domain: string;
+  numItems: number;
+}
+
+export interface DiagnosticQuizItem {
+  question: string;
+  options: string[];
+  correctAnswer: string; // Text of the correct option
+  difficulty: number; // 1-5
+  explanation: string;
+  bloomLevel: "remember" | "apply" | "analyze";
+}
+
+export interface GenerateDiagnosticQuizOutput {
+  quizTitle: string;
+  quizItems: DiagnosticQuizItem[];
+}
