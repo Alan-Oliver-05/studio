@@ -2,16 +2,17 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent, ChangeEvent } from "react";
-import type { UserProfile, Message as MessageType, VisualElement, QAS_Stage, InteractiveQAndAInput, InitialNodeData } from "@/types";
+import type { UserProfile, Message as MessageType, VisualElement, QAS_Stage, InteractiveQAndAInput, InitialNodeData, GenerateMicroLessonInput } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, ImageIcon, Sparkles, BarChartBig, Link as LinkIcon, Check, AlertCircleIcon, ChevronRightSquare, Milestone, BrainCircuit } from "lucide-react";
+import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, ImageIcon, Sparkles, BarChartBig, Link as LinkIcon, Check, AlertCircleIcon, ChevronRightSquare, Milestone, BrainCircuit, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from "@/ai/flows/ai-guided-study-session";
 import { interactiveQAndA } from "@/ai/flows/interactive-q-and-a";
 import { generateImageFromPrompt } from "@/ai/flows/generate-image-from-prompt";
+import { generateMicroLesson } from "@/ai/flows/generate-micro-lesson-flow"; // Import new flow
 import { addMessageToConversation, getConversationById, saveConversation, formatConversationForAI } from "@/lib/chat-storage";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -159,9 +160,14 @@ const SPECIAL_MODES_FOR_AI_GUIDED_STUDY = [
     "Language Voice Translation", 
     "Language Conversation Practice", 
     "Language Camera Translation",
+    "Language Document Translation",
     "Visual Learning - Graphs & Charts",
     "Visual Learning - Conceptual Diagrams",
     "Visual Learning - Mind Maps", 
+    "PDF Content Summarization & Q&A",
+    "Audio Content Summarization & Q&A",
+    "Slide Content Summarization & Q&A",
+    "Video Content Summarization & Q&A",
 ];
 
 function findLastIndex<T>(array: T[], predicate: (value: T, index: number, obj: T[]) => boolean): number {
@@ -253,7 +259,7 @@ export function ChatInterface({
     } else if (initialSystemMessage) { 
       const firstAIMessage: MessageType = {
         id: crypto.randomUUID(), sender: "ai", text: initialSystemMessage, timestamp: Date.now(),
-        visualElement: isMindMapMode && !onMindMapConfigChange ? { // Only set default visual for mindmap if parent isn't handling it
+        visualElement: isMindMapMode && !onMindMapConfigChange ? { 
             type: 'interactive_mind_map_canvas',
             content: { initialTopic: initialInputQuery || "My Mind Map" }, 
             caption: `Interactive Mind Map for ${initialInputQuery || "My Mind Map"}`
@@ -262,7 +268,6 @@ export function ChatInterface({
       setMessages([firstAIMessage]);
       addMessageToConversation(conversationId, topic, firstAIMessage, userProfile || undefined, context?.subject, context?.lesson);
       
-      // If it's a mindmap and parent is handling, notify parent of initial setup
       if (isMindMapMode && onMindMapConfigChange && firstAIMessage.visualElement) {
         onMindMapConfigChange({
             initialTopic: firstAIMessage.visualElement.content?.initialTopic,
@@ -356,6 +361,53 @@ export function ChatInterface({
       });
     } finally {
       setGeneratingImageForMessageId(null);
+    }
+  };
+
+  const handleRequestMicroLesson = async () => {
+    if (!userProfile || !context?.subject || !context?.lesson || !topic || isLoading) return;
+
+    setIsLoading(true);
+    const userMessage: MessageType = {
+      id: crypto.randomUUID(),
+      sender: "user",
+      text: `Please generate a micro-lesson for the topic: "${topic}".`,
+      timestamp: Date.now(),
+    };
+    const currentMessagesWithUser = [...messages, userMessage];
+    setMessages(currentMessagesWithUser);
+    addMessageToConversation(conversationId, topic, userMessage, userProfile, context.subject, context.lesson);
+
+    try {
+      const microLessonInput: GenerateMicroLessonInput = {
+        skillToTeach: topic,
+        studentProfile: userProfile,
+        learnerContextSummary: formatConversationForAI(messages.slice(-4)), // Pass last 4 messages as context
+      };
+      const result = await generateMicroLesson(microLessonInput);
+      const aiResponseMessage: MessageType = {
+        id: crypto.randomUUID(),
+        sender: "ai",
+        text: result.lessonMarkdown,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, aiResponseMessage]);
+      addMessageToConversation(conversationId, topic, aiResponseMessage, userProfile, context.subject, context.lesson);
+      toast({ title: "Micro-Lesson Generated", description: `A micro-lesson for "${topic}" has been added to the chat.` });
+    } catch (error) {
+      console.error("Error generating micro-lesson:", error);
+      const errorText = error instanceof Error ? error.message : "Failed to generate the micro-lesson.";
+      toast({ title: "Micro-Lesson Error", description: errorText, variant: "destructive" });
+      const errorMessage: MessageType = {
+        id: crypto.randomUUID(),
+        sender: "ai",
+        text: `I encountered an error generating the micro-lesson: "${errorText}". Please try again.`,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      addMessageToConversation(conversationId, topic, errorMessage, userProfile, context.subject, context.lesson);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -468,6 +520,15 @@ export function ChatInterface({
           question: userMessage.text.replace(`(Context from uploaded image: ${uploadedImageName})`, '').trim(),
           photoDataUri: effectivePhotoDataUri || undefined,
         };
+        
+        // Pass conversation context for specific modes
+        if (topic === "Language Conversation Practice" && context && 'conversationScenario' in context) {
+            (aiInput as any).conversationScenario = (context as any).conversationScenario;
+            (aiInput as any).userLanguageRole = (context as any).userLanguageRole;
+            (aiInput as any).aiLanguageRole = (context as any).aiLanguageRole;
+            (aiInput as any).conversationDifficulty = (context as any).conversationDifficulty;
+        }
+
         const aiResponse = await aiGuidedStudySession(aiInput);
         if (!aiResponse || !aiResponse.response) throw new Error("AI response was empty or invalid.");
         aiResponseMessage = {
@@ -536,6 +597,8 @@ export function ChatInterface({
 
   const isInputDisabled = isLoading || (isInteractiveQAMode && isTopicSessionCompleted && !lastAiMessageIsMCQ);
 
+  const showMicroLessonButton = isInteractiveQAMode && context?.subject && context?.lesson && topic;
+
 
   return (
     <div className={cn("flex flex-col h-full rounded-lg shadow-xl border border-border/50", (isMindMapMode && onMindMapConfigChange) ? "bg-transparent" : "bg-card")}>
@@ -586,6 +649,7 @@ export function ChatInterface({
                       width={200}
                       height={200}
                       className="rounded-md object-contain max-h-48"
+                      data-ai-hint="uploaded image attachment"
                     />
                   </div>
                 )}
@@ -595,7 +659,7 @@ export function ChatInterface({
                     {message.isCorrect === false && message.feedback && ( 
                       <div className="flex items-center text-xs text-destructive mb-1.5 font-medium">
                         <AlertCircleIcon className="h-4 w-4 mr-1.5"/>
-                        <span>Needs Review</span>
+                        <span>Needs Review. {message.feedback.startsWith("That's an interesting attempt!") ? "Consider this hint:" : ""}</span>
                       </div>
                     )}
                     {message.isCorrect === true && message.feedback && ( 
@@ -606,17 +670,17 @@ export function ChatInterface({
                     )}
                     {message.feedback && (message.feedback.trim() !== "") && (
                       <div className={cn("mb-2 pb-2", message.text && (currentClientStage !== 'completed' || (currentClientStage === 'completed' && (message.text.match(/\b([A-D])\)\s/i) || message.text.match(/\b[A-D]\.\s/i)))) ? "border-b border-current/10" : "")}>
-                        <p className="whitespace-pre-wrap leading-relaxed text-sm opacity-90">{message.feedback}</p>
+                        <p className="whitespace-pre-wrap leading-relaxed text-sm opacity-90" dangerouslySetInnerHTML={{ __html: message.feedback.replace(/\n/g, '<br />') }} />
                       </div>
                     )}
                     {!(currentClientStage === 'completed' && isTopicSessionCompleted && message.text === message.feedback && !(message.text.match(/\b([A-D])\)\s/i) || message.text.match(/\b[A-D]\.\s/i)) ) && message.text && (
-                         <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                         <p className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br />') }} />
                     )}
                   </>
                 )}
 
                 {!(message.sender === 'ai' && isInteractiveQAMode) && (
-                  <p className="whitespace-pre-wrap leading-relaxed">{message.text}</p>
+                  <p className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br />') }} />
                 )}
 
                 {message.sender === "ai" && message.visualElement && !(message.visualElement.type === 'interactive_mind_map_canvas' && onMindMapConfigChange) && (
@@ -680,7 +744,7 @@ export function ChatInterface({
                             width={300}
                             height={300}
                             className="object-contain w-full h-auto max-h-72"
-                            data-ai-hint="illustration diagram chart"
+                            data-ai-hint="diagram illustration educational"
                           />
                         </div>
                       )}
@@ -748,7 +812,7 @@ export function ChatInterface({
           <div className="flex items-center gap-2 text-muted-foreground overflow-hidden">
             <Paperclip className="h-4 w-4 flex-shrink-0" />
             <span className="truncate">Attached: <span className="font-medium text-foreground">{uploadedImageName}</span></span>
-             <Image src={uploadedImage} alt="Preview" width={24} height={24} className="rounded object-cover flex-shrink-0" />
+             <Image src={uploadedImage} alt="Preview" width={24} height={24} className="rounded object-cover flex-shrink-0" data-ai-hint="uploaded image preview"/>
           </div>
           <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={removeUploadedImage} title="Remove image">
             <XCircle className="h-4 w-4 text-destructive hover:text-destructive/80" />
@@ -807,6 +871,13 @@ export function ChatInterface({
         </Tooltip>
         </TooltipProvider>
       </form>
+       {showMicroLessonButton && (
+          <div className="px-3 pb-2 pt-1 text-center">
+            <Button variant="outline" size="sm" onClick={handleRequestMicroLesson} disabled={isLoading} className="text-xs shadow-sm">
+                <BookOpen className="mr-2 h-4 w-4" /> Generate Micro-Lesson for "{topic}"
+            </Button>
+          </div>
+        )}
       <div className="px-3 pb-2 pt-1 text-center text-xs text-muted-foreground">
         <p>AI responses are for informational purposes and may sometimes be inaccurate. Always verify critical information.</p>
       </div>

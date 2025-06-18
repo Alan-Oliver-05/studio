@@ -219,3 +219,14 @@ export type GenerateOnboardingQuestionsInput = UserProfile; // Input is the user
 export interface GenerateOnboardingQuestionsOutput {
   questions: string[]; // Expected to be an array of 5 strings
 }
+
+// Types for Micro-Lesson Generator
+export interface GenerateMicroLessonInput {
+  skillToTeach: string; // e.g., "Chain Rule in Calculus"
+  studentProfile: UserProfile;
+  learnerContextSummary?: string; // Summary of last few interactions or current topic context
+}
+
+export interface GenerateMicroLessonOutput {
+  lessonMarkdown: string; // The entire lesson as a single Markdown string
+}
