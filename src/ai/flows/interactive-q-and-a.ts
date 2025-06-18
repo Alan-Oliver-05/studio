@@ -54,7 +54,7 @@ export type InteractiveQAndAInput = z.infer<typeof InteractiveQAndAInputSchema>;
 
 const InteractiveQAndAOutputSchema = z.object({
   question: z.string().describe('The next question posed by the AI tutor, or a concluding remark if stage is "completed". If a multiple-choice question, it MUST include options (e.g., A, B, C, D).'),
-  feedback: z.string().optional().describe('Concise and encouraging feedback on the student\'s answer (if provided). Should be positive for correct answers or explanatory for incorrect ones. For new stages, it can be an introduction. This field MUST always be populated with a non-empty string unless the stage is "completed" and no final feedback is generated.'),
+  feedback: z.string().optional().describe('Concise and encouraging feedback on the student\'s answer (if provided). Should be positive for correct answers, or Socratic questions/explanations for incorrect ones. For new stages, it can be an introduction. This field MUST always be populated with a non-empty string unless the stage is "completed" and no final feedback is generated.'),
   isCorrect: z.boolean().optional().describe('Indicates if the student\'s last answer was correct. Null if no answer was provided or not applicable.'),
   suggestions: z.array(z.string()).optional().describe("A list of 1-2 specific suggestions for further study within the current topic/stage, such as related sub-topics or concepts the student might ask about next within the current topic."),
   nextStage: z.enum(['initial_material', 'deeper_material', 'out_of_syllabus', 'completed'])
@@ -73,7 +73,7 @@ const prompt = ai.definePrompt({
   input: {schema: InteractiveQAndAInputSchema},
   output: {schema: InteractiveQAndAOutputSchema},
   model: 'googleai/gemini-1.5-flash-latest',
-  prompt: `You are a Focused Topic AI Tutor implementing a multi-stage Q&A strategy.
+  prompt: `You are a Focused Topic AI Tutor implementing a multi-stage Q&A strategy with Socratic hinting.
   Your KNOWLEDGE BASE for stages 'initial_material' and 'deeper_material' is STRICTLY LIMITED to:
   Subject: {{{subject}}}
   Lesson: {{{lesson}}}
@@ -98,7 +98,12 @@ const prompt = ai.definePrompt({
   Your Task:
   1.  **Feedback Generation (if 'studentAnswer' is provided)**:
       *   Evaluate 'studentAnswer' based ONLY on '{{{topic}}}' content (for 'initial_material' & 'deeper_material' stages). Set 'isCorrect'.
-      *   'feedback' field MUST contain short, positive affirmation if correct, or gentle explanation/clarification if incorrect/partial. Ensure feedback is NOT null/empty.
+      *   If 'isCorrect' is true: 'feedback' field MUST contain short, positive affirmation.
+      *   If 'isCorrect' is false:
+          *   Your 'feedback' field SHOULD primarily contain 1-2 Socratic questions designed to guide the student towards the correct understanding of '{{{previousQuestion}}}' without directly giving the answer.
+          *   Example Socratic hint: "That's an interesting attempt! For '{{{previousQuestion}}}', have you considered [mention a related concept or ask a guiding question]?"
+          *   If Socratic questions are not appropriate, or if this is a repeated incorrect attempt on the same concept (check conversationHistory if needed), then provide a gentle explanation/clarification in 'feedback'.
+      *   Ensure 'feedback' is NOT null/empty.
       *   All 'feedback' in {{{studentProfile.preferredLanguage}}}.
 
   2.  **Feedback Generation (if NO 'studentAnswer' is provided - e.g., start of session/new stage)**:
@@ -233,8 +238,6 @@ const interactiveQAndAFlow = ai.defineFlow(
     };
   }
 );
-
-
     
       
     
