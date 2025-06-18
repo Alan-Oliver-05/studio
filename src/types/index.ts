@@ -219,4 +219,3 @@ export type GenerateOnboardingQuestionsInput = UserProfile; // Input is the user
 export interface GenerateOnboardingQuestionsOutput {
   questions: string[]; // Expected to be an array of 5 strings
 }
-```

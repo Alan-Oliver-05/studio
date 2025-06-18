@@ -112,5 +112,3 @@ const generateOnboardingQuestionsFlow = ai.defineFlow(
     };
   }
 );
-
-```

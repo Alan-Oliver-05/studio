@@ -1021,5 +1021,3 @@ export function OnboardingForm() {
     </Card>
   );
 }
-
-```
