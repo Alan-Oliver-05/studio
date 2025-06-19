@@ -3,18 +3,21 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { BarChartBig, BookOpen, Brain, CheckCircle, FileText, History, Languages, Layers, ListChecks, Loader2, MessageSquare, PenSquare, PieChartIcon, TrendingUp, Users, Info, Sparkles, Home as HomeIcon, Type as TypeIcon, Mic, MessagesSquare as MessagesSquareIcon, Camera as CameraIcon, Wand2, HelpCircle, VideoIcon } from "lucide-react";
+import { BarChartBig, BookOpen, Brain, CheckCircle, FileText, History, Languages, Layers, ListChecks, Loader2, MessageSquare, PenSquare, PieChartIcon, TrendingUp, Users, Info, Sparkles, Home as HomeIcon, Type as TypeIcon, Mic, MessagesSquare as MessagesSquareIcon, Camera as CameraIcon, Wand2, HelpCircle, VideoIcon, Lightbulb } from "lucide-react";
 import { getConversations } from "@/lib/chat-storage";
-import type { Conversation, Task, Note, TaskPriority } from "@/types";
+import type { Conversation, Task, Note, TaskPriority, UserProfile } from "@/types";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import type { ChartConfig } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Pie, PieChart, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Pie, PieChart as RechartsPieChart, ResponsiveContainer, Cell } from "recharts"; // Renamed PieChart to RechartsPieChart
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useUserProfile } from "@/contexts/user-profile-context";
+import { generateLearningReflection, GenerateLearningReflectionInput } from "@/ai/flows/generate-learning-reflection-flow";
+import { useToast } from "@/hooks/use-toast";
 
 
 interface SessionStats {
@@ -39,11 +42,17 @@ const LOCAL_STORAGE_TASKS_KEY = 'eduai-tasks';
 const LOCAL_STORAGE_NOTES_KEY = 'eduai-notes';
 
 export default function AnalyticsPage() {
+  const { profile, isLoading: profileLoading } = useUserProfile();
   const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
   const [taskStats, setTaskStats] = useState<TaskStats | null>(null);
   const [noteStats, setNoteStats] = useState<NoteStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
+
+  const [reflectionText, setReflectionText] = useState<string | null>(null);
+  const [isLoadingReflection, setIsLoadingReflection] = useState(false);
+  const [reflectionError, setReflectionError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     setIsClient(true);
@@ -75,7 +84,7 @@ export default function AnalyticsPage() {
 
 
   useEffect(() => {
-    if (isClient) {
+    if (isClient && !profileLoading) { // Ensure profile is also loaded
       setIsLoading(true);
       const conversations = getConversations();
       
@@ -146,9 +155,51 @@ export default function AnalyticsPage() {
 
       setIsLoading(false);
     }
-  }, [isClient]);
+  }, [isClient, profileLoading]);
 
-  if (isLoading || !isClient) {
+  const handleGetReflection = async () => {
+    if (!profile || !sessionStats || !taskStats || !noteStats) {
+      toast({ title: "Data Not Ready", description: "Analytics data is still loading or incomplete.", variant: "default" });
+      return;
+    }
+    setIsLoadingReflection(true);
+    setReflectionError(null);
+    setReflectionText(null);
+
+    let summaryParts: string[] = [];
+    summaryParts.push(`Total study sessions: ${sessionStats.totalSessions}.`);
+    if (Object.keys(sessionStats.studySubjects).length > 0) {
+      const topSubject = Object.entries(sessionStats.studySubjects).sort(([,a],[,b]) => b.count - a.count)[0];
+      summaryParts.push(`Most engaged subject: ${topSubject[0]} (${topSubject[1].count} sessions).`);
+    } else if (Object.keys(sessionStats.sessionsByType).length > 0) {
+       const topTool = Object.entries(sessionStats.sessionsByType).sort(([,a],[,b]) => b.count - a.count)[0];
+       summaryParts.push(`Most used tool/feature: ${topTool[0]} (${topTool[1].count} sessions).`);
+    }
+    summaryParts.push(`Tasks: ${taskStats.totalTasks} total, ${taskStats.completed} completed, ${taskStats.pending} pending.`);
+    summaryParts.push(`Notes: ${noteStats.totalNotes} created.`);
+    
+    const recentActivitySummary = summaryParts.join(' ');
+
+    try {
+      const input: GenerateLearningReflectionInput = {
+        studentProfile: profile,
+        recentActivitySummary: recentActivitySummary,
+      };
+      const result = await generateLearningReflection(input);
+      setReflectionText(result.reflectionText);
+      toast({ title: "Reflection Ready!", description: "Your AI learning reflection is here." });
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : "Failed to generate reflection.";
+      console.error("Error generating reflection:", e);
+      setReflectionError(errorMsg);
+      toast({ title: "Reflection Error", description: errorMsg, variant: "destructive" });
+    } finally {
+      setIsLoadingReflection(false);
+    }
+  };
+
+
+  if (isLoading || !isClient || profileLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 mt-0">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -271,6 +322,46 @@ export default function AnalyticsPage() {
         </Card>
       )}
 
+      {!noDataAvailable && (
+        <section className="mb-8">
+          <h2 className="text-xl sm:text-2xl font-semibold text-primary mb-4 flex items-center">
+            <Lightbulb className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-yellow-500"/> AI Learning Reflection
+          </h2>
+          <Card className="shadow-lg bg-card/80 backdrop-blur-sm border-border/50">
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl text-foreground">Your Personal Reflection</CardTitle>
+              <CardDescription>Get AI-powered insights on your recent learning activity.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingReflection && (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="ml-3 text-muted-foreground">Generating your reflection...</p>
+                </div>
+              )}
+              {!isLoadingReflection && reflectionText && (
+                <div className="p-4 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">
+                  {reflectionText}
+                </div>
+              )}
+              {!isLoadingReflection && reflectionError && (
+                <p className="text-destructive text-sm">Error: {reflectionError}</p>
+              )}
+              {!isLoadingReflection && !reflectionText && !reflectionError && (
+                <p className="text-muted-foreground">Click the button below to get your personalized reflection.</p>
+              )}
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleGetReflection} disabled={isLoadingReflection || !profile || profileLoading}>
+                {isLoadingReflection ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                Get AI Reflection
+              </Button>
+            </CardFooter>
+          </Card>
+        </section>
+      )}
+
+
       {!noDataAvailable && sessionStats && sessionStats.totalSessions > 0 && (
         <section className="mb-8">
           <h2 className="text-xl sm:text-2xl font-semibold text-primary mb-4 flex items-center"><MessageSquare className="mr-2 h-5 w-5 sm:h-6 sm:w-6"/>Usage Activity</h2>
@@ -353,13 +444,13 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <ChartContainer config={taskStatusChartConfig} className="h-[250px] md:h-[300px] w-full aspect-auto">
-                    <PieChart accessibilityLayer>
+                    <RechartsPieChart accessibilityLayer>
                       <ChartTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
                       <Pie data={taskStatusChartData} cx="50%" cy="50%" labelLine={false} outerRadius={80} innerRadius={40} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                         {taskStatusChartData.map((entry, index) => ( <Cell key={`cell-${index}`} fill={entry.fill} /> ))}
                       </Pie>
                       <Legend verticalAlign="bottom" height={36} wrapperStyle={{fontSize: "12px", color: "hsl(var(--muted-foreground))"}}/>
-                    </PieChart>
+                    </RechartsPieChart>
                   </ChartContainer>
                 </CardContent>
               </Card>
@@ -373,13 +464,13 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent>
                   <ChartContainer config={taskPriorityChartConfig} className="h-[250px] md:h-[300px] w-full aspect-auto">
-                    <PieChart accessibilityLayer>
+                    <RechartsPieChart accessibilityLayer>
                       <ChartTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
                       <Pie data={taskPriorityChartData} cx="50%" cy="50%" labelLine={false} outerRadius={80} innerRadius={40} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                         {taskPriorityChartData.map((entry, index) => ( <Cell key={`cell-prio-${index}`} fill={entry.fill} /> ))}
                       </Pie>
                        <Legend verticalAlign="bottom" height={36} wrapperStyle={{fontSize: "12px", color: "hsl(var(--muted-foreground))"}}/>
-                    </PieChart>
+                    </RechartsPieChart>
                   </ChartContainer>
                 </CardContent>
               </Card>
@@ -405,6 +496,3 @@ export default function AnalyticsPage() {
     </div>
   );
 }
-
-
-    

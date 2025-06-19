@@ -230,3 +230,13 @@ export interface GenerateMicroLessonInput {
 export interface GenerateMicroLessonOutput {
   lessonMarkdown: string; // The entire lesson as a single Markdown string
 }
+
+// Types for Learning Reflection Generator
+export interface GenerateLearningReflectionInput {
+  studentProfile: UserProfile;
+  recentActivitySummary: string; // Summary of topics, tasks, notes
+}
+
+export interface GenerateLearningReflectionOutput {
+  reflectionText: string; // AI's reflection and motivational message
+}
