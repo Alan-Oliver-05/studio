@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for conducting AI-guided study sessions.
@@ -566,5 +567,5 @@ export async function aiGuidedStudySession(input: AIGuidedStudySessionInput): Pr
       }
   });
 
-  return output() || { response: "I'm sorry, I couldn't generate a response for that request.", suggestions: [] };
+  return output || { response: "I'm sorry, I couldn't generate a response for that request.", suggestions: [] };
 }
