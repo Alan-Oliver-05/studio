@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for conducting AI-guided study sessions.
@@ -302,41 +301,56 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
   {{/if}}
 
 {{else if isVideoProcessingMode}}
-  You are an AI assistant specialized in processing video content, acting as a Retrieval Augmented Generation (RAG) agent.
+  You are an AI Video Analysis RAG Agent. You are acting as if you have downloaded and fully analyzed the video from the provided YouTube URL or local file name. Your task is to provide a rich, detailed analysis of its content, not just a surface-level summary.
+
   {{#if originalFileName}}
-    The user has conceptually "provided" a video named '{{{originalFileName}}}'.
-  {{else if question}} {{! This 'question' field will often contain the URL for YouTube links, or a query like "Summarize video ..." }}
-    The user has provided a video URL or a query implying a video: "{{{question}}}".
+    The user has referenced a video named '{{{originalFileName}}}'.
+  {{else if question}}
+    The user has provided a YouTube URL or a query related to a video: '{{{question}}}'. Use this as the video source.
   {{/if}}
-  Imagine you have (conceptually) watched and deeply understood this video based on its title/URL and typical content for such a source. Your task is to assist based on its specific conceptual content.
 
   {{#if isInitialVideoSummarizationRequest}}
-    {{#if originalFileName}}
-      The user's initial request is related to summarizing a video titled '{{{originalFileName}}}'.
-    {{else}}
-      The user's initial request is to summarize the video from the URL or implied by the title: "{{{question}}}". Let's assume a plausible title if only a generic URL is given.
-    {{/if}}
-    1.  Provide a comprehensive summary of the video, *as if you have watched it and retrieved its core information*.
-        Your summary MUST cover:
-        *   The main topic or specific theme of a video with this title/URL (e.g., "a tutorial on advanced Python list comprehensions," "a documentary on the Apollo 11 mission").
-        *   Key points, arguments, demonstrations, or segments that would typically be discussed or shown in detail.
-        *   Plausible important examples, specific techniques shown, or key conclusions drawn. Avoid generic statements.
-    2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the *specific conceptual content* of the video.
-    Example 'response' (for a URL like 'youtube.com/watch?v=how_to_bake_sourdough_bread_basics'): "The video 'How to Bake Sourdough Bread: The Basics' likely demonstrates the step-by-step process, covering creating and maintaining a sourdough starter (e.g., feeding schedules, signs of readiness like doubling in size), mixing ingredients (specific flour types like bread flour and whole wheat, water hydration levels around 70-75%), kneading techniques (e.g., slap and fold, stretch and fold), bulk fermentation (judging by dough texture and rise), shaping the loaf, proofing (possibly with cold fermentation in the fridge), scoring, and baking (e.g., in a Dutch oven at specific temperatures like 230°C then 200°C). It probably shows visuals of each stage and might offer tips for beginners like how to tell if the starter is active or troubleshooting common issues like a flat loaf... The video likely concludes with a shot of the finished loaf, discussing crumb structure and taste."
-    Example 'response' (for a filename 'Documentary_Ancient_Rome_Engineering.mp4'): "The video 'Documentary_Ancient_Rome_Engineering.mp4' would typically explore specific engineering marvels of ancient Rome, such as aqueducts (detailing arches and gradient calculations, e.g., Aqua Appia), roads (e.g., Via Appia, discussing multi-layer construction), public baths (e.g., Baths of Caracalla, explaining hypocaust heating systems), and large structures like the Colosseum or Pantheon (focusing on concrete recipes and dome construction). It might feature expert interviews discussing materials like Roman concrete (pozzolana), CGI reconstructions of these structures in their prime, and explanations of tools and techniques used..."
-    Example 'suggestions': ["What specific kneading techniques (e.g., number of folds, timing) might be shown in detail in the 'How to Bake Sourdough Bread' video?", "What are key engineering principles (e.g., arch design, material science of Roman concrete) likely covered in depth in 'Documentary_Ancient_Rome_Engineering.mp4'?"]
-    'visualElement' MUST be null.
-  {{else}} {{! This is for follow-up questions }}
-    {{#if originalFileName}}
-      The user is asking a specific question about the video '{{{originalFileName}}}': "{{{question}}}"
-    {{else}}
-      The user is asking a specific question related to a video (identified by previous URL/title if any, or the current query): "{{{question}}}"
-    {{/if}}
-    1.  Answer this question based on your *simulated in-depth understanding of the specific content* of such a video. Be concise and directly address the query, referencing plausible scenes or information.
-    2.  For 'suggestions', provide 1-2 related follow-up questions about specific details.
-    Example 'response': "Regarding your question about the main tools used in 'DIY_Woodworking_Project_Build_A_Birdhouse.mov', such a video would likely feature common woodworking tools like a hand saw or miter saw for cutting pieces to specific dimensions (e.g., 1x6 pine boards), a drill for pilot holes and screws, a sander (orbital or block) for smoothing edges, measuring tools (tape measure, square), and clamps for assembly, demonstrating their use for specific tasks like cutting the roof angles or attaching the sides..."
-    Example 'suggestions': ["What specific safety precautions (e.g., eye protection, proper saw usage) might be emphasized when demonstrating tool use in 'DIY_Woodworking_Project_Build_A_Birdhouse.mov'?", "Could 'DIY_Woodworking_Project_Build_A_Birdhouse.mov' discuss different types of wood suitable for outdoor projects and their properties (e.g., cedar vs. pine)?"]
-    'visualElement' MUST be null.
+  The user is asking for an initial analysis of the video. Your response must be structured as follows, as if you have extracted this information from the video's full transcript and visual content:
+  ---
+  **Conceptual Summary:**
+  [Provide a comprehensive summary here. Detail the video's main purpose, key arguments, and overall narrative flow. What is the central message or takeaway?]
+
+  **Key Topics Discussed:**
+  - **[Topic 1]:** [Briefly explain this topic as it would be covered in the video.]
+  - **[Topic 2]:** [Briefly explain this topic, including any specific examples or data points the video might have used.]
+  - **[Topic 3+]:** [Continue for all major topics.]
+
+  **Key Takeaways/Actionable Insights:**
+  - [List 2-4 key takeaways, actionable steps, or critical conclusions from the video.]
+  ---
+  Example for a YouTube URL about making sourdough bread:
+  ---
+  **Conceptual Summary:**
+  This video provides a step-by-step guide for beginners on how to bake sourdough bread. It covers the entire process from starter maintenance to the final baked loaf, emphasizing visual cues and common troubleshooting tips. The central message is that with patience and understanding of the key stages, anyone can bake delicious sourdough at home.
+
+  **Key Topics Discussed:**
+  - **Sourdough Starter Health:** The video likely shows how to check for an active starter (doubling in size, bubbles) and discusses feeding schedules (e.g., 1:1:1 ratio of starter, flour, water).
+  - **Dough Handling:** It would demonstrate specific techniques like 'stretch and fold' and 'coil folds' for building dough strength, and 'shaping' to create surface tension for a good oven spring.
+  - **Fermentation:** The guide probably explains bulk fermentation (the first rise at room temperature) and cold fermentation (proofing in the fridge), detailing how each affects the bread's flavor and structure.
+  - **Baking Method:** It would showcase baking in a Dutch oven, explaining the importance of steam in the initial phase for a good crust and oven spring.
+
+  **Key Takeaways/Actionable Insights:**
+  - A healthy, active starter is the most critical component.
+  - Dough strength is developed through folds over time, not just intense kneading.
+  - Steam is essential for the first 20 minutes of baking.
+  - Temperature control during fermentation is key to managing the sourness and texture of the bread.
+  ---
+
+  Your 'suggestions' should be insightful follow-up questions a user might have after reading your detailed analysis. Example: ["What are the specific visual cues for a perfectly proofed dough mentioned in the video?", "Can you elaborate on the troubleshooting tips for a flat loaf that the video might have covered?"]
+  'visualElement' MUST be null.
+
+  {{else}}
+  The user is asking a specific follow-up question about the video: "{{{question}}}"
+  1.  Answer this question based on your *simulated deep knowledge of the specific video content*. Your answer should be direct and detailed.
+  2.  Reference conceptual scenes, spoken lines, or visual aids from the video to make your answer more authentic.
+  Example (if user asks "What oven temperature did they recommend?"): "In the video, the instructor would have likely recommended preheating the Dutch oven to a high temperature, typically around 230-250°C (450-475°F). They would then advise baking the loaf with the lid on for the first 20 minutes to trap steam, before removing the lid and reducing the temperature to around 200-220°C (400-425°F) for the final 15-20 minutes to achieve a golden-brown crust."
+  
+  Your 'suggestions' should be related follow-up questions. 'visualElement' MUST be null.
   {{/if}}
 
 {{else if isLanguageTranslatorMode}}
@@ -503,184 +517,4 @@ User has provided this text segment (from the document or as a query): "{{{quest
       *   Describe visual in text. Populate 'visualElement' (type 'bar_chart_data' or 'image_generation_prompt'). Curriculum-aligned.
   If student answers MCQ, evaluate, feedback, new explanation/MCQ on related sub-topic from "retrieved" curriculum.
 {{/if}}
-`;
-
-const prompt = ai.definePrompt({
-  name: 'aiGuidedStudySessionPrompt',
-  input: {schema: PromptInputSchema},
-  output: {schema: AIGuidedStudySessionOutputSchema},
-  model: 'googleai/gemini-1.5-flash-latest',
-  tools: [performWebSearch],
-  prompt: aiGuidedStudySessionPromptText,
-  config: {
-    temperature: 0.4,
-     safetySettings: [
-      {
-        category: 'HARM_CATEGORY_HATE_SPEECH',
-        threshold: 'BLOCK_ONLY_HIGH',
-      },
-      {
-        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-      },
-      {
-        category: 'HARM_CATEGORY_HARASSMENT',
-        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-      },
-      {
-        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-        threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-      },
-    ],
-  },
-});
-
-export async function aiGuidedStudySession(input: AIGuidedStudySessionInput): Promise<AIGuidedStudySessionOutput> {
-  return aiGuidedStudySessionFlow(input);
-}
-
-const aiGuidedStudySessionFlow = ai.defineFlow(
-  {
-    name: 'aiGuidedStudySessionFlow',
-    inputSchema: AIGuidedStudySessionInputSchema,
-    outputSchema: AIGuidedStudySessionOutputSchema,
-  },
-  async (input: AIGuidedStudySessionInput) => {
-    const studentProfile = input.studentProfile;
-    const educationQualification = studentProfile.educationQualification || {};
-    const specificTopicFromInput = input.specificTopic;
-
-    const isBaseLanguageTranslatorMode = specificTopicFromInput === "LanguageTranslatorMode";
-    const isLanguageMode = isBaseLanguageTranslatorMode || 
-                           specificTopicFromInput === "Language Text Translation" ||
-                           specificTopicFromInput === "Language Conversation Practice" ||
-                           specificTopicFromInput === "Language Camera Translation" ||
-                           specificTopicFromInput === "Language Document Translation";
-    
-    const initialFileSummarizationTrigger = "Summarize the"; 
-    const isPdfMode = specificTopicFromInput === "PDF Content Summarization & Q&A";
-    const isAudioMode = specificTopicFromInput === "Audio Content Summarization & Q&A";
-    const isSlideMode = specificTopicFromInput === "Slide Content Summarization & Q&A";
-    const isVideoMode = specificTopicFromInput === "Video Content Summarization & Q&A";
-
-
-    const promptInput: z.infer<typeof PromptInputSchema> = {
-      ...input,
-      studentProfile: {
-        ...studentProfile,
-        learningStyle: studentProfile.learningStyle || 'balanced',
-        educationQualification: {
-          boardExam: educationQualification.boardExams || {board: "", standard: "", subjectSegment: ""},
-          competitiveExam: educationQualification.competitiveExams || { examType: undefined, specificExam: undefined, stage: undefined, examDate: undefined },
-          universityExam: educationQualification.universityExams || {},
-        },
-      },
-      isAiLearningAssistantChat: specificTopicFromInput === "AI Learning Assistant Chat" || specificTopicFromInput === "General Discussion",
-      isHomeworkHelp: specificTopicFromInput === "Homework Help",
-      
-      isLanguageTranslatorMode: isBaseLanguageTranslatorMode, 
-      isLanguageTextTranslationMode: specificTopicFromInput === "Language Text Translation",
-      isLanguageConversationMode: specificTopicFromInput === "Language Conversation Practice",
-      isLanguageCameraMode: specificTopicFromInput === "Language Camera Translation",
-      isLanguageDocumentTranslationMode: specificTopicFromInput === "Language Document Translation",
-
-      isVisualLearningFocus: specificTopicFromInput.startsWith("Visual Learning"),
-      isVisualLearningGraphs: specificTopicFromInput === "Visual Learning - Graphs & Charts",
-      isVisualLearningDiagrams: specificTopicFromInput === "Visual Learning - Conceptual Diagrams",
-      isVisualLearningMindMaps: specificTopicFromInput === "Visual Learning - Mind Maps",
-      
-      isPdfProcessingMode: isPdfMode,
-      isInitialPdfSummarizationRequest: isPdfMode && (input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} pdf`) || input.question.toLowerCase() === `summarize the pdf: ${input.originalFileName?.toLowerCase()}`),
-
-      isAudioProcessingMode: isAudioMode,
-      isInitialAudioSummarizationRequest: isAudioMode && (input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} audio`) || input.question.toLowerCase() === `summarize the audio: ${input.originalFileName?.toLowerCase()}`),
-
-      isSlideProcessingMode: isSlideMode,
-      isInitialSlideSummarizationRequest: isSlideMode && (input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} slides`) || input.question.toLowerCase() === `summarize the slides: ${input.originalFileName?.toLowerCase()}`),
-
-      isVideoProcessingMode: isVideoMode,
-      isInitialVideoSummarizationRequest: isVideoMode && 
-                                          (input.question.toLowerCase().includes("youtube.com/") || 
-                                           input.question.toLowerCase().includes("youtu.be/") ||
-                                           input.question.toLowerCase().startsWith(`${initialFileSummarizationTrigger.toLowerCase()} video`) ||
-                                           input.question.toLowerCase() === `summarize the video: ${input.originalFileName?.toLowerCase()}`
-                                          ),
-
-
-      isCurriculumSpecificMode: !["AI Learning Assistant Chat", "General Discussion", "Homework Help"].includes(specificTopicFromInput) && !isLanguageMode && !specificTopicFromInput.startsWith("Visual Learning") && !isPdfMode && !isAudioMode && !isSlideMode && !isVideoMode,
-      
-      conversationScenario: input.conversationScenario,
-      userLanguageRole: input.userLanguageRole,
-      aiLanguageRole: input.aiLanguageRole,
-      conversationDifficulty: input.conversationDifficulty,
-    };
-
-    const {output} = await prompt(promptInput);
-
-    if (output && output.response && Array.isArray(output.suggestions)) {
-        if (output.visualElement === undefined) {
-          if (promptInput.isAiLearningAssistantChat && input.question.toLowerCase().includes("mind map")) {
-              output.visualElement = null;
-          } else {
-              output.visualElement = null;
-          }
-        } else if (output.visualElement && promptInput.isVisualLearningMindMaps) {
-            if (output.visualElement.type !== 'interactive_mind_map_canvas') {
-                 output.visualElement.type = 'interactive_mind_map_canvas';
-            }
-            if (typeof output.visualElement.content !== 'object' || output.visualElement.content === null) {
-                const defaultInitialTopic = input.photoDataUri ? "Analysis of Uploaded Content" : (input.question || "My Ideas");
-                output.visualElement.content = { initialTopic: defaultInitialTopic };
-            } else {
-                // Ensure initialTopic exists, if content is an object
-                if (!('initialTopic' in output.visualElement.content) || output.visualElement.content.initialTopic === undefined || output.visualElement.content.initialTopic === "") {
-                    output.visualElement.content.initialTopic = input.photoDataUri ? "Analysis of Uploaded Content" : (input.question || "My Ideas");
-                }
-            }
-
-            if (output.visualElement.content && 'initialNodes' in output.visualElement.content && output.visualElement.content.initialNodes !== undefined) {
-                if (!Array.isArray(output.visualElement.content.initialNodes)) {
-                    console.warn("AI provided initialNodes but not as an array. Clearing initialNodes.");
-                    output.visualElement.content.initialNodes = undefined;
-                }
-            } else if (typeof output.visualElement.content === 'object' && output.visualElement.content !== null && !('initialNodes' in output.visualElement.content)) {
-                 // If content is an object but no initialNodes field, explicitly set it to undefined for consistency
-                 output.visualElement.content.initialNodes = undefined;
-            }
-        }
-        
-        if(isPdfMode || isAudioMode || isSlideMode || isVideoMode) { 
-            output.visualElement = null;
-        }
-
-        const nonMCQModes = ["Homework Help", "LanguageTranslatorMode", "AI Learning Assistant Chat", "General Discussion", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "PDF Content Summarization & Q&A", "Audio Content Summarization & Q&A", "Slide Content Summarization & Q&A", "Video Content Summarization & Q&A"];
-        const isVisualLearningMode = promptInput.isVisualLearningFocus;
-
-        const shouldHaveMCQ = !nonMCQModes.includes(specificTopicFromInput) && 
-                              !isVisualLearningMode &&
-                              (input.subject && input.subject.trim() !== "") && 
-                              (input.lesson && input.lesson.trim() !== "");
-
-
-        if (shouldHaveMCQ && !output.response.match(/\b([A-D])\)\s/i) && !output.response.match(/\b[A-D]\.\s/i)) {
-          console.warn(`MCQ expected for topic "${specificTopicFromInput}" (Subject: ${input.subject}, Lesson: ${input.lesson}) but not found in response: "${output.response.substring(0,100)}..."`);
-        }
-        return output;
-    }
-
-    console.warn(`AI output was malformed or missing for topic: "${specificTopicFromInput}". Input was:`, JSON.stringify(promptInput));
-    return {
-        response: "I'm having a little trouble formulating a full response right now. Could you try rephrasing or asking something else? Please ensure your question is clear and any uploaded image/document context is relevant.",
-        suggestions: [],
-        visualElement: null
-    };
-  }
-);
-
-
-    
-
-    
-
-    
-
+`

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef, ChangeEvent } from "react";
@@ -37,7 +36,7 @@ const inputTypeOptions: InputTypeOption[] = [
   { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary, and then ask specific questions about its content. *AI responds based on filename and your questions.*", placeholder: "Upload your PDF document.", storageTopic: "PDF Content Summarization & Q&A" },
   { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload audio file, Sai (conceptually) transcribes and summarizes, pinpointing key discussions and insights. *AI responds based on filename.*", placeholder: "Upload your audio file (e.g., .mp3, .wav).", storageTopic: "Audio Content Summarization & Q&A" },
   { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer & Q&A", description: "Ace presentations. Sai converts PPT or PDF slides into actionable study notes, detailing core messages, narrative flow, and key takeaways. *AI responds based on filename.*", placeholder: "Upload your PPT or PDF slide deck.", storageTopic: "Slide Content Summarization & Q&A" },
-  { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer & Q&A", description: "Learn faster. Paste a YouTube link or upload a local video file. Sai (conceptually) summarizes key topics and allows Q&A. *AI responds based on URL/filename.*", placeholder: "https://www.youtube.com/watch?v=...", storageTopic: "Video Content Summarization & Q&A" },
+  { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer & Q&A", description: "Learn faster. Paste a YouTube link or upload a local video file. The AI analyzes the video's concepts to provide summaries and answers. *This is a simulation of video analysis.*", placeholder: "https://www.youtube.com/watch?v=...", storageTopic: "Video Content Summarization & Q&A" },
 ];
 
 const MAX_CHARACTERS = 10000;
@@ -747,7 +746,7 @@ export default function SummarizerPage() {
                         {!uploadedLocalVideoFile && <p className="text-xs text-muted-foreground">Max file size: {MAX_LOCAL_VIDEO_SIZE_MB}MB</p>}
                     </div>
                 )}
-                 <p className="text-xs text-muted-foreground mt-2 text-center">AI will summarize based on URL or filename.</p>
+                 <p className="text-xs text-muted-foreground mt-2 text-center">AI will conceptually analyze the video based on URL or filename.</p>
             </div>
         );
       default:
@@ -1039,12 +1038,12 @@ export default function SummarizerPage() {
                 {videoInputMethod === 'url' ? videoUrl : uploadedLocalVideoFile?.name}
               </span>
             </CardTitle>
-            <CardDescription>AI summary and Q&A for your video content.</CardDescription>
+            <CardDescription>AI conceptual summary and Q&A for your video.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {videoProcessingOutput?.response && (
               <div>
-                <h3 className="font-semibold text-lg text-primary mb-1.5">{videoQuestionHistory.length === 0 && !currentVideoQuestion ? "Summary:" : "Latest Answer:"}</h3>
+                <h3 className="font-semibold text-lg text-primary mb-1.5">{videoQuestionHistory.length === 0 && !currentVideoQuestion ? "Conceptual Analysis:" : "Latest Answer:"}</h3>
                 <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">{videoProcessingOutput.response}</div>
               </div>
             )}
@@ -1069,11 +1068,10 @@ export default function SummarizerPage() {
                 </div>
               </div>
             )}
-            <div className="text-xs text-muted-foreground pt-4 border-t mt-2"><Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>AI responses for videos are based on URL/filename and your questions, not actual video content.</div>
+            <div className="text-xs text-muted-foreground pt-4 border-t mt-2"><Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>AI responses are based on conceptual analysis of the video's title/URL, not real-time video processing.</div>
           </CardContent>
         </Card>
       )}
     </div>
   );
 }
-
