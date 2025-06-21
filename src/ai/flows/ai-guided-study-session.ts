@@ -520,6 +520,18 @@ User has provided this text segment (from the document or as a query): "{{{quest
 {{/if}}
 `;
 
+const aiGuidedStudySessionPrompt = ai.definePrompt({
+    name: 'aiGuidedStudySessionPrompt',
+    input: { schema: PromptInputSchema },
+    output: { schema: AIGuidedStudySessionOutputSchema },
+    prompt: aiGuidedStudySessionPromptText,
+    tools: [performWebSearch],
+    config: {
+        temperature: 0.3,
+    }
+});
+
+
 export async function aiGuidedStudySession(input: AIGuidedStudySessionInput): Promise<AIGuidedStudySessionOutput> {
   const isInitialRequestForMediaType = (
     (input.specificTopic === "PDF Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize")) ||
@@ -528,7 +540,7 @@ export async function aiGuidedStudySession(input: AIGuidedStudySessionInput): Pr
     (input.specificTopic === "Video Content Summarization & Q&A" && (input.question.toLowerCase().startsWith("http") || input.question.toLowerCase().startsWith("summarize")))
   );
   
-  const promptInput: any = {
+  const promptInput = {
       ...input,
       isAiLearningAssistantChat: input.specificTopic === "AI Learning Assistant Chat",
       isHomeworkHelp: input.specificTopic === "Homework Help",
@@ -551,21 +563,7 @@ export async function aiGuidedStudySession(input: AIGuidedStudySessionInput): Pr
       isInitialVideoSummarizationRequest: isInitialRequestForMediaType,
   };
 
-  const { output } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest',
-      prompt: {
-          text: aiGuidedStudySessionPromptText
-      },
-      context: promptInput,
-      output: {
-          format: "json",
-          schema: AIGuidedStudySessionOutputSchema
-      },
-      tools: [performWebSearch],
-      config: {
-        temperature: 0.3,
-      }
-  });
+  const { output } = await aiGuidedStudySessionPrompt(promptInput);
 
   return output || { response: "I'm sorry, I couldn't generate a response for that request.", suggestions: [] };
 }
