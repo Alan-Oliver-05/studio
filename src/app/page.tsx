@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect } from "react";
@@ -12,7 +11,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isLoading) {
-      if (profile && profile.name) { // check for a valid profile
+      if (profile && profile.name) {
         router.replace("/dashboard");
       } else {
         router.replace("/onboarding");

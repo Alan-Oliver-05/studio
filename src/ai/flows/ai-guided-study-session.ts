@@ -517,4 +517,54 @@ User has provided this text segment (from the document or as a query): "{{{quest
       *   Describe visual in text. Populate 'visualElement' (type 'bar_chart_data' or 'image_generation_prompt'). Curriculum-aligned.
   If student answers MCQ, evaluate, feedback, new explanation/MCQ on related sub-topic from "retrieved" curriculum.
 {{/if}}
-`
+`;
+
+export async function aiGuidedStudySession(input: AIGuidedStudySessionInput): Promise<AIGuidedStudySessionOutput> {
+  const isInitialRequestForMediaType = (
+    (input.specificTopic === "PDF Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize")) ||
+    (input.specificTopic === "Audio Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize")) ||
+    (input.specificTopic === "Slide Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize")) ||
+    (input.specificTopic === "Video Content Summarization & Q&A" && (input.question.toLowerCase().startsWith("http") || input.question.toLowerCase().startsWith("summarize")))
+  );
+  
+  const promptInput: any = {
+      ...input,
+      isAiLearningAssistantChat: input.specificTopic === "AI Learning Assistant Chat",
+      isHomeworkHelp: input.specificTopic === "Homework Help",
+      isLanguageTranslatorMode: input.specificTopic === "LanguageTranslatorMode",
+      isLanguageTextTranslationMode: input.specificTopic === "Language Text Translation",
+      isLanguageConversationMode: input.specificTopic === "Language Conversation Practice",
+      isLanguageCameraMode: input.specificTopic === "Language Camera Translation",
+      isLanguageDocumentTranslationMode: input.specificTopic === "Language Document Translation",
+      isVisualLearningFocus: input.specificTopic.startsWith("Visual Learning"),
+      isVisualLearningGraphs: input.specificTopic === "Visual Learning - Graphs & Charts",
+      isVisualLearningDiagrams: input.specificTopic === "Visual Learning - Conceptual Diagrams",
+      isVisualLearningMindMaps: input.specificTopic === "Visual Learning - Mind Maps",
+      isPdfProcessingMode: input.specificTopic === "PDF Content Summarization & Q&A",
+      isInitialPdfSummarizationRequest: isInitialRequestForMediaType,
+      isAudioProcessingMode: input.specificTopic === "Audio Content Summarization & Q&A",
+      isInitialAudioSummarizationRequest: isInitialRequestForMediaType,
+      isSlideProcessingMode: input.specificTopic === "Slide Content Summarization & Q&A",
+      isInitialSlideSummarizationRequest: isInitialRequestForMediaType,
+      isVideoProcessingMode: input.specificTopic === "Video Content Summarization & Q&A",
+      isInitialVideoSummarizationRequest: isInitialRequestForMediaType,
+  };
+
+  const { output } = await ai.generate({
+      model: 'googleai/gemini-1.5-flash-latest',
+      prompt: {
+          text: aiGuidedStudySessionPromptText
+      },
+      context: promptInput,
+      output: {
+          format: "json",
+          schema: AIGuidedStudySessionOutputSchema
+      },
+      tools: [performWebSearch],
+      config: {
+        temperature: 0.3,
+      }
+  });
+
+  return output() || { response: "I'm sorry, I couldn't generate a response for that request.", suggestions: [] };
+}

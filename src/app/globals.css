@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,114 +8,112 @@ body {
 
 @layer base {
   :root {
-    --background: 207 27% 95%; /* Light Gray #F0F4F7 */
-    --foreground: 220 15% 25%; /* Dark Slate Gray */
+    --background: 210 40% 98%;
+    --foreground: 222.2 84% 4.9%;
 
-    --card: 0 0% 100%; /* White */
-    --card-foreground: 220 15% 25%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 25%;
+    --popover-foreground: 222.2 84% 4.9%;
 
-    /* Primary Colors & Gradients (Vibrant Blue for AquaAir) */
-    --primary: 207 90% 54%; /* Vibrant Blue #39A1F4 */
-    --primary-foreground: 0 0% 100%; /* White */
+    --primary: 207 90% 54%; /* Calming Blue */
+    --primary-foreground: 210 40% 98%;
+    
     --primary-gradient-start: 207 90% 54%;
     --primary-gradient-end: 207 85% 48%; 
     --primary-hover-gradient-start: 207 85% 50%;
     --primary-hover-gradient-end: 207 80% 44%;
 
-    --secondary: 220 10% 90%; /* Light gray for secondary elements */
-    --secondary-foreground: 220 10% 30%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 220 10% 94%; 
-    --muted-foreground: 220 10% 45%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
-    /* Accent Colors & Gradients (NEW Aqua/Teal) */
-    --accent: 170 65% 55%; /* Aqua/Teal */
-    --accent-foreground: 0 0% 100%; /* White text on new accent */
-    --accent-gradient-start: 170 65% 55%;
-    --accent-gradient-end: 170 60% 48%; 
-    --accent-hover-gradient-start: 170 60% 50%;
-    --accent-hover-gradient-end: 170 55% 44%;
-    
-    --destructive: 0 80% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --accent: 145 63% 85%; /* Soft Green */
+    --accent-foreground: 222.2 47.4% 11.2%;
 
-    --border: 220 10% 88%;
-    --input: 220 10% 92%;
-    --ring: 207 90% 60%; 
+    --accent-gradient-start: 145 63% 85%;
+    --accent-gradient-end: 145 58% 78%; 
+    --accent-hover-gradient-start: 145 58% 80%;
+    --accent-hover-gradient-end: 145 53% 74%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
 
     --chart-1: hsl(var(--primary)); 
     --chart-2: 180 70% 60%; 
-    --chart-3: hsl(var(--accent)); /* Use new accent for a chart color */
+    --chart-3: hsl(var(--accent)); 
     --chart-4: 30 90% 50%; 
     --chart-5: 0 0% 65%;   
     --radius: 0.75rem;
 
-    /* Sidebar specific colors - Light Theme */
-    --sidebar-background: 0 0% 98%; 
+    --sidebar-background: 207 27% 95%; /* Light Gray */
     --sidebar-foreground: 220 15% 25%;
     --sidebar-primary: hsl(var(--primary));
     --sidebar-primary-foreground: hsl(var(--primary-foreground));
-    --sidebar-accent: hsl(var(--accent)); /* Use new accent */
-    --sidebar-accent-foreground: hsl(var(--accent-foreground));  /* Use new accent foreground */
+    --sidebar-accent: hsl(var(--accent)); 
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
     --sidebar-border: 220 10% 88%;
     --sidebar-ring: hsl(var(--primary));
   }
 
   .dark {
-    --background: 220 18% 10%; 
-    --foreground: 210 30% 95%; 
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
 
-    --card: 220 15% 14%; 
-    --card-foreground: 210 30% 95%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 220 18% 8%; 
-    --popover-foreground: 210 30% 95%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
 
-    /* Primary Colors & Gradients - Dark Theme */
-    --primary: 207 85% 60%; 
-    --primary-foreground: 0 0% 100%; 
-    --primary-gradient-start: 207 85% 60%;
-    --primary-gradient-end: 207 80% 52%;
-    --primary-hover-gradient-start: 207 80% 55%;
-    --primary-hover-gradient-end: 207 75% 48%;
+    --primary: 207 90% 64%; /* Lighter Blue for Dark Mode */
+    --primary-foreground: 222.2 47.4% 11.2%;
 
-    --secondary: 220 15% 25%; 
-    --secondary-foreground: 210 25% 85%;
+    --primary-gradient-start: 207 90% 64%;
+    --primary-gradient-end: 207 85% 58%;
+    --primary-hover-gradient-start: 207 85% 60%;
+    --primary-hover-gradient-end: 207 80% 54%;
 
-    --muted: 220 15% 20%;
-    --muted-foreground: 210 20% 65%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
 
-    /* Accent Colors & Gradients - Dark Theme (NEW Aqua/Teal) */
-    --accent: 170 60% 60%; /* Aqua/Teal for dark */
-    --accent-foreground: 0 0% 100%; /* White text on new accent */
-    --accent-gradient-start: 170 60% 60%;
-    --accent-gradient-end: 170 55% 52%;
-    --accent-hover-gradient-start: 170 55% 55%;
-    --accent-hover-gradient-end: 170 50% 48%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --destructive: 0 70% 55%; 
-    --destructive-foreground: 0 0% 100%;
+    --accent: 145 53% 55%; /* Darker Soft Green */
+    --accent-foreground: 210 40% 98%;
+    
+    --accent-gradient-start: 145 53% 55%;
+    --accent-gradient-end: 145 48% 48%;
+    --accent-hover-gradient-start: 145 48% 50%;
+    --accent-hover-gradient-end: 145 43% 44%;
 
-    --border: 220 15% 25%;
-    --input: 220 15% 22%;
-    --ring: 207 85% 65%; 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
     
     --chart-1: hsl(var(--primary));
     --chart-2: 180 65% 55%; 
-    --chart-3: hsl(var(--accent)); /* Use new accent for a chart color */
+    --chart-3: hsl(var(--accent)); 
     --chart-4: 45 90% 55%; 
     --chart-5: 0 0% 80%;    
 
-    /* Sidebar specific colors for dark theme */
-    --sidebar-background: 220 18% 9%; 
+    --sidebar-background: 220 18% 10%; 
     --sidebar-foreground: 210 30% 95%;
     --sidebar-primary: hsl(var(--primary));
     --sidebar-primary-foreground: hsl(var(--primary-foreground));
-    --sidebar-accent: hsl(var(--accent)); /* Use new accent */
-    --sidebar-accent-foreground: hsl(var(--accent-foreground)); /* Use new accent foreground */
+    --sidebar-accent: hsl(var(--accent)); 
+    --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 220 15% 25%;
     --sidebar-ring: hsl(var(--primary));
   }
