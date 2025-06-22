@@ -240,3 +240,21 @@ export interface GenerateLearningReflectionInput {
 export interface GenerateLearningReflectionOutput {
   reflectionText: string; // AI's reflection and motivational message
 }
+
+// Types for Research Agent
+export interface ResearcherInput {
+  query: string;
+}
+
+export interface ResearcherOutput {
+  researchSummary: string;
+}
+
+export interface WriterInput {
+  goal: string;
+  researchNotes: string;
+}
+
+export interface WriterOutput {
+  writtenResponse: string;
+}
