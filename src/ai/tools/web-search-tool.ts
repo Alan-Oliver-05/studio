@@ -1,4 +1,3 @@
-
 'use server';
 
 import { ai } from '@/ai/genkit';
@@ -53,7 +52,7 @@ async function searchGoogle(query: string): Promise<string> {
 export const performWebSearch = ai.defineTool(
   {
     name: 'performWebSearch',
-    description: 'Performs a real-time web search using the Google Custom Search API to find up-to-date information. It returns a summary of the top search results.',
+    description: 'Performs a real-time web search using the Google Custom Search API to find up-to-date information. It returns a summary of the key information (titles and snippets) from the top search results.',
     inputSchema: z.object({
       query: z.string().describe('The specific search query to use for the web search.'),
     }),
