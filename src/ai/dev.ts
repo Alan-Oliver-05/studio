@@ -20,5 +20,6 @@ import '@/ai/flows/generate-diagnostic-quiz-flow.ts';
 import '@/ai/flows/generate-onboarding-questions-flow.ts';
 import '@/ai/flows/generate-micro-lesson-flow.ts';
 import '@/ai/flows/generate-learning-reflection-flow.ts';
+import '@/ai/flows/planner-flow.ts';
 import '@/ai/flows/researcher-flow.ts';
 import '@/ai/flows/writer-flow.ts';

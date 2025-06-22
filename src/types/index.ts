@@ -242,6 +242,15 @@ export interface GenerateLearningReflectionOutput {
 }
 
 // Types for Research Agent
+export interface PlannerInput {
+  goal: string;
+}
+
+export interface PlannerOutput {
+  researchQueries: string[];
+  reportTitle: string;
+}
+
 export interface ResearcherInput {
   query: string;
 }
