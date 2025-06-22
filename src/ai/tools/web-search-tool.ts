@@ -10,10 +10,14 @@ async function searchGoogle(query: string): Promise<string> {
   const apiKey = process.env.GOOGLE_API_KEY;
   const cseId = process.env.GOOGLE_CSE_ID;
 
-  if (!apiKey || !cseId) {
-    console.error("GOOGLE_API_KEY or GOOGLE_CSE_ID is not set in .env file.");
-    // Return a helpful error message that will be displayed in the UI.
-    return "Web search is not configured. Please set GOOGLE_API_KEY and GOOGLE_CSE_ID in the .env file. See HOW_TO_GET_KEYS.md for instructions.";
+  if (!apiKey || apiKey === "YOUR_API_KEY_HERE") {
+    console.error("GOOGLE_API_KEY is not set in .env file.");
+    return "Web search is not configured. Your GOOGLE_API_KEY is missing. Please see HOW_TO_GET_KEYS.md for instructions.";
+  }
+  
+  if (!cseId || cseId === "YOUR_SEARCH_ENGINE_ID_HERE") {
+    console.error("GOOGLE_CSE_ID is not set in .env file.");
+    return "Web search is not configured. Your GOOGLE_CSE_ID is missing. Please see HOW_TO_GET_KEYS.md for instructions.";
   }
 
   try {
