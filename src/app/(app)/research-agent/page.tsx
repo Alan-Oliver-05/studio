@@ -43,21 +43,31 @@ export default function ResearchAgentPage() {
       }));
       setResearchSteps(initialSteps);
 
-      // Step 2: Researcher (Looping through planned steps)
       setStatus('researching');
       toast({ title: "Plan Created", description: `Starting research on ${initialSteps.length} topics.` });
       
       const researchResults: string[] = [];
+      
+      // Step 2: Researcher (Looping through planned steps)
       for (let i = 0; i < initialSteps.length; i++) {
         setResearchSteps(prev => prev.map((s, idx) => i === idx ? { ...s, status: 'loading' } : s));
         try {
           const result = await researcherFlow({ query: initialSteps[i].query });
+          
+          // Pre-flight check on the first iteration (or any iteration)
+          if (result.researchSummary.includes("Web search is not configured")) {
+             setError("Web search is not configured. Please add your GOOGLE_API_KEY and GOOGLE_CSE_ID to the .env file. See HOW_TO_GET_KEYS.md for instructions.");
+             setStatus('error');
+             toast({ title: "Web Search Not Configured", description: "Please provide API keys to enable web search.", variant: "destructive", duration: 7000 });
+             return; // Stop the entire process
+          }
+
           researchResults.push(result.researchSummary);
           setResearchSteps(prev => prev.map((s, idx) => i === idx ? { ...s, status: 'done', result: result.researchSummary } : s));
         } catch (researchErr) {
           const errorMessage = researchErr instanceof Error ? researchErr.message : "Unknown research error.";
           setResearchSteps(prev => prev.map((s, idx) => i === idx ? { ...s, status: 'error', result: `Error: ${errorMessage}` } : s));
-          throw new Error(`Research failed for query: "${initialSteps[i].query}"`); // Propagate to stop the process
+          throw new Error(`Research failed for query: "${initialSteps[i].query}"`);
         }
       }
 
@@ -80,9 +90,12 @@ export default function ResearchAgentPage() {
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An agent task failed.";
-      setError(`Process failed: ${errorMessage}`);
-      setStatus('error');
-      toast({ title: "Agent Process Failed", description: errorMessage, variant: "destructive" });
+      // Don't set error if it was already set by the pre-flight check
+      if (status !== 'error') {
+        setError(`Process failed: ${errorMessage}`);
+        setStatus('error');
+        toast({ title: "Agent Process Failed", description: errorMessage, variant: "destructive" });
+      }
     }
   };
 

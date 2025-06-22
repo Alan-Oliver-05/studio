@@ -27,6 +27,8 @@ const plannerPrompt = ai.definePrompt({
     output: { schema: PlannerOutputSchema },
     prompt: `You are an expert research planner. Your task is to break down a user's complex goal into a series of 2-5 specific, answerable questions that can be used as web search queries. Also, devise a concise title for the final report.
 
+**Important:** First, analyze the user's goal for likely typos (e.g., "stranded" instead of "standard") and base your plan on the corrected, most probable intent.
+
 User's Goal: "{{{goal}}}"
 
 For example, if the user's goal is "Compare React and Vue for web development", your output should be:
