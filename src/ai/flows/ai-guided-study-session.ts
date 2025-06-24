@@ -307,12 +307,14 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
 
   {{#if originalFileName}}
     The user has referenced a local video named '{{{originalFileName}}}'.
-  {{else if question}}
-    The user has provided a YouTube URL: '{{{question}}}'.
+  {{else}}
+    {{#if question}}
+      The user has provided a YouTube URL: '{{{question}}}'.
+    {{/if}}
   {{/if}}
 
   1.  **Analyze Input**: The user's input is either a YouTube URL in '{{{question}}}' or a local file name in '{{{originalFileName}}}'.
-  2.  **Fetch Transcript**: If '{{{question}}}' is a valid YouTube URL, you MUST use the `getYouTubeTranscript` tool to fetch its transcript.
+  2.  **Fetch Transcript**: If '{{{question}}}' is a valid YouTube URL, you MUST use the \`getYouTubeTranscript\` tool to fetch its transcript.
   3.  **Process Transcript**:
       *   If the tool returns a valid transcript, your entire response MUST be based on the information from that transcript.
       *   If the tool returns an error (e.g., "Error: No transcript found..."), your response must be to inform the user of that specific error and stop.
