@@ -38,9 +38,7 @@ import { EDUCATION_CATEGORIES } from "@/lib/constants";
 
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/research-agent", icon: BrainCircuit, label: "Research Agent" },
-  { href: "/general-tutor", icon: Brain, label: "AI Learning Assistant" },
-  { href: "/homework-assistant", icon: PenSquare, label: "Homework Helper" },
+  { href: "/agent", icon: BrainCircuit, label: "Unified Agent" },
   { href: "/diagnostic-quiz", icon: FileQuestion, label: "Diagnostic Quiz" },
   { href: "/visual-learning", icon: PieChartIcon, label: "Visual Learning" },
   { href: "/language-learning", icon: Languages, label: "Language Studio" }, 
@@ -66,7 +64,7 @@ export function SidebarNav() {
     if (itemHref === "/visual-learning") return pathname.startsWith("/visual-learning");
     if (itemHref === "/summarizer") return pathname.startsWith("/summarizer");
     if (itemHref === "/diagnostic-quiz") return pathname.startsWith("/diagnostic-quiz");
-    if (itemHref === "/research-agent") return pathname.startsWith("/research-agent");
+    if (itemHref === "/agent") return pathname.startsWith("/agent");
     return pathname.startsWith(itemHref);
   };
   
@@ -191,3 +189,4 @@ export function SidebarNav() {
     </Sidebar>
   );
 }
+    
