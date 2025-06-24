@@ -47,7 +47,7 @@ const generateImageFromPromptFlow = ai.defineFlow(
 
     try {
       const { media } = await ai.generate({
-        model: 'googleai/gemini-2.0-flash-exp', // IMPORTANT: Specific model for image generation
+        model: 'googleai/gemini-2.0-flash-preview-image-generation', // IMPORTANT: Using the officially documented model name
         prompt: input.prompt,
         config: {
           responseModalities: ['TEXT', 'IMAGE'], // MUST provide both TEXT and IMAGE
@@ -80,4 +80,3 @@ const generateImageFromPromptFlow = ai.defineFlow(
     }
   }
 );
-

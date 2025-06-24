@@ -49,9 +49,16 @@ Based on the user's goal, generate the list of research queries and a report tit
 
 
 export async function plannerFlow(input: PlannerInput): Promise<PlannerOutput> {
-    const { output } = await plannerPrompt(input);
-    if (!output) {
-      throw new Error('The planner AI failed to generate a research plan.');
+    try {
+      const { output } = await plannerPrompt(input);
+      if (!output || !output.researchQueries || output.researchQueries.length === 0) {
+        throw new Error('The AI planner failed to generate a valid research plan. The goal may be too ambiguous.');
+      }
+      return output;
+    } catch (err) {
+       console.error("Error in plannerFlow:", err);
+       const errorMessage = err instanceof Error ? err.message : String(err);
+       // Re-throw a more user-friendly error that can be caught by the UI
+       throw new Error(`The planning phase failed. This could be due to an API access issue (check your API keys and enabled services in Google Cloud) or a problem with the AI response. Original error: ${errorMessage}`);
     }
-    return output;
 }

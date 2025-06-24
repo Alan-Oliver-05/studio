@@ -40,9 +40,16 @@ Based *only* on the information in the research notes, please generate a clear a
 
 
 export async function writerFlow(input: WriterInput): Promise<WriterOutput> {
-    const { output } = await writerPrompt(input);
-    if (!output) {
-      throw new Error('The writer AI failed to generate a response.');
+    try {
+        const { output } = await writerPrompt(input);
+        if (!output || !output.writtenResponse) {
+          throw new Error('The writer AI failed to generate a response from the research notes.');
+        }
+        return output;
+    } catch (err) {
+        console.error("Error in writerFlow:", err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        // Re-throw a more user-friendly error
+        throw new Error(`The writing phase failed. This could be due to an API access issue or a problem with the AI response. Original error: ${errorMessage}`);
     }
-    return output;
 }
