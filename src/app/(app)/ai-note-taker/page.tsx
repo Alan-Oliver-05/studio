@@ -17,7 +17,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { addMessageToConversation } from "@/lib/chat-storage";
 import type { Message as MessageType } from "@/types";
+import * as pdfjsLib from 'pdfjs-dist';
 
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 type InputType = "text" | "recording" | "pdf" | "powerpoint" | "video";
 type VideoInputMethod = 'url' | 'upload';
@@ -34,7 +36,7 @@ interface InputTypeOption {
 
 const inputTypeOptions: InputTypeOption[] = [
   { value: "text", label: "Text", icon: Type, title:"AI Text Summarizer & Note Taker", description: "Paste any text — articles, essays, or research papers — and get concise summaries, key takeaways, and organized notes instantly.", placeholder: "Paste your article, essay, research paper, or any text here...", storageTopic: "Text Content Summarization" },
-  { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary, and then ask specific questions about its content. *AI responds based on filename and your questions.*", placeholder: "Upload your PDF document.", storageTopic: "PDF Content Summarization & Q&A" },
+  { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary based on its content, and then ask specific questions.", placeholder: "Upload your PDF document.", storageTopic: "PDF Content Summarization & Q&A" },
   { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload audio file, Sai (conceptually) transcribes and summarizes, pinpointing key discussions and insights. *AI responds based on filename.*", placeholder: "Upload your audio file (e.g., .mp3, .wav).", storageTopic: "Audio Content Summarization & Q&A" },
   { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer & Q&A", description: "Ace presentations. Sai converts PPT or PDF slides into actionable study notes, detailing core messages, narrative flow, and key takeaways. *AI responds based on filename.*", placeholder: "Upload your PPT or PDF slide deck.", storageTopic: "Slide Content Summarization & Q&A" },
   { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer & Q&A", description: "Learn faster. Paste a YouTube link or upload a local video file. The AI analyzes the video's concepts to provide summaries and answers. *This is a simulation of video analysis.*", placeholder: "https://www.youtube.com/watch?v=...", storageTopic: "Video Content Summarization & Q&A" },
@@ -43,12 +45,42 @@ const inputTypeOptions: InputTypeOption[] = [
 const MAX_CHARACTERS = 10000;
 const MAX_LOCAL_VIDEO_SIZE_MB = 25; 
 
+
+const parsePdfContent = async (file: File): Promise<string> => {
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+        reader.onload = async (event) => {
+            if (!event.target?.result) {
+                return reject(new Error("Failed to read file."));
+            }
+            try {
+                const pdf = await pdfjsLib.getDocument({ data: event.target.result as ArrayBuffer }).promise;
+                let textContent = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const text = await page.getTextContent();
+                    textContent += text.items.map(item => 'str' in item ? item.str : '').join(' ') + '\n';
+                }
+                resolve(textContent);
+            } catch (error) {
+                console.error('Error parsing PDF:', error);
+                reject(new Error("Failed to parse PDF content. The file might be corrupted or encrypted."));
+            }
+        };
+        reader.onerror = () => reject(new Error("Error reading file."));
+        reader.readAsArrayBuffer(file);
+    });
+};
+
+
 export default function SummarizerPage() {
   const { profile, isLoading: profileLoading } = useUserProfile();
   const [inputText, setInputText] = useState<string>("");
   const [generatedNoteOutput, setGeneratedNoteOutput] = useState<SummarizeTextOutput | null>(null); 
   
   const [uploadedPdfFile, setUploadedPdfFile] = useState<File | null>(null);
+  const [pdfTextContent, setPdfTextContent] = useState<string>("");
+  const [isParsingPdf, setIsParsingPdf] = useState<boolean>(false);
   const pdfFileInputRef = useRef<HTMLInputElement>(null);
   const [pdfProcessingOutput, setPdfProcessingOutput] = useState<AIGuidedStudySessionOutput | null>(null);
   const [pdfQuestionHistory, setPdfQuestionHistory] = useState<Array<{ question: string; answer: string; id: string }>>([]);
@@ -104,6 +136,7 @@ export default function SummarizerPage() {
       setPdfProcessingOutput(null);
       setPdfQuestionHistory([]);
       setCurrentPdfQuestion("");
+      setPdfTextContent("");
     }
     if (activeInputType !== 'recording') {
       setUploadedAudioFile(null);
@@ -172,34 +205,47 @@ export default function SummarizerPage() {
     }
   };
 
-  const handlePdfFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handlePdfFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.type !== "application/pdf") {
         toast({ title: "Invalid File Type", description: "Please upload a PDF file.", variant: "destructive" });
-        setUploadedPdfFile(null);
-        if(pdfFileInputRef.current) pdfFileInputRef.current.value = "";
         return;
       }
       if (file.size > 10 * 1024 * 1024) { 
         toast({ title: "File too large", description: "Please upload a PDF smaller than 10MB.", variant: "destructive" });
-        setUploadedPdfFile(null);
-        if(pdfFileInputRef.current) pdfFileInputRef.current.value = "";
         return;
       }
+
       setUploadedPdfFile(file);
       setPdfProcessingOutput(null); 
       setPdfQuestionHistory([]);
       setCurrentPdfQuestion("");
       setCurrentMediaConversationId(null);
       setError(null);
-      toast({ title: "PDF Selected", description: `Ready to process "${file.name}".`});
+      setPdfTextContent("");
+
+      setIsParsingPdf(true);
+      toast({ title: "Parsing PDF...", description: `Extracting text from "${file.name}". This may take a moment.` });
+      
+      try {
+        const text = await parsePdfContent(file);
+        setPdfTextContent(text);
+        toast({ title: "PDF Ready", description: `Successfully extracted text from "${file.name}".` });
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+        setError(errorMessage);
+        toast({ title: "PDF Parsing Failed", description: errorMessage, variant: "destructive" });
+        setUploadedPdfFile(null);
+      } finally {
+        setIsParsingPdf(false);
+      }
     }
   };
 
   const handleSummarizePdf = async () => {
-    if (!uploadedPdfFile || !profile) {
-      toast({ title: "Missing Input", description: "Please upload a PDF file and ensure you are logged in.", variant: "destructive" });
+    if (!uploadedPdfFile || !profile || !pdfTextContent) {
+      toast({ title: "Missing Input", description: "Please ensure a PDF is successfully parsed.", variant: "destructive" });
       return;
     }
     setIsProcessingPdf(true);
@@ -219,8 +265,9 @@ export default function SummarizerPage() {
       const aiInput: AIGuidedStudySessionInput = {
         studentProfile: { ...profile, age: Number(profile.age) },
         specificTopic: "PDF Content Summarization & Q&A",
-        question: `Summarize the PDF: ${uploadedPdfFile.name}`,
+        question: `Summarize the following document content from the file named "${uploadedPdfFile.name}".`,
         originalFileName: uploadedPdfFile.name,
+        documentTextContent: pdfTextContent,
       };
       const result = await aiGuidedStudySession(aiInput);
       setPdfProcessingOutput(result);
@@ -241,8 +288,8 @@ export default function SummarizerPage() {
   };
 
   const handleAskPdfQuestion = async () => {
-    if (!currentPdfQuestion.trim() || !uploadedPdfFile || !profile || !currentMediaConversationId) {
-      toast({ title: "Missing Input", description: "Please type a question and ensure a PDF is loaded and a session is active.", variant: "destructive" });
+    if (!currentPdfQuestion.trim() || !uploadedPdfFile || !profile || !currentMediaConversationId || !pdfTextContent) {
+      toast({ title: "Missing Input", description: "Please type a question and ensure a PDF has been processed.", variant: "destructive" });
       return;
     }
     setIsProcessingPdf(true); 
@@ -259,6 +306,7 @@ export default function SummarizerPage() {
         specificTopic: "PDF Content Summarization & Q&A",
         question: currentPdfQuestion,
         originalFileName: uploadedPdfFile.name,
+        documentTextContent: pdfTextContent,
       };
       const result = await aiGuidedStudySession(aiInput);
       setPdfProcessingOutput(result); 
@@ -665,14 +713,15 @@ export default function SummarizerPage() {
                 className="flex flex-col items-center justify-center p-6 sm:p-8 border-2 border-dashed border-primary/30 rounded-xl min-h-[200px] bg-card shadow-sm"
             >
                 <input type="file" ref={pdfFileInputRef} onChange={handlePdfFileChange} accept=".pdf" className="hidden" id="pdf-upload-input" />
-                <Button variant="outline" size="lg" onClick={() => pdfFileInputRef.current?.click()} className="mb-3">
-                    <UploadCloud className="mr-2 h-5 w-5" /> Upload PDF
+                <Button variant="outline" size="lg" onClick={() => pdfFileInputRef.current?.click()} className="mb-3" disabled={isParsingPdf}>
+                    {isParsingPdf ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
+                    {isParsingPdf ? "Parsing PDF..." : "Upload PDF"}
                 </Button>
                 {uploadedPdfFile && (
                     <p className="text-sm text-muted-foreground mb-2">Selected: <span className="font-medium text-primary">{uploadedPdfFile.name}</span></p>
                 )}
                 {!uploadedPdfFile && <p className="text-xs text-muted-foreground">{currentInputTypeConfig.placeholder}</p>}
-                 <p className="text-xs text-muted-foreground mt-2">Max file size: 10MB. AI will summarize based on filename and your questions.</p>
+                 <p className="text-xs text-muted-foreground mt-2">Max file size: 10MB. Content will be processed in-browser.</p>
             </div>
         );
       case "recording":
@@ -798,9 +847,9 @@ export default function SummarizerPage() {
         <div className="mt-6 text-center">
             <Button
             onClick={handleMainGenerateClick}
-            disabled={isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo ||
+            disabled={isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo || isParsingPdf ||
               (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
-              (activeInputType === "pdf" && !uploadedPdfFile) ||
+              (activeInputType === "pdf" && (!uploadedPdfFile || !pdfTextContent)) ||
               (activeInputType === "recording" && !uploadedAudioFile) ||
               (activeInputType === "powerpoint" && !uploadedSlideFile) ||
               (activeInputType === "video" && ((videoInputMethod === 'url' && !videoUrl.trim()) || (videoInputMethod === 'upload' && !uploadedLocalVideoFile)))
@@ -808,7 +857,7 @@ export default function SummarizerPage() {
             size="lg"
             className="px-8 py-3 text-base"
             >
-            {(isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo) ? (
+            {(isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo || isParsingPdf) ? (
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             ) : (
                 <Wand2 className="mr-2 h-5 w-5" />
@@ -880,7 +929,7 @@ export default function SummarizerPage() {
       )}
 
       {/* Q&A UI for PDF */}
-      {activeInputType === 'pdf' && uploadedPdfFile && !isProcessingPdf && (pdfProcessingOutput || pdfQuestionHistory.length > 0) && (
+      {activeInputType === 'pdf' && uploadedPdfFile && !isProcessingPdf && !isParsingPdf && (pdfProcessingOutput || pdfQuestionHistory.length > 0) && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center text-xl sm:text-2xl">
@@ -941,7 +990,7 @@ export default function SummarizerPage() {
               </div>
             )}
              <div className="text-xs text-muted-foreground pt-4 border-t mt-2">
-                <Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/> AI responses for PDFs are based on filename and your questions, not actual PDF content processing.
+                <Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/> AI responses for PDFs are based on the extracted text content. Processing is done in your browser.
             </div>
           </CardContent>
         </Card>

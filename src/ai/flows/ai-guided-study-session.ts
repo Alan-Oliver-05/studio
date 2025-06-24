@@ -49,6 +49,7 @@ const AIGuidedStudySessionInputSchema = z.object({
   question: z.string().describe("The student's question or request for the study session."),
   photoDataUri: z.string().optional().nullable().describe("An optional photo (or document content as image) uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
   originalFileName: z.string().optional().nullable().describe("The name of the original file uploaded by the user, if applicable (e.g., for document translation mode, PDF summarization, audio summarization, slide summarization, video summarization)."),
+  documentTextContent: z.string().optional().describe("The full text content extracted from an uploaded document."),
   // New fields for conversation practice setup
   conversationScenario: z.string().optional().describe("The scenario for language conversation practice."),
   userLanguageRole: z.string().optional().describe("The user's role and language in the conversation (e.g., 'English-speaking tourist')."),
@@ -227,28 +228,54 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
 {{#if competitiveExam.examDate}}Keep practicing for your exam on {{{competitiveExam.examDate}}}!{{/if}}"
 
 {{else if isPdfProcessingMode}}
-  You are an AI assistant specialized in processing PDF documents, acting as a Retrieval Augmented Generation (RAG) agent.
-  The user has conceptually provided a document named '{{{originalFileName}}}'. Imagine you have thoroughly read and deeply understood this document. Your task is to assist the user based on its specific conceptual content.
+  You are an AI assistant specialized in processing PDF documents.
 
-  {{#if isInitialPdfSummarizationRequest}}
-  The user's initial request is: "{{{question}}}" (This is likely a request to summarize the document).
-  1.  Provide a comprehensive summary of the document '{{{originalFileName}}}' as if you have retrieved its core information.
-      Your summary MUST cover:
-      *   The main purpose or thesis one would expect from such a document.
-      *   Key arguments, findings, or critical sections that would be present.
-      *   Plausible important data points, specific examples, or crucial evidence relevant to such a document's content. Avoid generic statements.
-      *   The overall conclusions or most significant takeaways *as if these were directly extracted or synthesized from the document's text itself*.
-  2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the *specific conceptual content* of '{{{originalFileName}}}' based on your imagined detailed summary. These should encourage deeper exploration of a document with that title.
-  Example 'response' for 'Annual_Financial_Report_2023.pdf': "The 'Annual_Financial_Report_2023.pdf' would typically detail the company's financial performance over the past year, including an in-depth analysis of revenue streams, cost structures, and net profit margins. For instance, it might highlight a 15% increase in net profit, driven by a 22% growth in the services sector and successful cost-cutting measures in operational overhead by 5%. Key investments would likely include expansion into new Asia-Pacific markets and a $2M R&D project for product X... The report would conclude by assessing the company's robust financial health and strategic direction, emphasizing sustainable growth and shareholder value."
-  Example 'suggestions': ["What were the main drivers of the 22% revenue growth in the services sector mentioned conceptually in 'Annual_Financial_Report_2023.pdf'?", "Can you elaborate on the conceptual risks and challenges outlined in the 'Future Outlook' section of 'Annual_Financial_Report_2023.pdf'?"]
-  'visualElement' MUST be null.
+  {{#if documentTextContent}}
+  ---
+  **Real Document Content Provided**
+  ---
+  You have been given the full text content of the document named '{{{originalFileName}}}'. Your task is to act as a Retrieval Augmented Generation (RAG) agent, using ONLY the provided text as your source of truth.
+
+  Document Content:
+  {{{documentTextContent}}}
+
+    {{#if isInitialPdfSummarizationRequest}}
+    Based *only* on the provided text, generate a comprehensive summary. Cover the main purpose, key arguments, and conclusions found within the text.
+    For 'suggestions', provide 2-3 insightful follow-up questions a user might ask about the specific content of this document.
+    'visualElement' MUST be null.
+    {{else}}
+    Answer the user's specific question: "{{{question}}}" based *only* on the provided document text. Quote or reference parts of the text if helpful.
+    For 'suggestions', provide 1-2 related follow-up questions.
+    'visualElement' MUST be null.
+    {{/if}}
+
   {{else}}
-  The user is asking a specific question about the document '{{{originalFileName}}}': "{{{question}}}"
-  1.  Answer this question based on your *simulated in-depth understanding of the specific content* that would typically be in a document named '{{{originalFileName}}}'. Be concise and directly address the query, referencing plausible specific details or sections.
-  2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask, or suggest exploring a related specific concept that might be in '{{{originalFileName}}}'.
-  Example 'response': "Regarding your question about the methodology in 'Research_Paper_On_Climate_Change_Impacts.pdf', such a paper would typically describe its data collection methods (e.g., satellite imagery analysis, climate model simulations from CMIP6, and on-ground sensor data from specific regions like the Arctic circle), statistical analysis techniques (e.g., time-series analysis, regression models), and any specific climate models used, usually detailed in a 'Methodology' or 'Materials and Methods' section which might cite specific software like R or Python libraries (e.g., Pandas, Scikit-learn)..."
-  Example 'suggestions': ["What are the likely specific limitations (e.g., data resolution, model uncertainty) discussed in 'Research_Paper_On_Climate_Change_Impacts.pdf'?", "How might 'Research_Paper_On_Climate_Change_Impacts.pdf' define key terms like 'climate sensitivity' or 'feedback loops' with specific examples?"]
-  'visualElement' MUST be null.
+  ---
+  **Conceptual Analysis Only (No Document Content)**
+  ---
+  The user has conceptually provided a document named '{{{originalFileName}}}' but has NOT provided its content. Imagine you have a general idea of what such a document might contain. Your task is to assist the user based on its *conceptual* content.
+  
+    {{#if isInitialPdfSummarizationRequest}}
+    The user's initial request is: "{{{question}}}" (This is likely a request to summarize the document).
+    1.  Provide a comprehensive summary of the document '{{{originalFileName}}}' as if you have retrieved its core information.
+        Your summary MUST cover:
+        *   The main purpose or thesis one would expect from such a document.
+        *   Key arguments, findings, or critical sections that would be present.
+        *   Plausible important data points, specific examples, or crucial evidence relevant to such a document's content. Avoid generic statements.
+        *   The overall conclusions or most significant takeaways *as if these were directly extracted or synthesized from the document's text itself*.
+    2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the *specific conceptual content* of '{{{originalFileName}}}' based on your imagined detailed summary. These should encourage deeper exploration of a document with that title.
+    Example 'response' for 'Annual_Financial_Report_2023.pdf': "The 'Annual_Financial_Report_2023.pdf' would typically detail the company's financial performance over the past year, including an in-depth analysis of revenue streams, cost structures, and net profit margins. For instance, it might highlight a 15% increase in net profit, driven by a 22% growth in the services sector and successful cost-cutting measures in operational overhead by 5%. Key investments would likely include expansion into new Asia-Pacific markets and a $2M R&D project for product X... The report would conclude by assessing the company's robust financial health and strategic direction, emphasizing sustainable growth and shareholder value."
+    Example 'suggestions': ["What were the main drivers of the 22% revenue growth in the services sector mentioned conceptually in 'Annual_Financial_Report_2023.pdf'?", "Can you elaborate on the conceptual risks and challenges outlined in the 'Future Outlook' section of 'Annual_Financial_Report_2023.pdf'?"]
+    'visualElement' MUST be null.
+    {{else}}
+    The user is asking a specific question about the document '{{{originalFileName}}}': "{{{question}}}"
+    1.  Answer this question based on your *simulated in-depth understanding of the specific content* that would typically be in a document named '{{{originalFileName}}}'. Be concise and directly address the query, referencing plausible specific details or sections.
+    2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask, or suggest exploring a related specific concept that might be in '{{{originalFileName}}}'.
+    Example 'response': "Regarding your question about the methodology in 'Research_Paper_On_Climate_Change_Impacts.pdf', such a paper would typically describe its data collection methods (e.g., satellite imagery analysis, climate model simulations from CMIP6, and on-ground sensor data from specific regions like the Arctic circle), statistical analysis techniques (e.g., time-series analysis, regression models), and any specific climate models used, usually detailed in a 'Methodology' or 'Materials and Methods' section which might cite specific software like R or Python libraries (e.g., Pandas, Scikit-learn)..."
+    Example 'suggestions': ["What are the likely specific limitations (e.g., data resolution, model uncertainty) discussed in 'Research_Paper_On_Climate_Change_Impacts.pdf'?", "How might 'Research_Paper_On_Climate_Change_Impacts.pdf' define key terms like 'climate sensitivity' or 'feedback loops' with specific examples?"]
+    'visualElement' MUST be null.
+    {{/if}}
+    
   {{/if}}
 
 {{else if isAudioProcessingMode}}
@@ -506,3 +533,4 @@ User has provided this text segment (from the document or as a query): "{{{quest
       *   Describe visual in text. Populate 'visualElement' (type 'bar_chart_data' or 'image_generation_prompt'). Curriculum-aligned.
   If student answers MCQ, evaluate, feedback, new explanation/MCQ on related sub-topic from "retrieved" curriculum.
 {{/if}}
+

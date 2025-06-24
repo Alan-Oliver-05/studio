@@ -1,6 +1,15 @@
-// This file is intentionally disabled to resolve a routing conflict.
-// The redirect is handled by /src/app/(app)/summarizer/page.tsx
-// A file must have a default export to be considered a page by Next.js.
-export function disabledSummarizerPage() {
-    return null;
+"use client";
+// This page handles the redirect from /summarizer to /ai-note-taker
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function SummarizerRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/ai-note-taker');
+  }, [router]);
+
+  // Render nothing as it will redirect
+  return null;
 }
