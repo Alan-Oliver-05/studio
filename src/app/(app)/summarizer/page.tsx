@@ -1,3 +1,15 @@
-// This file is intentionally left without a default export
-// to resolve a Next.js build error caused by a parallel route conflict.
-// The active page for this feature is located at /ai-note-taker/page.tsx.
+"use client";
+// This page now handles the redirect to /ai-note-taker
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function SummarizerRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/ai-note-taker');
+  }, [router]);
+
+  // Render nothing as it will redirect
+  return null; 
+}
