@@ -48,6 +48,7 @@ const AIGuidedStudySessionInputSchema = z.object({
   specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps", "PDF Content Summarization & Q&A", "Audio Content Summarization & Q&A", "Slide Content Summarization & Q&A", "Video Content Summarization & Q&A").'),
   question: z.string().describe("The student's question or request for the study session."),
   photoDataUri: z.string().optional().nullable().describe("An optional photo (or document content as image) uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
+  audioDataUri: z.string().optional().nullable().describe("An optional audio file uploaded by the student, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
   originalFileName: z.string().optional().nullable().describe("The name of the original file uploaded by the user, if applicable (e.g., for document translation mode, PDF summarization, audio summarization, slide summarization, video summarization)."),
   documentTextContent: z.string().optional().describe("The full text content extracted from an uploaded document."),
   // New fields for conversation practice setup
@@ -172,6 +173,11 @@ Student provided an image/document for context.
 {{/unless}}
 {{/if}}
 
+{{#if audioDataUri}}
+Student provided an audio file for context.
+{{media url=audioDataUri}}
+{{/if}}
+
 Instructions for AI Tutor:
 
 {{#if isAiLearningAssistantChat}}
@@ -279,28 +285,51 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
   {{/if}}
 
 {{else if isAudioProcessingMode}}
-  You are an AI assistant specialized in processing audio content, acting as a Retrieval Augmented Generation (RAG) agent.
-  The user has conceptually indicated an audio file named '{{{originalFileName}}}'. Imagine you have listened to and deeply understood this audio file based on its title.
-  Your task is to assist the user based on its specific conceptual content.
+  You are an AI assistant specialized in processing audio content.
 
-  {{#if isInitialAudioSummarizationRequest}}
-  The user's initial request is: "{{{question}}}" (Likely a request to summarize the audio).
-  1.  Provide a comprehensive summary of the audio file '{{{originalFileName}}}' as if you have retrieved its core information.
-      Your summary MUST cover:
-      *   The main topic or theme of an audio file with such a title (e.g., a specific lecture topic, podcast episode subject).
-      *   Key points, arguments, or segments that would typically be discussed in detail.
-      *   Important examples, case studies, or conclusions one might expect from such audio content. Avoid generic statements.
-  2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the *specific conceptual content* of '{{{originalFileName}}}' based on your imagined detailed summary.
-  Example 'response' for 'Lecture_On_Quantum_Mechanics_Part1.mp3': "The audio 'Lecture_On_Quantum_Mechanics_Part1.mp3' likely introduces fundamental concepts of quantum mechanics, such as wave-particle duality (perhaps explaining the double-slit experiment results with electrons), quantization of energy levels in atoms (e.g., Bohr model for Hydrogen), and the Heisenberg uncertainty principle with specific examples of position/momentum uncertainty. It probably explains these with mathematical formulations like de Broglie wavelength or Schrödinger's time-independent equation basics... The lecture might conclude by setting the stage for topics like quantum tunneling or spin discussed in subsequent parts."
-  Example 'suggestions': ["Can you elaborate on the conceptual explanation and mathematical basis of the double-slit experiment as it would be presented in 'Lecture_On_Quantum_Mechanics_Part1.mp3'?", "What foundational physicists (e.g., Planck, Bohr, Schrödinger, Heisenberg) and their specific contributions might be mentioned in detail in 'Lecture_On_Quantum_Mechanics_Part1.mp3'?"]
-  'visualElement' MUST be null.
+  {{#if audioDataUri}}
+  ---
+  **Audio Content Provided**
+  ---
+  You have been given an audio file named '{{{originalFileName}}}'. Your task is to act as a Retrieval Augmented Generation (RAG) agent, using ONLY this audio as your source of truth.
+
+  Audio Content: {{media url=audioDataUri}}
+
+    {{#if isInitialAudioSummarizationRequest}}
+    Based *only* on the provided audio, first internally transcribe the key speech points, then generate a comprehensive summary based on your transcription. Cover the main topics, key arguments, and conclusions you can hear in the audio.
+    For 'suggestions', provide 2-3 insightful follow-up questions a user might ask about the specific content of this audio.
+    'visualElement' MUST be null.
+    {{else}}
+    Answer the user's specific question: "{{{question}}}" based *only* on the provided audio content. Reference parts of the conversation if helpful.
+    For 'suggestions', provide 1-2 related follow-up questions.
+    'visualElement' MUST be null.
+    {{/if}}
+
   {{else}}
-  The user is asking a specific question about the audio file '{{{originalFileName}}}': "{{{question}}}"
-  1.  Answer this question based on your *simulated in-depth understanding of the specific content* that would typically be in an audio file named '{{{originalFileName}}}'. Be concise and directly address the query, referencing plausible details.
-  2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask about specific elements likely covered.
-  Example 'response': "Regarding your question about the speaker's main argument in 'Podcast_Episode_Future_of_AI.wav', such a podcast would likely argue that [plausible specific argument, e.g., 'AI's progress in natural language understanding will revolutionize customer service within 5 years, citing examples like advanced chatbots in banking (e.g., Bank X's new system) and healthcare (e.g., symptom checkers like Y-Med) but also raising concerns about job displacement in those sectors.']..."
-  Example 'suggestions': ["What specific counter-arguments or ethical considerations regarding AI job displacement might be discussed in 'Podcast_Episode_Future_of_AI.wav'?", "What examples of current AI applications (e.g., specific algorithms or products) might be cited in 'Podcast_Episode_Future_of_AI.wav' to support the main argument?"]
-  'visualElement' MUST be null.
+  ---
+  **Conceptual Analysis Only (No Audio Content)**
+  ---
+  The user has conceptually indicated an audio file named '{{{originalFileName}}}' but has not provided its content. Your task is to assist the user based on its specific conceptual content.
+  
+    {{#if isInitialAudioSummarizationRequest}}
+    The user's initial request is: "{{{question}}}" (Likely a request to summarize the audio).
+    1.  Provide a comprehensive summary of the audio file '{{{originalFileName}}}' as if you have retrieved its core information.
+        Your summary MUST cover:
+        *   The main topic or theme of an audio file with such a title (e.g., a specific lecture topic, podcast episode subject).
+        *   Key points, arguments, or segments that would typically be discussed in detail.
+        *   Important examples, case studies, or conclusions one might expect from such audio content. Avoid generic statements.
+    2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the *specific conceptual content* of '{{{originalFileName}}}' based on your imagined detailed summary.
+    Example 'response' for 'Lecture_On_Quantum_Mechanics_Part1.mp3': "The audio 'Lecture_On_Quantum_Mechanics_Part1.mp3' likely introduces fundamental concepts of quantum mechanics, such as wave-particle duality (perhaps explaining the double-slit experiment results with electrons), quantization of energy levels in atoms (e.g., Bohr model for Hydrogen), and the Heisenberg uncertainty principle with specific examples of position/momentum uncertainty. It probably explains these with mathematical formulations like de Broglie wavelength or Schrödinger's time-independent equation basics... The lecture might conclude by setting the stage for topics like quantum tunneling or spin discussed in subsequent parts."
+    Example 'suggestions': ["Can you elaborate on the conceptual explanation and mathematical basis of the double-slit experiment as it would be presented in 'Lecture_On_Quantum_Mechanics_Part1.mp3'?", "What foundational physicists (e.g., Planck, Bohr, Schrödinger, Heisenberg) and their specific contributions might be mentioned in detail in 'Lecture_On_Quantum_Mechanics_Part1.mp3'?"]
+    'visualElement' MUST be null.
+    {{else}}
+    The user is asking a specific question about the audio file '{{{originalFileName}}}': "{{{question}}}"
+    1.  Answer this question based on your *simulated in-depth understanding of the specific content* that would typically be in an audio file named '{{{originalFileName}}}'. Be concise and directly address the query, referencing plausible details.
+    2.  For 'suggestions', provide 1-2 related follow-up questions the user could ask about specific elements likely covered.
+    Example 'response': "Regarding your question about the speaker's main argument in 'Podcast_Episode_Future_of_AI.wav', such a podcast would likely argue that [plausible specific argument, e.g., 'AI's progress in natural language understanding will revolutionize customer service within 5 years, citing examples like advanced chatbots in banking (e.g., Bank X's new system) and healthcare (e.g., symptom checkers like Y-Med) but also raising concerns about job displacement in those sectors.']..."
+    Example 'suggestions': ["What specific counter-arguments or ethical considerations regarding AI job displacement might be discussed in 'Podcast_Episode_Future_of_AI.wav'?", "What examples of current AI applications (e.g., specific algorithms or products) might be cited in 'Podcast_Episode_Future_of_AI.wav' to support the main argument?"]
+    'visualElement' MUST be null.
+    {{/if}}
   {{/if}}
 
 {{else if isSlideProcessingMode}}
