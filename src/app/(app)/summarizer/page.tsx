@@ -1,12 +1,3 @@
-"use client";
-// This page is being redirected to /ai-note-taker to resolve a routing conflict.
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
-export default function AppSummarizerRedirect() {
-  const router = useRouter();
-  useEffect(() => {
-    router.replace('/ai-note-taker');
-  }, [router]);
-  return null; 
-}
+// This file is intentionally left without a default export
+// to resolve a Next.js build error caused by a parallel route conflict.
+// The active page for this feature is located at /ai-note-taker/page.tsx.
