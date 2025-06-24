@@ -26,7 +26,7 @@ async function searchGoogle(query: string): Promise<string> {
       const error = data.error || { message: `HTTP error! status: ${response.status}` };
       console.error(`Google Search API error for query "${query}":`, JSON.stringify(error, null, 2));
 
-      if (error.status === 'PERMISSION_DENIED' && error.message.includes('blocked')) {
+      if (error.status === 'PERMISSION_DENIED' && (error.message.includes('blocked') || error.message.includes('Custom Search API has not been used'))) {
         return `Error: The Web Search request was blocked. This is almost always because the "Custom Search API" is not enabled in your Google Cloud project, OR there are IP/referrer restrictions on your API key. Please check Step 5 and Step 6 in HOW_TO_GET_KEYS.md.`;
       }
       if (error.message.includes("API key not valid")) {

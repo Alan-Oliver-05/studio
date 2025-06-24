@@ -199,6 +199,7 @@ export default function DiagnosticQuizPage() {
 
       {quizState === "error" && error && (
         <Alert variant="destructive" className="max-w-lg mx-auto shadow-md">
+          <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Quiz Generation Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
           <Button onClick={handleRestartQuiz} variant="secondary" className="mt-4">Try Again</Button>

@@ -16,6 +16,7 @@ import { plannerFlow } from "@/ai/flows/planner-flow";
 import { researcherFlow } from "@/ai/flows/researcher-flow";
 import { writerFlow } from "@/ai/flows/writer-flow";
 import Link from "next/link";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Dynamic import for the chat interface
 const DynamicChatInterface = dynamic(() =>
@@ -177,10 +178,11 @@ const ResearchAgentComponent = () => {
               </div>
             )}
              {error && (
-                <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm border border-destructive/20">
-                    <p className="font-semibold flex items-center"><AlertTriangle className="h-4 w-4 mr-2"/>An error occurred:</p>
-                    <p className="mt-1 font-mono text-xs whitespace-pre-wrap">{error}</p>
-                </div>
+                <Alert variant="destructive" className="mt-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>An Error Occurred</AlertTitle>
+                  <AlertDescription className="whitespace-pre-wrap text-xs font-mono">{error}</AlertDescription>
+                </Alert>
              )}
             {finalReport && reportTitle && (
               <div className="border-t pt-4">
