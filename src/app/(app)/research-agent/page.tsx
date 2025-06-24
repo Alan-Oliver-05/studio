@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Sparkles, BrainCircuit, Search, FileText, CheckCircle, Lightbulb, Bot, User } from "lucide-react";
+import { Loader2, Sparkles, BrainCircuit, Search, FileText, CheckCircle, Lightbulb, Bot, User, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { plannerFlow } from "@/ai/flows/planner-flow";
 import { researcherFlow } from "@/ai/flows/researcher-flow";
@@ -53,17 +54,18 @@ export default function ResearchAgentPage() {
         setResearchSteps(prev => prev.map((s, idx) => i === idx ? { ...s, status: 'loading' } : s));
         try {
           const result = await researcherFlow({ query: initialSteps[i].query });
-          
-          // Pre-flight check on the first iteration (or any iteration)
-          if (result.researchSummary.includes("Web search is not configured")) {
-             setError("Web search is not configured. Please add your GOOGLE_API_KEY and GOOGLE_CSE_ID to the .env file. See HOW_TO_GET_KEYS.md for instructions.");
+          const summary = result.researchSummary;
+
+          // Critical check: Stop immediately if any search fails.
+          if (summary.startsWith("Error:") || summary.includes("not configured")) {
+             setError(summary); // Display the specific error from the tool
              setStatus('error');
-             toast({ title: "Web Search Not Configured", description: "Please provide API keys to enable web search.", variant: "destructive", duration: 7000 });
+             toast({ title: "Web Search Failed", description: "Could not retrieve information. Check configuration.", variant: "destructive", duration: 7000 });
              return; // Stop the entire process
           }
 
-          researchResults.push(result.researchSummary);
-          setResearchSteps(prev => prev.map((s, idx) => i === idx ? { ...s, status: 'done', result: result.researchSummary } : s));
+          researchResults.push(summary);
+          setResearchSteps(prev => prev.map((s, idx) => i === idx ? { ...s, status: 'done', result: summary } : s));
         } catch (researchErr) {
           const errorMessage = researchErr instanceof Error ? researchErr.message : "Unknown research error.";
           setResearchSteps(prev => prev.map((s, idx) => i === idx ? { ...s, status: 'error', result: `Error: ${errorMessage}` } : s));
@@ -166,7 +168,7 @@ export default function ResearchAgentPage() {
                       {step.status === 'pending' && <Loader2 className="h-4 w-4 animate-spin text-transparent" />}
                       {step.status === 'loading' && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                       {step.status === 'done' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                      {step.status === 'error' && <CheckCircle className="h-4 w-4 text-destructive" />}
+                      {step.status === 'error' && <AlertTriangle className="h-4 w-4 text-destructive" />}
                       <span className={step.status === 'done' ? 'line-through' : ''}>{step.query}</span>
                     </li>
                   ))}
@@ -190,18 +192,20 @@ export default function ResearchAgentPage() {
               </div>
             )}
 
+             {error && (
+                <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm border border-destructive/20">
+                    <p className="font-semibold flex items-center"><AlertTriangle className="h-4 w-4 mr-2"/>An error occurred:</p>
+                    <p className="mt-1 font-mono text-xs">{error}</p>
+                </div>
+             )}
+
             {finalReport && reportTitle && (
               <div className="border-t pt-4">
                 <h3 className="font-bold text-xl mb-2 flex items-center text-primary"><FileText className="mr-2 h-5 w-5"/>{reportTitle}</h3>
                 <div className="p-4 border rounded-md prose dark:prose-invert max-w-none text-sm bg-background" dangerouslySetInnerHTML={{ __html: finalReport.replace(/\n/g, '<br />') }}></div>
               </div>
             )}
-             {error && (
-                <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm border border-destructive/20">
-                    <p className="font-semibold">An error occurred:</p>
-                    <p>{error}</p>
-                </div>
-             )}
+            
           </CardContent>
         </Card>
       )}

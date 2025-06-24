@@ -1,3 +1,4 @@
+
 'use server';
 
 import { ai } from '@/ai/genkit';
@@ -11,13 +12,11 @@ async function searchGoogle(query: string): Promise<string> {
   const cseId = process.env.GOOGLE_CSE_ID;
 
   if (!apiKey || apiKey === "YOUR_API_KEY_HERE") {
-    console.error("GOOGLE_API_KEY is not set in .env file.");
-    return "Web search is not configured. Your GOOGLE_API_KEY is missing. Please see HOW_TO_GET_KEYS.md for instructions.";
+    return "Error: Web search is not configured. Your GOOGLE_API_KEY is missing. Please see HOW_TO_GET_KEYS.md for instructions.";
   }
   
   if (!cseId || cseId === "YOUR_SEARCH_ENGINE_ID_HERE") {
-    console.error("GOOGLE_CSE_ID is not set in .env file.");
-    return "Web search is not configured. Your GOOGLE_CSE_ID is missing. Please see HOW_TO_GET_KEYS.md for instructions.";
+    return "Error: Web search is not configured. Your GOOGLE_CSE_ID is missing. Please see HOW_TO_GET_KEYS.md for instructions.";
   }
 
   try {
@@ -41,13 +40,16 @@ async function searchGoogle(query: string): Promise<string> {
     return searchSummary;
   } catch (error) {
     console.error(`Google Search API error for query "${query}":`, error);
-    // Provide a descriptive error message
     const errorMessage = error instanceof Error ? error.message : String(error);
+
     if (errorMessage.includes("API key not valid")) {
       return `Error: The provided Google API Key is not valid. Please check your .env file.`;
     }
     if (errorMessage.includes("invalid Custom Search Engine ID")) {
        return `Error: The provided Google Custom Search Engine ID (CSE ID) is invalid. Please check your .env file.`;
+    }
+    if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("forbidden") || errorMessage.toLowerCase().includes("blocked")) {
+      return `Error: API request was blocked due to a permission issue. Please ensure the "Custom Search API" is enabled in your Google Cloud project and that your API key is configured correctly. See Step 4 in HOW_TO_GET_KEYS.md for details.`;
     }
     return `An error occurred while searching the web: ${errorMessage}`;
   }
