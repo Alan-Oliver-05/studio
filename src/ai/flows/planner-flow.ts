@@ -57,8 +57,15 @@ export async function plannerFlow(input: PlannerInput): Promise<PlannerOutput> {
       return output;
     } catch (err) {
        console.error("Error in plannerFlow:", err);
-       const errorMessage = err instanceof Error ? err.message : String(err);
+       let errorMessage = err instanceof Error ? err.message : String(err);
+       
+       if (errorMessage.includes("API_KEY_SERVICE_BLOCKED") || errorMessage.includes("generativelanguage.googleapis.com")) {
+          errorMessage = `The AI model request was blocked. This is almost always because the "Vertex AI API" is not enabled in your Google Cloud project. Please go to your project's "Enabled APIs & services" page and ensure "Vertex AI API" is active. Also, check for any API key restrictions as described in HOW_TO_GET_KEYS.md.`;
+       } else if (errorMessage.includes("API key not valid")) {
+          errorMessage = `The provided Google API Key is not valid. Please double-check your .env file and ensure it is correct.`
+       }
+
        // Re-throw a more user-friendly error that can be caught by the UI
-       throw new Error(`The planning phase failed. This could be due to an API access issue (check your API keys and enabled services in Google Cloud) or a problem with the AI response. Original error: ${errorMessage}`);
+       throw new Error(`The planning phase failed. Reason: ${errorMessage}`);
     }
 }
