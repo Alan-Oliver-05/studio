@@ -6,11 +6,12 @@ Follow these steps carefully.
 
 ---
 
-### Step 1: Create a Google Cloud Project
+### Step 1: Create or Select a Google Cloud Project
 
 1.  Go to the [Google Cloud Console](https://console.cloud.google.com/).
 2.  If you don't have a project, create one. Click on the project dropdown at the top of the page and click **"New Project"**.
 3.  Give your project a name (e.g., "AI-Tutor-Keys") and click **"Create"**.
+4.  **CRITICAL:** Make sure this project is selected for all the following steps.
 
 ---
 
@@ -18,12 +19,11 @@ Follow these steps carefully.
 
 This key allows your application to authenticate with Google's APIs.
 
-1.  In your Google Cloud Project, navigate to **"APIs & Services" > "Credentials"** from the left-hand menu.
+1.  In your selected Google Cloud Project, navigate to **"APIs & Services" > "Credentials"** from the left-hand menu.
 2.  Click on **"+ CREATE CREDENTIALS"** at the top of the page.
 3.  Select **"API key"** from the dropdown menu.
 4.  A new API key will be created. Click the copy icon to copy it.
-5.  **Important Security Step:** For security, it's highly recommended to restrict your key. Click **"Edit API key"** and under "API restrictions", select "Restrict key". From the dropdown, select the **"Custom Search API"**. This ensures the key can only be used for searching.
-6.  Paste this key into the `.env` file in your project for the `GOOGLE_API_KEY` variable.
+5.  Paste this key into the `.env` file in your project for the `GOOGLE_API_KEY` variable.
 
     ```env
     GOOGLE_API_KEY="YOUR_API_KEY_HERE"
@@ -52,12 +52,27 @@ This ID tells Google *what* to search. You will configure a search engine to sea
 
 ### Step 4: **(CRITICAL)** Enable the Custom Search API
 
-You must enable the API for your project so your API key can use it. **This is the most common reason for "blocked" requests.**
+You must enable the API for your project so your API key can use it.
 
 1.  Go to the [Google Cloud API Library](https://console.cloud.google.com/apis/library).
-2.  Make sure you have selected the correct Google Cloud Project at the top of the page.
+2.  Make sure you have selected the correct Google Cloud Project at the top of the page (the same one you used in Step 1 and 2).
 3.  Search for **"Custom Search API"**.
 4.  Click on it and then click the **"Enable"** button. If it's already enabled, you're all set.
+
+---
+
+### Step 5: **(CRITICAL)** Check API Key Restrictions
+
+If you still see a `PERMISSION_DENIED` error, it is almost certainly due to security restrictions on your API Key.
+
+1.  Go back to **"APIs & Services" > "Credentials"**.
+2.  Find the API key you created and click on its name to edit it.
+3.  Look for a section called **"Application restrictions"** or **"API restrictions"**.
+4.  **For debugging, select "None" under "Application restrictions".** This will temporarily remove any IP address or website-based blocking.
+5.  Under **"API restrictions"**, ensure it's set to "Don't restrict key" OR that "Custom Search API" is explicitly added to the list of allowed APIs.
+6.  Click **"Save"**.
+
+**Once the agent works with no restrictions, you can (optionally) try adding them back one by one to see which one was causing the issue.**
 
 ---
 

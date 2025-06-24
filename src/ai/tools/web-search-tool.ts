@@ -23,21 +23,19 @@ async function searchGoogle(query: string): Promise<string> {
     const data = await response.json();
 
     if (!response.ok) {
-      // This part is updated to be more verbose.
       const error = data.error || { message: `HTTP error! status: ${response.status}` };
       console.error(`Google Search API error for query "${query}":`, JSON.stringify(error, null, 2));
 
+      if (error.status === 'PERMISSION_DENIED' && error.message.includes('blocked')) {
+        return `Error: API request was blocked. This usually means the "Custom Search API" is not enabled in your Google Cloud project, OR there are IP/referrer restrictions on your API key. Please check the API key settings in your Google Cloud Console and ensure it has no restrictions. See HOW_TO_GET_KEYS.md for details.`;
+      }
       if (error.message.includes("API key not valid")) {
         return `Error: The provided Google API Key is not valid. Please double-check your .env file.`;
-      }
-      if (error.message.toLowerCase().includes("permission denied") || error.message.toLowerCase().includes("forbidden") || error.message.toLowerCase().includes("custom search api has not been used")) {
-        return `Error: API request was blocked. This usually means the "Custom Search API" is not enabled in your Google Cloud project or there are IP/referrer restrictions on your API key. Please verify the settings in your Google Cloud Console.`;
       }
       if (error.message.toLowerCase().includes("invalid value") && error.details?.[0]?.field === 'cx') {
         return `Error: The provided Google Custom Search Engine ID (CSE ID) appears to be invalid. Please check your .env file.`;
       }
       
-      // Return the full, detailed error from Google for debugging.
       return `Error: An unhandled API error occurred. Full details: ${JSON.stringify(data.error)}`;
     }
 
@@ -46,7 +44,6 @@ async function searchGoogle(query: string): Promise<string> {
       return `No results found for "${query}".`;
     }
 
-    // Format the results into a readable summary for the writer AI
     const searchSummary = items
       .map((item: any) => `Title: ${item.title}\nLink: ${item.link}\nSnippet: ${item.snippet}\n---`)
       .join('\n\n');
