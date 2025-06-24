@@ -333,7 +333,7 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
   You are an AI Video Analysis RAG Agent. Your task is to analyze the content of a YouTube video based on its transcript.
 
   1.  **Analyze Input**: The user's input '{{{question}}}' should contain a YouTube URL.
-  2.  **Fetch Transcript**: You MUST use the `getYouTubeTranscript` tool with the `videoUrl` parameter set to the user's provided URL to fetch its transcript.
+  2.  **Fetch Transcript**: You MUST use the 'getYouTubeTranscript' tool with the 'videoUrl' parameter set to the user's provided URL to fetch its transcript.
   3.  **Process Transcript**:
       *   If the tool returns a valid transcript, your entire response MUST be based on the information from that transcript.
       *   If the tool returns an error (e.g., "Error: No transcript found..."), your response must be to inform the user of that specific error and stop.
@@ -423,7 +423,7 @@ AI (Your) Role & Language: {{{aiLanguageRole}}} (You MUST speak in this language
 Difficulty: {{{conversationDifficulty}}}
 
 Based on this setup:
-1.  Fully adopt your assigned role ({{{aiRoleRole}}}) and CONSISTENTLY speak ONLY in your assigned language (the language part of '{{{aiLanguageRole}}}').
+1.  Fully adopt your assigned role ({{{aiLanguageRole}}}) and CONSISTENTLY speak ONLY in your assigned language (the language part of '{{{aiLanguageRole}}}').
 2.  If '{{{question}}}' (student's turn) is empty or this is the first turn for AI: Initiate the conversation based on the scenario '{{{conversationScenario}}}'. Your first response should be a natural starting line for someone in your role, fitting the scenario.
     Example: If AI role is 'French-speaking shopkeeper' and scenario is 'Ordering food', AI starts with "Bonjour! Que désirez-vous commander?" (Hello! What would you like to order?).
 3.  If '{{{question}}}' contains the student's dialogue: Respond naturally to the student's statement in your assigned role and language. Your response should progress the conversation within the '{{{conversationScenario}}}', as if you are truly in that situation.
@@ -533,4 +533,89 @@ User has provided this text segment (from the document or as a query): "{{{quest
       *   Describe visual in text. Populate 'visualElement' (type 'bar_chart_data' or 'image_generation_prompt'). Curriculum-aligned.
   If student answers MCQ, evaluate, feedback, new explanation/MCQ on related sub-topic from "retrieved" curriculum.
 {{/if}}
+`;
 
+const prompt = ai.definePrompt({
+  name: 'aiGuidedStudySessionPrompt',
+  input: {schema: PromptInputSchema},
+  output: {schema: AIGuidedStudySessionOutputSchema},
+  prompt: aiGuidedStudySessionPromptText,
+});
+
+
+const aiGuidedStudySessionFlow = ai.defineFlow(
+  {
+    name: 'aiGuidedStudySessionFlow',
+    inputSchema: AIGuidedStudySessionInputSchema,
+    outputSchema: AIGuidedStudySessionOutputSchema,
+  },
+  async (input) => {
+    // Determine the active mode based on the specificTopic
+    const modeFlags = {
+      isAiLearningAssistantChat: input.specificTopic === "AI Learning Assistant Chat",
+      isHomeworkHelp: input.specificTopic === "Homework Help",
+      isLanguageTranslatorMode: input.specificTopic === "LanguageTranslatorMode",
+      isLanguageTextTranslationMode: input.specificTopic === "Language Text Translation",
+      isLanguageConversationMode: input.specificTopic === "Language Conversation Practice",
+      isLanguageCameraMode: input.specificTopic === "Language Camera Translation",
+      isLanguageDocumentTranslationMode: input.specificTopic === "Language Document Translation",
+      
+      isVisualLearningFocus: input.specificTopic.startsWith("Visual Learning"),
+      isVisualLearningGraphs: input.specificTopic === "Visual Learning - Graphs & Charts",
+      isVisualLearningDiagrams: input.specificTopic === "Visual Learning - Conceptual Diagrams",
+      isVisualLearningMindMaps: input.specificTopic === "Visual Learning - Mind Maps",
+
+      isPdfProcessingMode: input.specificTopic === "PDF Content Summarization & Q&A",
+      isInitialPdfSummarizationRequest: input.specificTopic === "PDF Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize"),
+      
+      isAudioProcessingMode: input.specificTopic === "Audio Content Summarization & Q&A",
+      isInitialAudioSummarizationRequest: input.specificTopic === "Audio Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize"),
+
+      isSlideProcessingMode: input.specificTopic === "Slide Content Summarization & Q&A",
+      isInitialSlideSummarizationRequest: input.specificTopic === "Slide Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize"),
+      
+      isVideoProcessingMode: input.specificTopic === "Video Content Summarization & Q&A",
+      isInitialVideoSummarizationRequest: input.specificTopic === "Video Content Summarization & Q&A" && (input.question.toLowerCase().startsWith("summarize") || input.question.toLowerCase().startsWith("http")),
+
+      isCurriculumSpecificMode: !Object.values({
+        isAiLearningAssistantChat: input.specificTopic === "AI Learning Assistant Chat",
+        isHomeworkHelp: input.specificTopic === "Homework Help",
+        isLanguageTranslatorMode: input.specificTopic === "LanguageTranslatorMode",
+        isLanguageTextTranslationMode: input.specificTopic === "Language Text Translation",
+        isLanguageConversationMode: input.specificTopic === "Language Conversation Practice",
+        isLanguageCameraMode: input.specificTopic === "Language Camera Translation",
+        isLanguageDocumentTranslationMode: input.specificTopic === "Language Document Translation",
+        isVisualLearningFocus: input.specificTopic.startsWith("Visual Learning"),
+        isPdfProcessingMode: input.specificTopic === "PDF Content Summarization & Q&A",
+        isAudioProcessingMode: input.specificTopic === "Audio Content Summarization & Q&A",
+        isSlideProcessingMode: input.specificTopic === "Slide Content Summarization & Q&A",
+        isVideoProcessingMode: input.specificTopic === "Video Content Summarization & Q&A"
+      }).some(Boolean),
+    };
+
+    const enhancedInput = {
+      ...input,
+      ...modeFlags,
+    };
+
+    const { output } = await prompt(enhancedInput);
+
+    if (output) {
+      // Ensure visualElement is null if it's not a valid object, preventing issues downstream
+      if (output.visualElement && (typeof output.visualElement !== 'object' || !output.visualElement.type)) {
+        output.visualElement = null;
+      }
+      return output;
+    }
+    
+    // Fallback if the AI fails to generate any output
+    return {
+      response: "I'm sorry, I couldn't process that request. Could you please try rephrasing or asking something else?",
+      suggestions: [],
+      visualElement: null
+    };
+  }
+);
+
+
+export { aiGuidedStudySessionFlow as aiGuidedStudySession };
