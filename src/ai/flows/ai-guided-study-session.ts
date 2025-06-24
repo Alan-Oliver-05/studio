@@ -11,6 +11,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 import { performWebSearch } from '@/ai/tools/web-search-tool';
+import { getYouTubeTranscript } from '@/ai/tools/youtube-transcript-tool';
 import type { LearningStyle, InitialNodeData } from '@/types';
 
 const AIGuidedStudySessionInputSchema = z.object({
@@ -302,56 +303,48 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
   {{/if}}
 
 {{else if isVideoProcessingMode}}
-  You are an AI Video Analysis RAG Agent. You are acting as if you have downloaded and fully analyzed the video from the provided YouTube URL or local file name. Your task is to provide a rich, detailed analysis of its content, not just a surface-level summary.
+  You are an AI Video Analysis RAG Agent. Your task is to analyze the content of a YouTube video based on its transcript.
 
   {{#if originalFileName}}
-    The user has referenced a video named '{{{originalFileName}}}'.
+    The user has referenced a local video named '{{{originalFileName}}}'.
   {{else if question}}
-    The user has provided a YouTube URL or a query related to a video: '{{{question}}}'. Use this as the video source.
+    The user has provided a YouTube URL: '{{{question}}}'.
   {{/if}}
 
+  1.  **Analyze Input**: The user's input is either a YouTube URL in '{{{question}}}' or a local file name in '{{{originalFileName}}}'.
+  2.  **Fetch Transcript**: If '{{{question}}}' is a valid YouTube URL, you MUST use the `getYouTubeTranscript` tool to fetch its transcript.
+  3.  **Process Transcript**:
+      *   If the tool returns a valid transcript, your entire response MUST be based on the information from that transcript.
+      *   If the tool returns an error (e.g., "Error: No transcript found..."), your response must be to inform the user of that specific error and stop.
+  4.  **Handle Non-URL Input**: If the user provided a local filename, inform them you can only process YouTube URLs with transcripts at this time.
+
+  ---
+  **If a Transcript is Successfully Retrieved:**
+  ---
+
   {{#if isInitialVideoSummarizationRequest}}
-  The user is asking for an initial analysis of the video. Your response must be structured as follows, as if you have extracted this information from the video's full transcript and visual content:
+  The user is asking for an initial analysis. Based *only* on the retrieved transcript, structure your 'response' field exactly as follows:
   ---
-  **Conceptual Summary:**
-  [Provide a comprehensive summary here. Detail the video's main purpose, key arguments, and overall narrative flow. What is the central message or takeaway?]
+  **Summary:**
+  [Provide a comprehensive summary of the transcript. Detail the video's main purpose, key arguments, and overall narrative flow. What is the central message or takeaway?]
 
   **Key Topics Discussed:**
-  - **[Topic 1]:** [Briefly explain this topic as it would be covered in the video.]
-  - **[Topic 2]:** [Briefly explain this topic, including any specific examples or data points the video might have used.]
-  - **[Topic 3+]:** [Continue for all major topics.]
+  - **[Topic 1]:** [Briefly explain this topic as it would be covered in the transcript.]
+  - **[Topic 2]:** [Briefly explain this topic, including any specific examples or data points from the transcript.]
+  - **[Topic 3+]:** [Continue for all major topics found in the transcript.]
 
   **Key Takeaways/Actionable Insights:**
-  - [List 2-4 key takeaways, actionable steps, or critical conclusions from the video.]
+  - [List 2-4 key takeaways, actionable steps, or critical conclusions from the transcript.]
   ---
-  Example for a YouTube URL about making sourdough bread:
-  ---
-  **Conceptual Summary:**
-  This video provides a step-by-step guide for beginners on how to bake sourdough bread. It covers the entire process from starter maintenance to the final baked loaf, emphasizing visual cues and common troubleshooting tips. The central message is that with patience and understanding of the key stages, anyone can bake delicious sourdough at home.
-
-  **Key Topics Discussed:**
-  - **Sourdough Starter Health:** The video likely shows how to check for an active starter (doubling in size, bubbles) and discusses feeding schedules (e.g., 1:1:1 ratio of starter, flour, water).
-  - **Dough Handling:** It would demonstrate specific techniques like 'stretch and fold' and 'coil folds' for building dough strength, and 'shaping' to create surface tension for a good oven spring.
-  - **Fermentation:** The guide probably explains bulk fermentation (the first rise at room temperature) and cold fermentation (proofing in the fridge), detailing how each affects the bread's flavor and structure.
-  - **Baking Method:** It would showcase baking in a Dutch oven, explaining the importance of steam in the initial phase for a good crust and oven spring.
-
-  **Key Takeaways/Actionable Insights:**
-  - A healthy, active starter is the most critical component.
-  - Dough strength is developed through folds over time, not just intense kneading.
-  - Steam is essential for the first 20 minutes of baking.
-  - Temperature control during fermentation is key to managing the sourness and texture of the bread.
-  ---
-
-  Your 'suggestions' should be insightful follow-up questions a user might have after reading your detailed analysis. Example: ["What are the specific visual cues for a perfectly proofed dough mentioned in the video?", "Can you elaborate on the troubleshooting tips for a flat loaf that the video might have covered?"]
-  'visualElement' MUST be null.
+  Your 'suggestions' should be insightful follow-up questions based on the transcript content. 'visualElement' MUST be null.
 
   {{else}}
   The user is asking a specific follow-up question about the video: "{{{question}}}"
-  1.  Answer this question based on your *simulated deep knowledge of the specific video content*. Your answer should be direct and detailed.
-  2.  Reference conceptual scenes, spoken lines, or visual aids from the video to make your answer more authentic.
-  Example (if user asks "What oven temperature did they recommend?"): "In the video, the instructor would have likely recommended preheating the Dutch oven to a high temperature, typically around 230-250°C (450-475°F). They would then advise baking the loaf with the lid on for the first 20 minutes to trap steam, before removing the lid and reducing the temperature to around 200-220°C (400-425°F) for the final 15-20 minutes to achieve a golden-brown crust."
+  1.  Answer this question based *only* on the retrieved transcript. Be direct and detailed.
+  2.  Reference specific points from the transcript to make your answer more authentic.
+  Example (if user asks "What oven temperature did they recommend?" and transcript contains "preheat to 230 degrees Celsius"): "Based on the transcript, the instructor recommends preheating the oven to 230°C (450°F)..."
   
-  Your 'suggestions' should be related follow-up questions. 'visualElement' MUST be null.
+  Your 'suggestions' should be related follow-up questions based on the transcript. 'visualElement' MUST be null.
   {{/if}}
 
 {{else if isLanguageTranslatorMode}}
@@ -525,7 +518,7 @@ const aiGuidedStudySessionPrompt = ai.definePrompt({
     input: { schema: PromptInputSchema },
     output: { schema: AIGuidedStudySessionOutputSchema },
     prompt: aiGuidedStudySessionPromptText,
-    tools: [performWebSearch],
+    tools: [performWebSearch, getYouTubeTranscript],
     config: {
         temperature: 0.3,
     }
