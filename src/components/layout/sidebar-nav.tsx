@@ -42,7 +42,7 @@ const navItems = [
   { href: "/diagnostic-quiz", icon: FileQuestion, label: "Diagnostic Quiz" },
   { href: "/visual-learning", icon: PieChartIcon, label: "Visual Learning" },
   { href: "/language-learning", icon: Languages, label: "Language Studio" }, 
-  { href: "/summarizer", icon: FileText, label: "AI Note Taker" },
+  { href: "/ai-note-taker", icon: FileText, label: "AI Note Taker" },
   { href: "/flashcards", icon: Sparkles, label: "AI Flashcards" }, 
   { href: "/todo", icon: ListChecks, label: "To-Do List" }, 
   { href: "/notepad", icon: NotebookText, label: "Note Pad" },
@@ -62,7 +62,7 @@ export function SidebarNav() {
     if (itemHref === "/language-learning") return pathname.startsWith("/language-learning"); 
     if (itemHref === "/flashcards") return pathname.startsWith("/flashcards");
     if (itemHref === "/visual-learning") return pathname.startsWith("/visual-learning");
-    if (itemHref === "/summarizer") return pathname.startsWith("/summarizer");
+    if (itemHref === "/ai-note-taker") return pathname.startsWith("/ai-note-taker") || pathname.startsWith("/summarizer"); // Keep old link active during transition
     if (itemHref === "/diagnostic-quiz") return pathname.startsWith("/diagnostic-quiz");
     if (itemHref === "/agent") return pathname.startsWith("/agent");
     return pathname.startsWith(itemHref);
