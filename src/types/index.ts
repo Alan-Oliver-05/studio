@@ -34,7 +34,7 @@ export type LanguageLearningMode = "voice" | "conversation" | "camera" | "docume
 export interface UserProfile {
   id?: string; 
   name: string;
-  age: number | ''; 
+  age: number; 
   gender: string;
   country: string;
   state: string;

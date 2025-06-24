@@ -98,7 +98,7 @@ const EducationDetailsSchema = z.object({
 const FormSchema = PersonalDetailsSchema.merge(LocationLanguageSchema).merge(LearningStyleSchema).merge(EducationCategorySchema).merge(EducationDetailsSchema);
 const defaultValues: UserProfile = {
   name: "",
-  age: "",
+  age: 0,
   gender: GENDERS[0]?.value || "",
   country: COUNTRIES[0]?.value || "",
   state: "",
@@ -128,7 +128,7 @@ export function OnboardingForm() {
     resolver: zodResolver(FormSchema),
     defaultValues: existingProfile && existingProfile.name ? {
       ...existingProfile,
-      age: existingProfile.age || "", 
+      age: existingProfile.age || 0, 
       learningStyle: existingProfile.learningStyle || LEARNING_STYLES[0]?.value || "",
       educationCategory: existingProfile.educationCategory || EDUCATION_CATEGORIES[0]?.value as EducationCategory,
       educationQualification: { 

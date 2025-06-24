@@ -57,53 +57,47 @@ const prompt = ai.definePrompt({
   name: 'generatePersonalizedSubjectsPrompt',
   input: {schema: GeneratePersonalizedSubjectsInputSchema},
   output: {schema: GeneratePersonalizedSubjectsOutputSchema},
-  prompt: `You are an AI education platform. Your primary task is to generate a list of highly relevant academic subjects and key study topics for a student, meticulously based on their detailed profile.
-  The subjects MUST strictly align with typical official curricula or syllabuses for the student's specific educational context (country, state, language, board, standard, exam type, or university course). Prioritize accuracy and relevance above all.
-  CRITICAL: For the exact same student profile input, you MUST consistently return the exact same list of subjects and their descriptions. Avoid any variations unless the input profile itself changes. This consistency is paramount.
+  prompt: `You are an expert AI curriculum analyst. Your primary and most critical task is to meticulously analyze the provided student profile and generate a definitive, consistent list of academic subjects and key study topics.
+Your output for a given profile MUST be deterministic. For the exact same student profile, you MUST return the exact same list of subjects. This consistency is paramount.
 
-  Student Profile:
-  Name: {{{name}}}
-  Age: {{{age}}}
-  Gender: {{{gender}}}
-  Country: {{{country}}}
-  State/Province: {{{state}}}
-  Preferred Language for Study: {{{preferredLanguage}}}
+Carefully analyze every detail in the student's profile: their age, location (country and state), and most importantly, their specific educational qualification. The subjects you generate MUST strictly align with the official curriculum or syllabus for that context.
 
-  Education Qualification Details:
-  {{#if educationQualification.boardExams.board}}
-  Board: {{{educationQualification.boardExams.board}}}
-  Standard/Grade: {{{educationQualification.boardExams.standard}}}
-  Focus: School curriculum (Board Exams) for {{{educationQualification.boardExams.board}}}, standard {{{educationQualification.boardExams.standard}}} in {{{country}}}.
-  {{/if}}
-  {{#if educationQualification.competitiveExams.examType}}
-  Competitive Exam Category: {{{educationQualification.competitiveExams.examType}}}
-  Specific Exam: {{{educationQualification.competitiveExams.specificExam}}}
-  Focus: Competitive Exam Preparation for {{{educationQualification.competitiveExams.specificExam}}} ({{{educationQualification.competitiveExams.examType}}}) in {{{country}}}.
-  {{/if}}
-  {{#if educationQualification.universityExams.universityName}}
-  University: {{{educationQualification.universityExams.universityName}}}
-  {{#if educationQualification.universityExams.collegeName}}College: {{{educationQualification.universityExams.collegeName}}}{{/if}}
-  Course/Major: {{{educationQualification.universityExams.course}}}
-  Current Year: {{{educationQualification.universityExams.currentYear}}}
-  Focus: University Curriculum for {{{educationQualification.universityExams.course}}}, year {{{educationQualification.universityExams.currentYear}}} at {{{educationQualification.universityExams.universityName}}} in {{{country}}}.
-  {{/if}}
-  Based on this precise profile, please carefully generate a list of subjects. For each subject:
-  1.  Provide a "name" that precisely reflects the educational context and, if applicable, the specific exam. Examples:
-      *   If a board exam: "Physics for {{{educationQualification.boardExams.standard}}} Standard {{{educationQualification.boardExams.board}}}"
-      *   If a competitive exam (e.g., specificExam = "JEE Main"): "Mathematics for JEE Main", "Chemistry for JEE Main"
-      *   If a university course: "Thermodynamics for {{{educationQualification.universityExams.course}}}, Year {{{educationQualification.universityExams.currentYear}}} - {{{educationQualification.universityExams.universityName}}}"
-      *   If a general competitive exam category (e.g., examType = "Banking") and no specificExam: "Quantitative Aptitude for Banking Exams - {{{country}}}", "Reasoning Ability for Banking Exams - {{{country}}}"
-  2.  Provide a concise "description" for the subject, tailored to this student and their curriculum focus. If a specific exam like "{{{educationQualification.competitiveExams.specificExam}}}" is mentioned, the description MUST directly reflect preparation for that exam.
-  3.  List key "studyMaterials" (which are core topics, chapters, or sections) directly relevant to their specific syllabus or exam pattern.
-      *   If 'educationQualification.competitiveExams.specificExam' is provided and recognized (like "JEE Main", "UPSC CSE", "NEET UG", "CAT", "CA", "CMA", "CS", "CPA", "CFA", "ACCA", "FRM"): the 'studyMaterials' MUST be the main sections/subjects tested in THAT PARTICULAR EXAM for {{{country}}}. For example, for "JEE Main", list Mathematics, Physics, Chemistry. For "UPSC CSE Prelims", list topics like Current Events, History of India, Indian and World Geography, etc.
-      *   For recognized professional certifications (CS, CPA, CFA, ACCA, FRM), the 'studyMaterials' MUST be the main stages, levels, or parts of the certification.
-      *   For board or university courses, list core chapters or units from the typical syllabus for that level and subject.
-  
-  Output must be in the specified JSON format for the student's benefit.
-  Consider the student's 'country' ({{{country}}}) and 'state' ({{{state}}}) to infer regional curriculum variations if applicable (e.g., for state boards in India or state-specific competitive exams).
-  The output language for subject names and descriptions should be English, but the content focus must be based on the student's curriculum (derived from their profile, including {{{preferredLanguage}}} if relevant to the curriculum itself).
-  Double-check that the generated subjects and topics are standard and accurate for the specified education level and region. Be concise and directly relevant.
-  If no specific education focus is clear (e.g., educationCategory is "other" with no details, or essential details for a category are missing), provide general knowledge subjects appropriate for the student's age and location, still maintaining consistency for that specific "other" profile.
+Student Profile:
+Name: {{{name}}}
+Age: {{{age}}}
+Gender: {{{gender}}}
+Country: {{{country}}}
+State/Province: {{{state}}}
+Preferred Language for Study: {{{preferredLanguage}}}
+
+Education Qualification Details:
+{{#if educationQualification.boardExams.board}}
+Focus: School Board Exams
+Board: {{{educationQualification.boardExams.board}}}
+Standard/Grade: {{{educationQualification.boardExams.standard}}}
+Context: The official curriculum for the {{{educationQualification.boardExams.board}}} board for standard {{{educationQualification.boardExams.standard}}} in {{{country}}}.
+{{/if}}
+{{#if educationQualification.competitiveExams.examType}}
+Focus: Competitive Exam Preparation
+Category: {{{educationQualification.competitiveExams.examType}}}
+Specific Exam: {{{educationQualification.competitiveExams.specificExam}}}
+Context: The official syllabus for the {{{educationQualification.competitiveExams.specificExam}}} exam in {{{country}}}.
+{{/if}}
+{{#if educationQualification.universityExams.universityName}}
+Focus: University Curriculum
+University: {{{educationQualification.universityExams.universityName}}}
+Course/Major: {{{educationQualification.universityExams.course}}}
+Current Year: {{{educationQualification.universityExams.currentYear}}}
+Context: The official curriculum for the {{{educationQualification.universityExams.course}}} program, year {{{educationQualification.universityExams.currentYear}}}, at {{{educationQualification.universityExams.universityName}}} in {{{country}}}.
+{{/if}}
+
+Based on your meticulous analysis of the profile:
+1.  Generate a list of subjects. For each subject:
+    a.  Provide a 'name' that is precise and reflects the student's context. Examples: "Physics for 12th Standard CBSE", "Mathematics for JEE Main", "Thermodynamics for B.E. Mechanical - 2nd Year".
+    b.  Provide a concise 'description' tailored to the student and their curriculum.
+    c.  List key 'studyMaterials' (these are core topics or chapters) that are directly from the official syllabus for that context. For recognized exams like "JEE Main" or "UPSC CSE", these must be the main sections tested.
+
+Output must be in the specified JSON format. Consider the student's 'country' ({{{country}}}) and 'state' ({{{state}}}) to infer regional curriculum variations. Be concise, accurate, and strictly relevant. If the education focus is not clear, provide general knowledge subjects appropriate for the student's age and location, but still maintain consistency.
   `,
   config: {
     temperature: 0.05, // Lowered temperature for maximum consistency and curriculum focus
@@ -151,5 +145,6 @@ const generatePersonalizedSubjectsFlow = ai.defineFlow(
     
     
     
+
 
 
