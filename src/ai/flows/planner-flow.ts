@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow that acts as a planner, breaking down a complex goal into research steps.
@@ -60,9 +61,11 @@ export async function plannerFlow(input: PlannerInput): Promise<PlannerOutput> {
        let errorMessage = err instanceof Error ? err.message : String(err);
        
        if (errorMessage.includes("API_KEY_SERVICE_BLOCKED") || errorMessage.includes("generativelanguage.googleapis.com")) {
-          errorMessage = `The AI model request was blocked. This is almost always because the "Vertex AI API" is not enabled in your Google Cloud project. Please go to your project's "Enabled APIs & services" page and ensure "Vertex AI API" is active. Also, check for any API key restrictions as described in HOW_TO_GET_KEYS.md.`;
+          errorMessage = `The AI model request was blocked. This is almost always because the "Vertex AI API" is not enabled in your Google Cloud project. Please go to your project's "Enabled APIs & services" page and ensure "Vertex AI API" is active. See Step 4 in HOW_TO_GET_KEYS.md.`;
        } else if (errorMessage.includes("API key not valid")) {
-          errorMessage = `The provided Google API Key is not valid. Please double-check your .env file and ensure it is correct.`
+          errorMessage = `The provided Google API Key is not valid. Please double-check your .env file and the key in your Google Cloud Console.`
+       } else if (errorMessage.includes("PERMISSION_DENIED")) {
+           errorMessage = `The AI model request was denied. This is likely due to API key restrictions. Please check Step 6 in HOW_TO_GET_KEYS.md to ensure your API key has no application or API restrictions.`
        }
 
        // Re-throw a more user-friendly error that can be caught by the UI

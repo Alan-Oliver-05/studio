@@ -72,10 +72,8 @@ const ResearchAgentComponent = () => {
 
           // Critical check: Stop immediately if any search fails.
           if (summary.startsWith("Error:")) {
-             setError(summary); // Display the specific error from the tool
-             setStatus('error');
-             toast({ title: "Web Search Failed", description: "Could not retrieve information. Check API configuration.", variant: "destructive", duration: 7000 });
-             return; // Stop the entire process
+             // The researcherFlow now provides a user-friendly error.
+             throw new Error(summary);
           }
 
           researchResults.push(summary);
@@ -83,7 +81,7 @@ const ResearchAgentComponent = () => {
         } catch (researchErr) {
           const errorMessage = researchErr instanceof Error ? researchErr.message : "Unknown research error.";
           setResearchSteps(prev => prev.map((s, idx) => i === idx ? { ...s, status: 'error', result: `Error: ${errorMessage}` } : s));
-          throw new Error(`Research failed for query: "${initialSteps[i].query}"`);
+          throw new Error(`Research failed for query: "${initialSteps[i].query}". Reason: ${errorMessage}`);
         }
       }
 
@@ -106,12 +104,9 @@ const ResearchAgentComponent = () => {
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An agent task failed.";
-      // Don't set error if it was already set by the pre-flight check
-      if (status !== 'error') {
-        setError(`Process failed: ${errorMessage}`);
-        setStatus('error');
-        toast({ title: "Agent Process Failed", description: errorMessage, variant: "destructive" });
-      }
+      setError(errorMessage);
+      setStatus('error');
+      toast({ title: "Agent Process Failed", description: "See details below.", variant: "destructive", duration: 7000 });
     }
   };
 
@@ -184,7 +179,7 @@ const ResearchAgentComponent = () => {
              {error && (
                 <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm border border-destructive/20">
                     <p className="font-semibold flex items-center"><AlertTriangle className="h-4 w-4 mr-2"/>An error occurred:</p>
-                    <p className="mt-1 font-mono text-xs">{error}</p>
+                    <p className="mt-1 font-mono text-xs whitespace-pre-wrap">{error}</p>
                 </div>
              )}
             {finalReport && reportTitle && (
@@ -314,4 +309,3 @@ export default function UnifiedAgentPage() {
         </div>
     );
 }
-    

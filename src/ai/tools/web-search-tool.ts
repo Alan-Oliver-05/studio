@@ -1,3 +1,4 @@
+
 'use server';
 
 import { ai } from '@/ai/genkit';
@@ -26,16 +27,16 @@ async function searchGoogle(query: string): Promise<string> {
       console.error(`Google Search API error for query "${query}":`, JSON.stringify(error, null, 2));
 
       if (error.status === 'PERMISSION_DENIED' && error.message.includes('blocked')) {
-        return `Error: API request was blocked. This usually means the "Custom Search API" is not enabled in your Google Cloud project, OR there are IP/referrer restrictions on your API key. Please check the API key settings in your Google Cloud Console and ensure it has no restrictions. See HOW_TO_GET_KEYS.md for details.`;
+        return `Error: The Web Search request was blocked. This is almost always because the "Custom Search API" is not enabled in your Google Cloud project, OR there are IP/referrer restrictions on your API key. Please check Step 5 and Step 6 in HOW_TO_GET_KEYS.md.`;
       }
       if (error.message.includes("API key not valid")) {
-        return `Error: The provided Google API Key is not valid. Please double-check your .env file.`;
+        return `Error: The provided Google API Key is not valid. Please double-check your .env file and the key in your Google Cloud Console.`;
       }
       if (error.message.toLowerCase().includes("invalid value") && error.details?.[0]?.field === 'cx') {
-        return `Error: The provided Google Custom Search Engine ID (CSE ID) appears to be invalid. Please check your .env file.`;
+        return `Error: The provided Google Custom Search Engine ID (CSE ID) appears to be invalid. Please check your .env file and the ID in the Programmable Search Engine control panel.`;
       }
       
-      return `Error: An unhandled API error occurred. Full details: ${JSON.stringify(data.error)}`;
+      return `Error: An unhandled web search API error occurred. Full details: ${JSON.stringify(data.error)}`;
     }
 
     const items = data.items;
