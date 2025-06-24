@@ -305,26 +305,16 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
 {{else if isVideoProcessingMode}}
   You are an AI Video Analysis RAG Agent. Your task is to analyze the content of a YouTube video based on its transcript.
 
-  {{#if originalFileName}}
-    The user has referenced a local video named '{{{originalFileName}}}'.
-  {{else}}
-    {{#if question}}
-      The user has provided a YouTube URL: '{{{question}}}'.
-    {{/if}}
-  {{/if}}
-
-  1.  **Analyze Input**: The user's input is either a YouTube URL in '{{{question}}}' or a local file name in '{{{originalFileName}}}'.
-  2.  **Fetch Transcript**: If '{{{question}}}' is a valid YouTube URL, you MUST use the \`getYouTubeTranscript\` tool to fetch its transcript.
+  1.  **Analyze Input**: The user's input '{{{question}}}' should contain a YouTube URL.
+  2.  **Fetch Transcript**: You MUST use the `getYouTubeTranscript` tool with the `videoUrl` parameter set to the user's provided URL to fetch its transcript.
   3.  **Process Transcript**:
       *   If the tool returns a valid transcript, your entire response MUST be based on the information from that transcript.
       *   If the tool returns an error (e.g., "Error: No transcript found..."), your response must be to inform the user of that specific error and stop.
-  4.  **Handle Non-URL Input**: If the user provided a local filename, inform them you can only process YouTube URLs with transcripts at this time.
-
-  ---
-  **If a Transcript is Successfully Retrieved:**
-  ---
-
+  
   {{#if isInitialVideoSummarizationRequest}}
+  ---
+  **If a Transcript is Successfully Retrieved (Initial Request):**
+  ---
   The user is asking for an initial analysis. Based *only* on the retrieved transcript, structure your 'response' field exactly as follows:
   ---
   **Summary:**
@@ -341,6 +331,9 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
   Your 'suggestions' should be insightful follow-up questions based on the transcript content. 'visualElement' MUST be null.
 
   {{else}}
+  ---
+  **If a Transcript is Successfully Retrieved (Follow-up Question):**
+  ---
   The user is asking a specific follow-up question about the video: "{{{question}}}"
   1.  Answer this question based *only* on the retrieved transcript. Be direct and detailed.
   2.  Reference specific points from the transcript to make your answer more authentic.
@@ -513,52 +506,3 @@ User has provided this text segment (from the document or as a query): "{{{quest
       *   Describe visual in text. Populate 'visualElement' (type 'bar_chart_data' or 'image_generation_prompt'). Curriculum-aligned.
   If student answers MCQ, evaluate, feedback, new explanation/MCQ on related sub-topic from "retrieved" curriculum.
 {{/if}}
-`;
-
-const aiGuidedStudySessionPrompt = ai.definePrompt({
-    name: 'aiGuidedStudySessionPrompt',
-    input: { schema: PromptInputSchema },
-    output: { schema: AIGuidedStudySessionOutputSchema },
-    prompt: aiGuidedStudySessionPromptText,
-    tools: [performWebSearch, getYouTubeTranscript],
-    config: {
-        temperature: 0.3,
-    }
-});
-
-
-export async function aiGuidedStudySession(input: AIGuidedStudySessionInput): Promise<AIGuidedStudySessionOutput> {
-  const isInitialRequestForMediaType = (
-    (input.specificTopic === "PDF Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize")) ||
-    (input.specificTopic === "Audio Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize")) ||
-    (input.specificTopic === "Slide Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize")) ||
-    (input.specificTopic === "Video Content Summarization & Q&A" && (input.question.toLowerCase().startsWith("http") || input.question.toLowerCase().startsWith("summarize")))
-  );
-  
-  const promptInput = {
-      ...input,
-      isAiLearningAssistantChat: input.specificTopic === "AI Learning Assistant Chat",
-      isHomeworkHelp: input.specificTopic === "Homework Help",
-      isLanguageTranslatorMode: input.specificTopic === "LanguageTranslatorMode",
-      isLanguageTextTranslationMode: input.specificTopic === "Language Text Translation",
-      isLanguageConversationMode: input.specificTopic === "Language Conversation Practice",
-      isLanguageCameraMode: input.specificTopic === "Language Camera Translation",
-      isLanguageDocumentTranslationMode: input.specificTopic === "Language Document Translation",
-      isVisualLearningFocus: input.specificTopic.startsWith("Visual Learning"),
-      isVisualLearningGraphs: input.specificTopic === "Visual Learning - Graphs & Charts",
-      isVisualLearningDiagrams: input.specificTopic === "Visual Learning - Conceptual Diagrams",
-      isVisualLearningMindMaps: input.specificTopic === "Visual Learning - Mind Maps",
-      isPdfProcessingMode: input.specificTopic === "PDF Content Summarization & Q&A",
-      isInitialPdfSummarizationRequest: isInitialRequestForMediaType,
-      isAudioProcessingMode: input.specificTopic === "Audio Content Summarization & Q&A",
-      isInitialAudioSummarizationRequest: isInitialRequestForMediaType,
-      isSlideProcessingMode: input.specificTopic === "Slide Content Summarization & Q&A",
-      isInitialSlideSummarizationRequest: isInitialRequestForMediaType,
-      isVideoProcessingMode: input.specificTopic === "Video Content Summarization & Q&A",
-      isInitialVideoSummarizationRequest: isInitialRequestForMediaType,
-  };
-
-  const { output } = await aiGuidedStudySessionPrompt(promptInput);
-
-  return output || { response: "I'm sorry, I couldn't generate a response for that request.", suggestions: [] };
-}
