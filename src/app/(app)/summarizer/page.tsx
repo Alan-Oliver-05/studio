@@ -1,5 +1,5 @@
 "use client";
-// This page now handles the redirect to /ai-note-taker
+// This page handles the redirect from /summarizer to /ai-note-taker
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,5 +11,5 @@ export default function SummarizerRedirect() {
   }, [router]);
 
   // Render nothing as it will redirect
-  return null; 
+  return null;
 }

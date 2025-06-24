@@ -1,2 +1,6 @@
-// This file is intentionally left without a default export to resolve a routing conflict.
-// The correct page for this feature is /ai-note-taker.
+// This file is intentionally disabled to resolve a routing conflict.
+// The redirect is handled by /src/app/(app)/summarizer/page.tsx
+// A file must have a default export to be considered a page by Next.js.
+export function disabledSummarizerPage() {
+    return null;
+}
