@@ -134,7 +134,7 @@ export default function GeneralTutorPage() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-1 sm:text-sm">
-            Your multi-modal personal tutor for general queries.
+            Your conversational tutor for interactive help and step-by-step explanations.
           </p>
         </div>
 

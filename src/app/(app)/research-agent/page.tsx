@@ -117,7 +117,7 @@ export default function ResearchAgentPage() {
           <BrainCircuit className="mr-3 h-8 w-8 sm:h-10 sm:w-10 text-accent" /> AI Research Agent
         </h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-base max-w-2xl mx-auto">
-          Give the agent a complex task. It will create a research plan, search the web, and write a final report.
+          Your autonomous agent for in-depth research. It plans, searches the web, and writes a comprehensive report.
         </p>
       </div>
 
@@ -125,7 +125,7 @@ export default function ResearchAgentPage() {
         <CardHeader>
           <CardTitle>Start a New Research Task</CardTitle>
           <CardDescription>
-            Enter a query like "Compare React and Vue" or "What were the main causes of World War 1?".
+            Enter a complex query like "Compare React and Vue" or "What were the main causes of World War 1?".
           </CardDescription>
         </CardHeader>
         <CardContent>
