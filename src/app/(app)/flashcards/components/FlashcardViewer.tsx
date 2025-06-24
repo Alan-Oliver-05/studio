@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -27,18 +26,24 @@ const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ flashcards, onReset, 
 
   const handleNext = () => {
     setIsFlipped(false); // Always show front of next card
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % currentFlashcards.length);
+    setTimeout(() => { // Allow card to flip back before changing content
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % currentFlashcards.length);
+    }, 150);
   };
 
   const handlePrevious = () => {
     setIsFlipped(false);
-    setCurrentIndex((prevIndex) => (prevIndex - 1 + currentFlashcards.length) % currentFlashcards.length);
+     setTimeout(() => {
+      setCurrentIndex((prevIndex) => (prevIndex - 1 + currentFlashcards.length) % currentFlashcards.length);
+    }, 150);
   };
 
   const handleShuffle = () => {
-    setCurrentFlashcards(prev => [...prev].sort(() => Math.random() - 0.5));
-    setCurrentIndex(0);
     setIsFlipped(false);
+     setTimeout(() => {
+      setCurrentFlashcards(prev => [...prev].sort(() => Math.random() - 0.5));
+      setCurrentIndex(0);
+    }, 150);
   };
 
   if (!currentFlashcards || currentFlashcards.length === 0) {
@@ -62,6 +67,7 @@ const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ flashcards, onReset, 
             "bg-card border border-border hover:shadow-primary/20 transition-shadow"
           )}
           onClick={() => setIsFlipped(!isFlipped)}
+          style={{ transformStyle: 'preserve-3d' }}
         >
           <div
             className={cn(
@@ -74,7 +80,7 @@ const FlashcardViewer: React.FC<FlashcardViewerProps> = ({ flashcards, onReset, 
           </div>
           <div
             className={cn(
-              "absolute inset-0 w-full h-full p-6 flex items-center justify-center text-center rounded-lg backface-hidden transition-transform duration-700 ease-in-out",
+              "absolute inset-0 w-full h-full p-6 flex items-center justify-center text-center rounded-lg backface-hidden transition-transform duration-700 ease-in-out overflow-y-auto",
               "bg-gradient-to-br from-secondary to-muted text-secondary-foreground",
               isFlipped ? "" : "transform-rotate-y-180"
             )}
