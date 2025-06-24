@@ -1,6 +1,6 @@
 # How to Get API Keys for the Research Agent
 
-To enable the Research Agent's real-time web search capabilities, you need to provide two keys from the Google Cloud Platform: an **API Key** and a **Programmable Search Engine ID**.
+To enable all AI features, including real-time web search, you need to provide a Google API Key and enable two services in your Google Cloud Project. You will also need a Programmable Search Engine ID.
 
 Follow these steps carefully.
 
@@ -50,18 +50,29 @@ This ID tells Google *what* to search. You will configure a search engine to sea
 
 ---
 
-### Step 4: **(CRITICAL)** Enable the Custom Search API
+### Step 4: **(CRITICAL)** Enable the Vertex AI API
 
-You must enable the API for your project so your API key can use it.
+This API is required for the core AI models (like Gemini) to work.
 
 1.  Go to the [Google Cloud API Library](https://console.cloud.google.com/apis/library).
-2.  Make sure you have selected the correct Google Cloud Project at the top of the page (the same one you used in Step 1 and 2).
+2.  Make sure you have selected the correct Google Cloud Project (the same one from Step 1).
+3.  Search for **"Vertex AI API"**.
+4.  Click on it and then click the **"Enable"** button. This may take a moment to complete.
+
+---
+
+### Step 5: **(CRITICAL)** Enable the Custom Search API
+
+This API is required for the Research Agent's web search tool.
+
+1.  Go back to the [Google Cloud API Library](https://console.cloud.google.com/apis/library).
+2.  Make sure you have selected the correct Google Cloud Project.
 3.  Search for **"Custom Search API"**.
 4.  Click on it and then click the **"Enable"** button. If it's already enabled, you're all set.
 
 ---
 
-### Step 5: **(CRITICAL)** Check API Key Restrictions
+### Step 6: **(CRITICAL)** Check API Key Restrictions
 
 If you still see a `PERMISSION_DENIED` error, it is almost certainly due to security restrictions on your API Key.
 
@@ -69,11 +80,11 @@ If you still see a `PERMISSION_DENIED` error, it is almost certainly due to secu
 2.  Find the API key you created and click on its name to edit it.
 3.  Look for a section called **"Application restrictions"** or **"API restrictions"**.
 4.  **For debugging, select "None" under "Application restrictions".** This will temporarily remove any IP address or website-based blocking.
-5.  Under **"API restrictions"**, ensure it's set to "Don't restrict key" OR that "Custom Search API" is explicitly added to the list of allowed APIs.
+5.  Under **"API restrictions"**, ensure it's set to "Don't restrict key" OR that both "Vertex AI API" and "Custom Search API" are explicitly added to the list of allowed APIs.
 6.  Click **"Save"**.
 
 **Once the agent works with no restrictions, you can (optionally) try adding them back one by one to see which one was causing the issue.**
 
 ---
 
-Once you have completed all these steps and added both keys to your `.env` file, the Research Agent feature will be fully functional.
+Once you have completed all these steps and added both keys to your `.env` file, all AI features will be fully functional.
