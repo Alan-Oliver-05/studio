@@ -37,8 +37,8 @@ interface InputTypeOption {
 const inputTypeOptions: InputTypeOption[] = [
   { value: "text", label: "Text", icon: Type, title:"AI Text Summarizer & Note Taker", description: "Paste any text — articles, essays, or research papers — and get concise summaries, key takeaways, and organized notes instantly.", placeholder: "Paste your article, essay, research paper, or any text here...", storageTopic: "Text Content Summarization" },
   { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary based on its content, and then ask specific questions.", placeholder: "Upload your PDF document.", storageTopic: "PDF Content Summarization & Q&A" },
-  { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload audio file, Sai (conceptually) transcribes and summarizes, pinpointing key discussions and insights. *AI responds based on filename.*", placeholder: "Upload your audio file (e.g., .mp3, .wav).", storageTopic: "Audio Content Summarization & Q&A" },
-  { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer & Q&A", description: "Ace presentations. Sai converts PPT or PDF slides into actionable study notes, detailing core messages, narrative flow, and key takeaways. *AI responds based on filename.*", placeholder: "Upload your PPT or PDF slide deck.", storageTopic: "Slide Content Summarization & Q&A" },
+  { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload an audio file, and the AI will provide a conceptual summary and answer questions based on the filename and topic.", placeholder: "Upload your audio file (e.g., .mp3, .wav).", storageTopic: "Audio Content Summarization & Q&A" },
+  { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer & Q&A", description: "Ace presentations. Upload PPT or PDF slides. If PDF, content is read. If PPT, AI conceptually analyzes from filename, detailing core messages and key takeaways.", placeholder: "Upload your PPT or PDF slide deck.", storageTopic: "Slide Content Summarization & Q&A" },
   { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer & Q&A", description: "Learn faster. Paste a YouTube link or upload a local video file. The AI analyzes the video's concepts to provide summaries and answers. *This is a simulation of video analysis.*", placeholder: "https://www.youtube.com/watch?v=...", storageTopic: "Video Content Summarization & Q&A" },
 ];
 
@@ -93,8 +93,10 @@ export default function SummarizerPage() {
   const [audioQuestionHistory, setAudioQuestionHistory] = useState<Array<{ question: string; answer: string; id: string }>>([]);
   const [currentAudioQuestion, setCurrentAudioQuestion] = useState<string>("");
   const [isProcessingAudio, setIsProcessingAudio] = useState<boolean>(false);
+  const [audioDataUri, setAudioDataUri] = useState<string | null>(null);
 
   const [uploadedSlideFile, setUploadedSlideFile] = useState<File | null>(null);
+  const [slideTextContent, setSlideTextContent] = useState<string>("");
   const slideFileInputRef = useRef<HTMLInputElement>(null);
   const [slideProcessingOutput, setSlideProcessingOutput] = useState<AIGuidedStudySessionOutput | null>(null);
   const [slideQuestionHistory, setSlideQuestionHistory] = useState<Array<{ question: string; answer: string; id: string }>>([]);
@@ -143,12 +145,14 @@ export default function SummarizerPage() {
       setAudioProcessingOutput(null);
       setAudioQuestionHistory([]);
       setCurrentAudioQuestion("");
+      setAudioDataUri(null);
     }
     if (activeInputType !== 'powerpoint') {
       setUploadedSlideFile(null);
       setSlideProcessingOutput(null);
       setSlideQuestionHistory([]);
       setCurrentSlideQuestion("");
+      setSlideTextContent("");
     }
     if (activeInputType !== 'video') {
       setVideoUrl("");
@@ -349,13 +353,22 @@ export default function SummarizerPage() {
       setCurrentAudioQuestion("");
       setCurrentMediaConversationId(null);
       setError(null);
-      toast({ title: "Audio File Selected", description: `Ready to process "${file.name}".`});
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAudioDataUri(reader.result as string);
+        toast({ title: "Audio File Loaded", description: `Ready to process "${file.name}".`});
+      };
+      reader.onerror = () => {
+        toast({ title: "File Read Error", description: `Could not read file "${file.name}".`, variant: "destructive" });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleSummarizeAudio = async () => {
-    if (!uploadedAudioFile || !profile) {
-      toast({ title: "Missing Input", description: "Please upload an audio file and ensure you are logged in.", variant: "destructive" });
+    if (!uploadedAudioFile || !audioDataUri || !profile) {
+      toast({ title: "Missing Input", description: "Please upload and load an audio file.", variant: "destructive" });
       return;
     }
     setIsProcessingAudio(true);
@@ -375,8 +388,9 @@ export default function SummarizerPage() {
       const aiInput: AIGuidedStudySessionInput = {
         studentProfile: { ...profile, age: Number(profile.age) },
         specificTopic: "Audio Content Summarization & Q&A",
-        question: `Summarize the audio: ${uploadedAudioFile.name}`,
+        question: `Summarize the audio content of the file named: ${uploadedAudioFile.name}`,
         originalFileName: uploadedAudioFile.name,
+        audioDataUri: audioDataUri,
       };
       const result = await aiGuidedStudySession(aiInput);
       setAudioProcessingOutput(result);
@@ -397,8 +411,8 @@ export default function SummarizerPage() {
   };
 
   const handleAskAudioQuestion = async () => {
-    if (!currentAudioQuestion.trim() || !uploadedAudioFile || !profile || !currentMediaConversationId) {
-      toast({ title: "Missing Input", description: "Please type a question and ensure an audio file is loaded and a session active.", variant: "destructive" });
+    if (!currentAudioQuestion.trim() || !uploadedAudioFile || !audioDataUri || !profile || !currentMediaConversationId) {
+      toast({ title: "Missing Input", description: "Please type a question and ensure an audio file is processed.", variant: "destructive" });
       return;
     }
     setIsProcessingAudio(true);
@@ -415,6 +429,7 @@ export default function SummarizerPage() {
         specificTopic: "Audio Content Summarization & Q&A",
         question: currentAudioQuestion,
         originalFileName: uploadedAudioFile.name,
+        audioDataUri: audioDataUri,
       };
       const result = await aiGuidedStudySession(aiInput);
       setAudioProcessingOutput(result);
@@ -436,7 +451,7 @@ export default function SummarizerPage() {
     }
   };
 
-  const handleSlideFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleSlideFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const allowedTypes = ["application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/pdf"];
@@ -458,7 +473,26 @@ export default function SummarizerPage() {
       setCurrentSlideQuestion("");
       setCurrentMediaConversationId(null);
       setError(null);
-      toast({ title: "Slide File Selected", description: `Ready to process "${file.name}".`});
+      setSlideTextContent("");
+
+      if (file.type === "application/pdf") {
+        setIsParsingPdf(true); // Reuse loader
+        toast({ title: "Parsing PDF Slides...", description: `Extracting text from "${file.name}". This may take a moment.` });
+        try {
+            const text = await parsePdfContent(file);
+            setSlideTextContent(text);
+            toast({ title: "PDF Slides Ready", description: `Successfully extracted text from "${file.name}".` });
+        } catch(err) {
+            const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
+            setError(errorMessage);
+            toast({ title: "PDF Parsing Failed", description: errorMessage, variant: "destructive" });
+            setUploadedSlideFile(null);
+        } finally {
+            setIsParsingPdf(false);
+        }
+      } else {
+        toast({ title: "Slide File Selected", description: `Ready to process "${file.name}". AI will analyze conceptually based on filename.`});
+      }
     }
   };
 
@@ -486,6 +520,7 @@ export default function SummarizerPage() {
         specificTopic: "Slide Content Summarization & Q&A",
         question: `Summarize the slides: ${uploadedSlideFile.name}`,
         originalFileName: uploadedSlideFile.name,
+        documentTextContent: slideTextContent || undefined,
       };
       const result = await aiGuidedStudySession(aiInput);
       setSlideProcessingOutput(result);
@@ -524,6 +559,7 @@ export default function SummarizerPage() {
         specificTopic: "Slide Content Summarization & Q&A",
         question: currentSlideQuestion,
         originalFileName: uploadedSlideFile.name,
+        documentTextContent: slideTextContent || undefined,
       };
       const result = await aiGuidedStudySession(aiInput);
       setSlideProcessingOutput(result);
@@ -737,7 +773,7 @@ export default function SummarizerPage() {
                     <p className="text-sm text-muted-foreground mb-2">Selected: <span className="font-medium text-primary">{uploadedAudioFile.name}</span></p>
                 )}
                 {!uploadedAudioFile && <p className="text-xs text-muted-foreground">{currentInputTypeConfig.placeholder}</p>}
-                 <p className="text-xs text-muted-foreground mt-2">Max file size: 25MB. Supported: MP3, WAV, M4A etc. AI will summarize based on filename.</p>
+                 <p className="text-xs text-muted-foreground mt-2">Max file size: 25MB. Supported: MP3, WAV, M4A etc. Audio content is processed by AI.</p>
             </div>
         );
       case "powerpoint":
@@ -746,14 +782,15 @@ export default function SummarizerPage() {
                 className="flex flex-col items-center justify-center p-6 sm:p-8 border-2 border-dashed border-primary/30 rounded-xl min-h-[200px] bg-card shadow-sm"
             >
                 <input type="file" ref={slideFileInputRef} onChange={handleSlideFileChange} accept=".ppt,.pptx,.pdf" className="hidden" id="slide-upload-input" />
-                <Button variant="outline" size="lg" onClick={() => slideFileInputRef.current?.click()} className="mb-3">
-                    <UploadCloud className="mr-2 h-5 w-5" /> Upload Slides (PPT, PDF)
+                <Button variant="outline" size="lg" onClick={() => slideFileInputRef.current?.click()} className="mb-3" disabled={isParsingPdf}>
+                    {isParsingPdf ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <UploadCloud className="mr-2 h-5 w-5" />}
+                    Upload Slides (PPT, PDF)
                 </Button>
                 {uploadedSlideFile && (
                     <p className="text-sm text-muted-foreground mb-2">Selected: <span className="font-medium text-primary">{uploadedSlideFile.name}</span></p>
                 )}
                 {!uploadedSlideFile && <p className="text-xs text-muted-foreground">{currentInputTypeConfig.placeholder}</p>}
-                 <p className="text-xs text-muted-foreground mt-2">Max file size: 15MB. AI will summarize based on filename.</p>
+                 <p className="text-xs text-muted-foreground mt-2">Max file size: 15MB. PDF content will be read; PPT/PPTX will be analyzed by filename.</p>
             </div>
         );
       case "video":
@@ -825,8 +862,8 @@ export default function SummarizerPage() {
                 setActiveInputType(option.value);
                 setGeneratedNoteOutput(null); setError(null); setInputText("");
                 setUploadedPdfFile(null); setPdfProcessingOutput(null); setPdfQuestionHistory([]); setCurrentPdfQuestion("");
-                setUploadedAudioFile(null); setAudioProcessingOutput(null); setAudioQuestionHistory([]); setCurrentAudioQuestion("");
-                setUploadedSlideFile(null); setSlideProcessingOutput(null); setSlideQuestionHistory([]); setCurrentSlideQuestion("");
+                setUploadedAudioFile(null); setAudioProcessingOutput(null); setAudioQuestionHistory([]); setCurrentAudioQuestion(""); setAudioDataUri(null);
+                setUploadedSlideFile(null); setSlideProcessingOutput(null); setSlideQuestionHistory([]); setCurrentSlideQuestion(""); setSlideTextContent("");
                 setVideoUrl(""); setUploadedLocalVideoFile(null); setVideoProcessingOutput(null); setVideoQuestionHistory([]); setCurrentVideoQuestion(""); setVideoInputMethod('url');
               }}
               className={cn(
@@ -1033,7 +1070,7 @@ export default function SummarizerPage() {
                 </div>
               </div>
             )}
-             <div className="text-xs text-muted-foreground pt-4 border-t mt-2"><Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>AI responses for audio are based on filename and your questions, not actual audio content.</div>
+             <div className="text-xs text-muted-foreground pt-4 border-t mt-2"><Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>AI responses for audio are based on the audio content itself. This feature requires processing the audio file.</div>
           </CardContent>
         </Card>
       )}
@@ -1073,7 +1110,7 @@ export default function SummarizerPage() {
                 </div>
               </div>
             )}
-            <div className="text-xs text-muted-foreground pt-4 border-t mt-2"><Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>AI responses for slides are based on filename and your questions, not actual slide content.</div>
+            <div className="text-xs text-muted-foreground pt-4 border-t mt-2"><Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>AI responses for PDF slides are based on extracted content. Responses for PPT/PPTX are based on the filename.</div>
           </CardContent>
         </Card>
       )}
