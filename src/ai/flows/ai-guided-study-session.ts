@@ -45,10 +45,10 @@ const AIGuidedStudySessionInputSchema = z.object({
   }).describe("The student profile information from the onboarding form."),
   subject: z.string().optional().describe('The main subject of study (e.g., "Physics for 12th Standard CBSE").'),
   lesson: z.string().optional().describe('The lesson within the subject (e.g., "Optics").'),
-  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps", "PDF Content Summarization & Q&A", "Audio Content Summarization & Q&A", "Slide Content Summarization & Q&A", "Video Content Summarization & Q&A").'),
+  specificTopic: z.string().describe('The specific topic of focus (e.g., "Refraction of Light", "General Discussion", "AI Learning Assistant Chat", "Homework Help", "LanguageTranslatorMode", "Language Text Translation", "Language Conversation Practice", "Language Camera Translation", "Language Document Translation", "Visual Learning - Graphs & Charts", "Visual Learning - Conceptual Diagrams", "Visual Learning - Mind Maps", "PDF Content Summarization & Q&A", "Slide Content Summarization & Q&A", "Video Content Summarization & Q&A").'),
   question: z.string().describe("The student's question or request for the study session."),
   photoDataUri: z.string().optional().nullable().describe("An optional photo (or document content as image) uploaded by the student, as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
-  originalFileName: z.string().optional().nullable().describe("The name of the original file uploaded by the user, if applicable (e.g., for document translation mode, PDF summarization, audio summarization, slide summarization, video summarization)."),
+  originalFileName: z.string().optional().nullable().describe("The name of the original file uploaded by the user, if applicable (e.g., for document translation mode, PDF summarization, slide summarization, video summarization)."),
   documentTextContent: z.string().optional().describe("The full text content extracted from an uploaded document."),
   // New fields for conversation practice setup
   conversationScenario: z.string().optional().describe("The scenario for language conversation practice."),
@@ -408,20 +408,17 @@ Student's preferred UI language: '{{{studentProfile.preferredLanguage}}}'.
 Student's textual input for context (if any): "{{{question}}}"
 {{#if photoDataUri}}
 Image uploaded by student: {{media url=photoDataUri}}
-1.  Conceptually "perform OCR" on the image. Imagine you can clearly see and understand all text present.
+1.  Conceptually "perform OCR" on the image. Imagine you can clearly see and understand all text present in the image.
 2.  Determine the language of this "extracted" text.
-3.  Translate the "extracted" text. The target language is:
-    - If the student's textual input '{{{question}}}' specifies a target language (e.g., "translate this image to German"), use THAT language.
-    - Else, if the "extracted" text is in '{{{studentProfile.preferredLanguage}}}', translate it to English.
-    - Else (extracted text is not in preferred UI language), translate it TO '{{{studentProfile.preferredLanguage}}}'.
-4.  'response' MUST be structured exactly as: "Extracted Text ([Detected Language of Text in Image]): [The conceptually extracted text from the image, or 'No clear text detected in the image.']\nTranslated Text ([Target Language Name]): [The translated text, or 'N/A if no text was extracted or translation failed.']"
+3.  Translate ALL of the extracted text into the student's preferred language, which is '{{{studentProfile.preferredLanguage}}}'.
+4.  Your 'response' field MUST be structured exactly as follows: "Extracted Text ([Detected Language]): [All the text you extracted from the image]\nTranslated Text ({{{studentProfile.preferredLanguage}}}): [The full translation of the extracted text]"
     Example: "Extracted Text (Spanish): Salida de emergencia\nTranslated Text (English): Emergency Exit"
-    Example if no text found: "Extracted Text (Unknown): No clear text detected in the image.\nTranslated Text (N/A): N/A if no text was extracted or translation failed."
+    If no text is found, your response MUST be: "Extracted Text (Unknown): No clear text detected in the image.\nTranslated Text ({{{studentProfile.preferredLanguage}}}): N/A as no text was extracted."
 {{else}}
 No image uploaded.
-'response': "Please upload an image using the 'Upload Image' button for camera translation."
+Your 'response' MUST be: "Please upload an image using the 'Upload Image' button for camera translation."
 {{/if}}
-'suggestions' can include tips for better image quality for OCR (e.g., "Ensure good lighting and clear text for best results."). 'visualElement' MUST be null.
+'suggestions' can include tips for better image quality for OCR (e.g., "Ensure good lighting and clear text for best results."). 'visualElement' must be null.
 
 {{else if isLanguageDocumentTranslationMode}}
 You are an AI Language Translator specialized for document text segments, acting as a RAG agent.
