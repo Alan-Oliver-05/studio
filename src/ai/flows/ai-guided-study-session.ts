@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for conducting AI-guided study sessions.
@@ -387,7 +386,7 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
   {{/if}}
 
 {{else if isVideoProcessingMode}}
-  You are an AI Video Analysis RAG Agent. Your task is to analyze the content of a video based on the user's request: "{{{question}}}".
+  You are an AI Video Analysis RAG Agent. Your task is to analyze the content of a video based on the user's request: '{{{question}}}'.
 
   **Step 1: Determine the video source.**
   - If the user's request appears to be a YouTube URL (e.g., starting with "https://www.youtube.com/..."), proceed to **Step 2A**.
@@ -413,13 +412,12 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
       *   If the tool returns an error in its 'transcript' field (e.g., "Error: No transcript found..."), your response must be to inform the user of that specific error and stop. Do not try to summarize or answer questions if the transcript is an error message.
   
   {{#if isInitialVideoSummarizationRequest}}
-    {{!-- This block is now covered by the more specific instructions above. It can be kept for fallback. --}}
     Your 'suggestions' should be insightful follow-up questions based on the transcript content. 'visualElement' MUST be null.
   {{else}}
     ---
     **If a Transcript is Successfully Retrieved (Follow-up Question):**
     ---
-    The user is asking a specific follow-up question about the video: "{{{question}}}"
+    The user is asking a specific follow-up question about the video: '{{{question}}}'
     1.  Answer this question based *only* on the retrieved transcript ('fullTranscript'). Be direct and detailed.
     2.  Reference specific points from the transcript.
     Example (if user asks "What oven temperature did they recommend?" and transcript contains "preheat to 230 degrees Celsius"): "Based on the transcript, the instructor recommends preheating the oven to 230°C (450°F)..."
@@ -440,7 +438,7 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
   Example 'response' for 'My_Vacation_in_Paris.mp4': "The video 'My_Vacation_in_Paris.mp4' likely showcases key landmarks like the Eiffel Tower, Louvre Museum, and Notre-Dame Cathedral. It probably includes scenes of Parisian life, such as enjoying croissants at a café or walking along the Seine River, and might conclude with reflections on the travel experience."
   
   {{else}}
-  1.  Answer the user's specific follow-up question about the video '{{{originalFileName}}}': "{{{question}}}".
+  1.  Answer the user's specific follow-up question about the video '{{{originalFileName}}}': '{{{question}}}'.
   2.  Answer based on your *simulated in-depth understanding* of the specific content that would typically be in a video named '{{{originalFileName}}}'.
   {{/if}}
   'visualElement' MUST be null.
@@ -608,100 +606,4 @@ User has provided this text segment (from the document or as a query): "{{{quest
       *   Describe visual in text. Populate 'visualElement' (type 'bar_chart_data' or 'image_generation_prompt'). Curriculum-aligned.
   If student answers MCQ, evaluate, feedback, new explanation/MCQ on related sub-topic from "retrieved" curriculum.
 {{/if}}
-`;
-
-const prompt = ai.definePrompt({
-  name: 'aiGuidedStudySessionPrompt',
-  tools: [getYouTubeTranscript, performWebSearch],
-  input: {schema: PromptInputSchema},
-  output: {schema: AIGuidedStudySessionOutputSchema},
-  prompt: aiGuidedStudySessionPromptText,
-});
-
-
-const aiGuidedStudySessionFlow = ai.defineFlow(
-  {
-    name: 'aiGuidedStudySessionFlow',
-    inputSchema: AIGuidedStudySessionInputSchema,
-    outputSchema: AIGuidedStudySessionOutputSchema,
-  },
-  async (input) => {
-    // Determine the active mode based on the specificTopic
-    const modeFlags = {
-      isAiLearningAssistantChat: input.specificTopic === "AI Learning Assistant Chat",
-      isHomeworkHelp: input.specificTopic === "Homework Help",
-      isLanguageTranslatorMode: input.specificTopic === "LanguageTranslatorMode",
-      isLanguageTextTranslationMode: input.specificTopic === "Language Text Translation",
-      isLanguageConversationMode: input.specificTopic === "Language Conversation Practice",
-      isLanguageCameraMode: input.specificTopic === "Language Camera Translation",
-      isLanguageDocumentTranslationMode: input.specificTopic === "Language Document Translation",
-      
-      isVisualLearningFocus: input.specificTopic.startsWith("Visual Learning"),
-      isVisualLearningGraphs: input.specificTopic === "Visual Learning - Graphs & Charts",
-      isVisualLearningDiagrams: input.specificTopic === "Visual Learning - Conceptual Diagrams",
-      isVisualLearningMindMaps: input.specificTopic === "Visual Learning - Mind Maps",
-
-      isPdfProcessingMode: input.specificTopic === "PDF Content Summarization & Q&A",
-      isInitialPdfSummarizationRequest: input.specificTopic === "PDF Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize"),
-      
-      isAudioProcessingMode: input.specificTopic === "Audio Content Summarization & Q&A",
-      isInitialAudioSummarizationRequest: input.specificTopic === "Audio Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize"),
-
-      isSlideProcessingMode: input.specificTopic === "Slide Content Summarization & Q&A",
-      isInitialSlideSummarizationRequest: input.specificTopic === "Slide Content Summarization & Q&A" && input.question.toLowerCase().startsWith("summarize"),
-      
-      isVideoProcessingMode: input.specificTopic === "Video Content Summarization & Q&A",
-      isInitialVideoSummarizationRequest: input.specificTopic === "Video Content Summarization & Q&A" && (input.question.toLowerCase().startsWith("summarize") || input.question.toLowerCase().startsWith("http")),
-
-      isCurriculumSpecificMode: !Object.values({
-        isAiLearningAssistantChat: input.specificTopic === "AI Learning Assistant Chat",
-        isHomeworkHelp: input.specificTopic === "Homework Help",
-        isLanguageTranslatorMode: input.specificTopic === "LanguageTranslatorMode",
-        isLanguageTextTranslationMode: input.specificTopic === "Language Text Translation",
-        isLanguageConversationMode: input.specificTopic === "Language Conversation Practice",
-        isLanguageCameraMode: input.specificTopic === "Language Camera Translation",
-        isLanguageDocumentTranslationMode: input.specificTopic === "Language Document Translation",
-        isVisualLearningFocus: input.specificTopic.startsWith("Visual Learning"),
-        isPdfProcessingMode: input.specificTopic === "PDF Content Summarization & Q&A",
-        isAudioProcessingMode: input.specificTopic === "Audio Content Summarization & Q&A",
-        isSlideProcessingMode: input.specificTopic === "Slide Content Summarization & Q&A",
-        isVideoProcessingMode: input.specificTopic === "Video Content Summarization & Q&A"
-      }).some(Boolean),
-    };
-
-    const enhancedInput = {
-      ...input,
-      ...modeFlags,
-    };
-
-    try {
-        const { output } = await prompt(enhancedInput);
-        if (output) {
-          if (output.visualElement && (typeof output.visualElement !== 'object' || !output.visualElement.type)) {
-            output.visualElement = null;
-          }
-          return output;
-        }
-        throw new Error("I'm sorry, I couldn't process that request. The AI returned an empty response.");
-    } catch (err) {
-        console.error("Error in aiGuidedStudySessionFlow:", err);
-        let errorMessage = err instanceof Error ? err.message : String(err);
-        
-        if (errorMessage.includes("API_KEY_SERVICE_BLOCKED") || (errorMessage.includes("403") && errorMessage.includes("generativelanguage.googleapis.com"))) {
-            errorMessage = `The AI model request was blocked. This is almost always because the "Vertex AI API" is not enabled in your Google Cloud project. Please check Step 4 in HOW_TO_GET_KEYS.md.`;
-        } else if (errorMessage.includes("API key not valid")) {
-            errorMessage = `The provided Google API Key is not valid. Please double-check your .env file and the key in your Google Cloud Console.`
-        } else if (errorMessage.includes("PERMISSION_DENIED")) {
-           errorMessage = `The AI model request was denied. This is likely due to API key restrictions. Please check Step 6 in HOW_TO_GET_KEYS.md to ensure your API key has no application or API restrictions.`
-       } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("model is overloaded") || errorMessage.toLowerCase().includes("service unavailable")) {
-           errorMessage = `The AI model is currently busy or unavailable. This is usually a temporary issue. Please try again in a few moments.`;
-       } else if (errorMessage.includes("Error: No transcript found")) {
-            errorMessage = `Could not retrieve a transcript for the provided YouTube URL. The creator may have disabled transcripts, or the video might not have them.`;
-       }
-        throw new Error(`${errorMessage}`);
-    }
-  }
-);
-
-
-export { aiGuidedStudySessionFlow as aiGuidedStudySession };
+`
