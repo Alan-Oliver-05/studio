@@ -88,6 +88,9 @@ const AIGuidedStudySessionOutputSchema = z.object({
   response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. If an 'interactive_mind_map_canvas' is being set up from an uploaded document, this response should inform the user about the auto-generated initial structure. For Q&A about the map, this contains the textual explanation. For PDF/Audio/Slide/Video Summarization, this is the summary or answer to a question about the content."),
   suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results. For PDF/Audio/Slide/Video Summarization, these could be suggested follow-up questions."),
   visualElement: VisualElementSchema.optional().nullable().describe("An optional visual element to aid understanding. For interactive mind map canvas requests (via Visual Learning - Mind Maps mode), this MUST have type 'interactive_mind_map_canvas'. If based on an uploaded file, its 'content' field can include an 'initialNodes' array."),
+  videoTitle: z.string().optional().describe("The title of the YouTube video, extracted from the tool output."),
+  authorName: z.string().optional().describe("The author/channel name of the YouTube video, from the tool output."),
+  fullTranscript: z.string().optional().describe("The full transcript of the video, passed through from the tool output."),
 });
 export type AIGuidedStudySessionOutput = z.infer<typeof AIGuidedStudySessionOutputSchema>;
 
@@ -391,41 +394,38 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
   - If the user's request is a sentence (e.g., "Summarize my video") and a filename '{{{originalFileName}}}' is provided, proceed to **Step 2B**.
 
   **Step 2A: YouTube URL Analysis**
-  1.  **Fetch Transcript**: You MUST use the 'getYouTubeTranscript' tool with the 'videoUrl' parameter set to the user's provided URL to fetch its transcript.
-  2.  **Process Transcript**:
-      *   If the tool returns a valid transcript, your entire response MUST be based on the information from that transcript.
-      *   If the tool returns an error (e.g., "Error: No transcript found..."), your response must be to inform the user of that specific error and stop. Do not try to summarize or answer questions if the transcript is an error message.
+  1.  **Fetch Transcript & Metadata**: You MUST use the 'getYouTubeTranscript' tool with the 'videoUrl' parameter set to the user's provided URL to fetch its transcript, title, and author.
+  2.  **Process Result**:
+      *   If the tool returns a valid transcript:
+          *   Take the 'title' from the tool's output and place it in your 'videoTitle' output field.
+          *   Take the 'authorName' from the tool's output and place it in your 'authorName' output field.
+          *   Take the 'transcript' from the tool's output and place it in your 'fullTranscript' output field.
+          *   NOW, create a summary of the 'transcript' and place that summary inside the main 'response' field. Structure the summary like this:
+              ---
+              **Summary:**
+              [Provide a comprehensive summary of the key points, arguments, and narrative flow of the transcript.]
+
+              **Key Topics Discussed:**
+              - **[Topic 1]:** [Briefly explain this topic as covered in the transcript.]
+              - **[Topic 2]:** [Briefly explain this topic, including any specific examples or data points from the transcript.]
+              - **[Topic 3+]:** [Continue for all major topics.]
+              ---
+      *   If the tool returns an error in its 'transcript' field (e.g., "Error: No transcript found..."), your response must be to inform the user of that specific error and stop. Do not try to summarize or answer questions if the transcript is an error message.
   
-    {{#if isInitialVideoSummarizationRequest}}
-    ---
-    **If a Transcript is Successfully Retrieved (Initial Request):**
-    ---
-    Based *only* on the retrieved transcript, structure your 'response' field exactly as follows:
-    ---
-    **Summary:**
-    [Provide a comprehensive summary of the transcript. Detail the video's main purpose, key arguments, and overall narrative flow.]
-
-    **Key Topics Discussed:**
-    - **[Topic 1]:** [Briefly explain this topic as covered in the transcript.]
-    - **[Topic 2]:** [Briefly explain this topic, including any specific examples or data points from the transcript.]
-    - **[Topic 3+]:** [Continue for all major topics.]
-
-    **Key Takeaways/Actionable Insights:**
-    - [List 2-4 key takeaways or actionable steps from the transcript.]
-    ---
+  {{#if isInitialVideoSummarizationRequest}}
+    {{!-- This block is now covered by the more specific instructions above. It can be kept for fallback. --}}
     Your 'suggestions' should be insightful follow-up questions based on the transcript content. 'visualElement' MUST be null.
-
-    {{else}}
+  {{else}}
     ---
     **If a Transcript is Successfully Retrieved (Follow-up Question):**
     ---
     The user is asking a specific follow-up question about the video: "{{{question}}}"
-    1.  Answer this question based *only* on the retrieved transcript. Be direct and detailed.
+    1.  Answer this question based *only* on the retrieved transcript ('fullTranscript'). Be direct and detailed.
     2.  Reference specific points from the transcript.
     Example (if user asks "What oven temperature did they recommend?" and transcript contains "preheat to 230 degrees Celsius"): "Based on the transcript, the instructor recommends preheating the oven to 230°C (450°F)..."
     
     Your 'suggestions' should be related follow-up questions based on the transcript. 'visualElement' MUST be null.
-    {{/if}}
+  {{/if}}
 
   **Step 2B: Local Video File Conceptual Analysis**
   You cannot read the file content of '{{{originalFileName}}}'. Your task is to perform a *conceptual analysis* based on the filename and the user's request '{{{question}}}'. Imagine what a video with this title would contain.

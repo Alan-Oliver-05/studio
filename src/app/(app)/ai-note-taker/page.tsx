@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIconLucide, FileUp, UploadCloud, Youtube, Key, Brain, Info, Sparkles, SendHorizonal, MessageSquare, ChevronRightSquare, Link as LinkIcon, Film, FolderClosed } from "lucide-react";
+import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIconLucide, FileUp, UploadCloud, Youtube, Key, Brain, Info, Sparkles, SendHorizonal, MessageSquare, ChevronRightSquare, Link as LinkIcon, Film, FolderClosed, Copy, Shield, Switch } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { summarizeText, SummarizeTextInput, SummarizeTextOutput } from "@/ai/flows/summarize-text-flow";
 import { aiGuidedStudySession, AIGuidedStudySessionInput, AIGuidedStudySessionOutput } from "@/ai/flows/ai-guided-study-session";
@@ -15,14 +15,15 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { addMessageToConversation } from "@/lib/chat-storage";
 import type { Message as MessageType } from "@/types";
 import * as pdfjsLib from 'pdfjs-dist';
+import NextImage from "next/image";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 type InputType = "text" | "recording" | "pdf" | "powerpoint" | "video";
-type VideoInputMethod = 'url' | 'upload';
 
 interface InputTypeOption {
   value: InputType;
@@ -39,7 +40,7 @@ const inputTypeOptions: InputTypeOption[] = [
   { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary based on its content, and then ask specific questions.", placeholder: "Upload your PDF document.", storageTopic: "PDF Content Summarization & Q&A" },
   { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload an audio file, and the AI will provide a conceptual summary and answer questions based on the filename and topic.", placeholder: "Upload your audio file (e.g., .mp3, .wav).", storageTopic: "Audio Content Summarization & Q&A" },
   { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer & Q&A", description: "Ace presentations. Upload PPT or PDF slides. If PDF, content is read. If PPT, AI conceptually analyzes from filename, detailing core messages and key takeaways.", placeholder: "Upload your PPT or PDF slide deck.", storageTopic: "Slide Content Summarization & Q&A" },
-  { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer & Q&A", description: "Learn faster. Paste a YouTube link to get a transcript summary and ask questions. You can also upload a local video file for conceptual analysis based on its filename.", placeholder: "https://www.youtube.com/watch?v=...", storageTopic: "Video Content Summarization & Q&A" },
+  { value: "video", label: "Video", icon: VideoIconLucide, title:"YouTube Transcript & Summarizer", description: "Learn faster from videos. Paste a YouTube link to get a full transcript, an AI-powered summary, and an interactive Q&A session.", placeholder: "https://www.youtube.com/watch?v=...", storageTopic: "Video Content Summarization & Q&A" },
 ];
 
 const MAX_CHARACTERS = 10000;
@@ -104,13 +105,12 @@ export default function SummarizerPage() {
   const [isProcessingSlides, setIsProcessingSlides] = useState<boolean>(false);
 
   const [videoUrl, setVideoUrl] = useState<string>("");
-  const [uploadedLocalVideoFile, setUploadedLocalVideoFile] = useState<File | null>(null);
-  const localVideoFileInputRef = useRef<HTMLInputElement>(null);
   const [videoProcessingOutput, setVideoProcessingOutput] = useState<AIGuidedStudySessionOutput | null>(null);
   const [videoQuestionHistory, setVideoQuestionHistory] = useState<Array<{ question: string; answer: string; id: string }>>([]);
   const [currentVideoQuestion, setCurrentVideoQuestion] = useState<string>("");
   const [isProcessingVideo, setIsProcessingVideo] = useState<boolean>(false);
-  const [videoInputMethod, setVideoInputMethod] = useState<VideoInputMethod>('url');
+  const [videoResultTab, setVideoResultTab] = useState<'transcript' | 'ai'>('transcript');
+
 
   const [isLoading, setIsLoadingState] = useState<boolean>(false); 
   const [error, setError] = useState<string | null>(null);
@@ -156,11 +156,9 @@ export default function SummarizerPage() {
     }
     if (activeInputType !== 'video') {
       setVideoUrl("");
-      setUploadedLocalVideoFile(null);
       setVideoProcessingOutput(null);
       setVideoQuestionHistory([]);
       setCurrentVideoQuestion("");
-      setVideoInputMethod('url');
     }
   }, [activeInputType]);
 
@@ -581,42 +579,13 @@ export default function SummarizerPage() {
     }
   };
 
-  const handleLocalVideoFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith("video/")) {
-        toast({ title: "Invalid File Type", description: "Please upload a video file.", variant: "destructive" });
-        setUploadedLocalVideoFile(null);
-        if(localVideoFileInputRef.current) localVideoFileInputRef.current.value = "";
-        return;
-      }
-      if (file.size > MAX_LOCAL_VIDEO_SIZE_MB * 1024 * 1024) { 
-        toast({ title: "File too large", description: `Please upload a video smaller than ${MAX_LOCAL_VIDEO_SIZE_MB}MB.`, variant: "destructive" });
-        setUploadedLocalVideoFile(null);
-        if(localVideoFileInputRef.current) localVideoFileInputRef.current.value = "";
-        return;
-      }
-      setUploadedLocalVideoFile(file);
-      setVideoProcessingOutput(null);
-      setVideoQuestionHistory([]);
-      setCurrentVideoQuestion("");
-      setCurrentMediaConversationId(null);
-      setError(null);
-      toast({ title: "Video File Selected", description: `Ready to process "${file.name}".`});
-    }
-  };
-
-  const handleSummarizeVideo = async () => {
+  const handleGetTranscript = async () => {
     if (!profile) {
         toast({title: "Profile Missing", description: "Please ensure you are logged in.", variant: "destructive"});
         return;
     }
-    if (videoInputMethod === 'url' && !videoUrl.trim()) {
+    if (!videoUrl.trim()) {
       toast({ title: "Missing Input", description: "Please enter a YouTube video URL.", variant: "destructive" });
-      return;
-    }
-    if (videoInputMethod === 'upload' && !uploadedLocalVideoFile) {
-      toast({ title: "Missing Input", description: "Please upload a local video file.", variant: "destructive" });
       return;
     }
 
@@ -625,11 +594,10 @@ export default function SummarizerPage() {
     setVideoProcessingOutput(null);
     setVideoQuestionHistory([]);
     
-    const videoIdentifier = videoInputMethod === 'url' ? videoUrl : uploadedLocalVideoFile?.name.replace(/[^a-zA-Z0-9]/g, '_');
-    const newConversationId = `summarizer-video-${profile.id}-${videoIdentifier}-${Date.now()}`;
+    const newConversationId = `summarizer-video-${profile.id}-${videoUrl.replace(/[^a-zA-Z0-9]/g, '_')}-${Date.now()}`;
     setCurrentMediaConversationId(newConversationId);
 
-    const userPromptMessageText = videoInputMethod === 'url' ? `Summarize YouTube video: ${videoUrl}` : `Summarize local video: ${uploadedLocalVideoFile?.name}`;
+    const userPromptMessageText = `Get transcript and summarize YouTube video: ${videoUrl}`;
     const userPromptMessage: MessageType = {
       id: crypto.randomUUID(), sender: 'user', text: userPromptMessageText, timestamp: Date.now()
     };
@@ -639,31 +607,32 @@ export default function SummarizerPage() {
       const aiInput: AIGuidedStudySessionInput = {
         studentProfile: { ...profile, age: Number(profile.age) },
         specificTopic: "Video Content Summarization & Q&A",
-        question: videoInputMethod === 'url' ? videoUrl : `Summarize the video: ${uploadedLocalVideoFile?.name}`,
-        originalFileName: videoInputMethod === 'upload' ? uploadedLocalVideoFile?.name : undefined,
+        question: videoUrl,
       };
       const result = await aiGuidedStudySession(aiInput);
       setVideoProcessingOutput(result);
+      setVideoResultTab('transcript');
       
       const aiResponseMessage: MessageType = {
-        id: crypto.randomUUID(), sender: 'ai', text: result.response, suggestions: result.suggestions, timestamp: Date.now()
+        id: crypto.randomUUID(), sender: 'ai', text: result.response, suggestions: result.suggestions, timestamp: Date.now(),
+        // Pass new fields to message for storage
+        ...(result.videoTitle && { text: `Title: ${result.videoTitle}\n${result.response}` }),
       };
       addMessageToConversation(newConversationId, currentInputTypeConfig.storageTopic, aiResponseMessage, profile);
-      const sourceName = videoInputMethod === 'url' ? "the YouTube video" : `"${uploadedLocalVideoFile?.name}"`;
-      toast({ title: "Video Summary Generated", description: `Summary for ${sourceName} is ready.` });
+      toast({ title: "Video Processed!", description: `Transcript and summary for the video is ready.` });
     } catch (e) {
       console.error("Video Summarization error:", e);
-      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during video summarization.";
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during video processing.";
       setError(errorMessage);
-      toast({ title: "Video Summarization Failed", description: errorMessage, variant: "destructive" });
+      toast({ title: "Video Processing Failed", description: errorMessage, variant: "destructive" });
     } finally {
       setIsProcessingVideo(false);
     }
   };
   
   const handleAskVideoQuestion = async () => {
-    if (!currentVideoQuestion.trim() || !profile || (!videoUrl.trim() && !uploadedLocalVideoFile) || !currentMediaConversationId) {
-      toast({ title: "Missing Input", description: "Please type a question, ensure a video source is provided and session active.", variant: "destructive" });
+    if (!currentVideoQuestion.trim() || !profile || !videoUrl.trim() || !currentMediaConversationId) {
+      toast({ title: "Missing Input", description: "Please type a question and ensure a video source is provided and session active.", variant: "destructive" });
       return;
     }
     setIsProcessingVideo(true);
@@ -679,10 +648,10 @@ export default function SummarizerPage() {
         studentProfile: { ...profile, age: Number(profile.age) },
         specificTopic: "Video Content Summarization & Q&A",
         question: currentVideoQuestion,
-        originalFileName: videoInputMethod === 'upload' ? uploadedLocalVideoFile?.name : (videoInputMethod === 'url' && videoUrl.trim() ? videoUrl : undefined),
+        originalFileName: videoUrl,
       };
       const result = await aiGuidedStudySession(aiInput);
-      setVideoProcessingOutput(result);
+      setVideoProcessingOutput(prev => ({...prev, response: result.response, suggestions: result.suggestions})); // Update only response part
       setVideoQuestionHistory(prev => [...prev, { question: currentVideoQuestion, answer: result.response, id: crypto.randomUUID() }]);
       setCurrentVideoQuestion("");
       
@@ -700,6 +669,15 @@ export default function SummarizerPage() {
       setIsProcessingVideo(false);
     }
   };
+  
+  const handleCopyTranscript = () => {
+    if (videoProcessingOutput?.fullTranscript) {
+        navigator.clipboard.writeText(videoProcessingOutput.fullTranscript);
+        toast({ title: "Copied!", description: "The full video transcript has been copied to your clipboard." });
+    } else {
+        toast({ title: "No Transcript", description: "No transcript available to copy.", variant: "destructive" });
+    }
+  };
 
 
   const handleMainGenerateClick = () => {
@@ -712,7 +690,7 @@ export default function SummarizerPage() {
     } else if (activeInputType === "powerpoint") {
       handleSummarizeSlides();
     } else if (activeInputType === "video") {
-      handleSummarizeVideo();
+      handleGetTranscript();
     }
   };
 
@@ -794,48 +772,8 @@ export default function SummarizerPage() {
             </div>
         );
       case "video":
-        return (
-            <div className="p-4 sm:p-6 border-2 border-dashed border-primary/30 rounded-xl bg-card shadow-sm">
-                <RadioGroup value={videoInputMethod} onValueChange={(value: string) => setVideoInputMethod(value as VideoInputMethod)} className="flex space-x-4 mb-4 justify-center">
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="url" id="video-url" />
-                        <Label htmlFor="video-url" className="flex items-center cursor-pointer"><Youtube className="mr-1.5 h-4 w-4 text-red-600"/>YouTube URL</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="upload" id="video-upload" />
-                        <Label htmlFor="video-upload" className="flex items-center cursor-pointer"><FolderClosed className="mr-1.5 h-4 w-4 text-blue-500"/>Upload Local Video</Label>
-                    </div>
-                </RadioGroup>
-
-                {videoInputMethod === 'url' && (
-                    <div className="relative mb-2">
-                        <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input
-                            type="url"
-                            placeholder={currentInputTypeConfig.placeholder}
-                            value={videoUrl}
-                            onChange={(e) => setVideoUrl(e.target.value)}
-                            className="pl-10 text-sm h-11"
-                            disabled={isLoading || isProcessingVideo} 
-                            aria-label="YouTube video URL"
-                        />
-                    </div>
-                )}
-                {videoInputMethod === 'upload' && (
-                     <div className="flex flex-col items-center justify-center p-4 border border-dashed rounded-md bg-muted/30">
-                        <input type="file" ref={localVideoFileInputRef} onChange={handleLocalVideoFileChange} accept="video/*" className="hidden" id="local-video-upload-input" />
-                        <Button variant="secondary" size="sm" onClick={() => localVideoFileInputRef.current?.click()} className="mb-2">
-                            <UploadCloud className="mr-2 h-4 w-4" /> Choose Local Video File
-                        </Button>
-                        {uploadedLocalVideoFile && (
-                            <p className="text-xs text-muted-foreground">Selected: <span className="font-medium text-primary">{uploadedLocalVideoFile.name}</span></p>
-                        )}
-                        {!uploadedLocalVideoFile && <p className="text-xs text-muted-foreground">Max file size: {MAX_LOCAL_VIDEO_SIZE_MB}MB</p>}
-                    </div>
-                )}
-                 <p className="text-xs text-muted-foreground mt-2 text-center">AI will analyze YouTube URLs via transcript, and local videos conceptually by filename.</p>
-            </div>
-        );
+        // This is handled by the new top-level UI for video
+        return null;
       default:
         return null;
     }
@@ -864,7 +802,7 @@ export default function SummarizerPage() {
                 setUploadedPdfFile(null); setPdfProcessingOutput(null); setPdfQuestionHistory([]); setCurrentPdfQuestion("");
                 setUploadedAudioFile(null); setAudioProcessingOutput(null); setAudioQuestionHistory([]); setCurrentAudioQuestion(""); setAudioDataUri(null);
                 setUploadedSlideFile(null); setSlideProcessingOutput(null); setSlideQuestionHistory([]); setCurrentSlideQuestion(""); setSlideTextContent("");
-                setVideoUrl(""); setUploadedLocalVideoFile(null); setVideoProcessingOutput(null); setVideoQuestionHistory([]); setCurrentVideoQuestion(""); setVideoInputMethod('url');
+                setVideoUrl(""); setVideoProcessingOutput(null); setVideoQuestionHistory([]); setCurrentVideoQuestion("");
               }}
               className={cn(
                 "px-3 py-1.5 h-auto text-xs sm:text-sm rounded-md flex items-center gap-1.5 sm:gap-2",
@@ -879,36 +817,62 @@ export default function SummarizerPage() {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto">
-        {renderInputArea()}
-        <div className="mt-6 text-center">
-            <Button
-            onClick={handleMainGenerateClick}
-            disabled={isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo || isParsingPdf ||
-              (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
-              (activeInputType === "pdf" && (!uploadedPdfFile || !pdfTextContent)) ||
-              (activeInputType === "recording" && !uploadedAudioFile) ||
-              (activeInputType === "powerpoint" && !uploadedSlideFile) ||
-              (activeInputType === "video" && ((videoInputMethod === 'url' && !videoUrl.trim()) || (videoInputMethod === 'upload' && !uploadedLocalVideoFile)))
-            }
-            size="lg"
-            className="px-8 py-3 text-base"
-            >
-            {(isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo || isParsingPdf) ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-                <Wand2 className="mr-2 h-5 w-5" />
-            )}
-            {activeInputType === 'text' ? "Generate Notes"
-              : activeInputType === 'pdf' ? "Summarize PDF & Start Q&A" 
-              : activeInputType === 'recording' ? "Summarize Audio & Start Q&A" 
-              : activeInputType === 'powerpoint' ? "Summarize Slides & Start Q&A"
-              : activeInputType === 'video' ? "Summarize Video & Start Q&A"
-              : "Generate"
-            }
-            </Button>
+      {activeInputType !== 'video' && (
+        <div className="max-w-3xl mx-auto">
+          {renderInputArea()}
+          <div className="mt-6 text-center">
+              <Button
+              onClick={handleMainGenerateClick}
+              disabled={isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo || isParsingPdf ||
+                (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
+                (activeInputType === "pdf" && (!uploadedPdfFile || !pdfTextContent)) ||
+                (activeInputType === "recording" && !uploadedAudioFile) ||
+                (activeInputType === "powerpoint" && !uploadedSlideFile)
+              }
+              size="lg"
+              className="px-8 py-3 text-base"
+              >
+              {(isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo || isParsingPdf) ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                  <Wand2 className="mr-2 h-5 w-5" />
+              )}
+              {activeInputType === 'text' ? "Generate Notes"
+                : activeInputType === 'pdf' ? "Summarize PDF & Start Q&A" 
+                : activeInputType === 'recording' ? "Summarize Audio & Start Q&A" 
+                : activeInputType === 'powerpoint' ? "Summarize Slides & Start Q&A"
+                : "Generate"
+              }
+              </Button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {activeInputType === 'video' && (
+         <div className="w-full">
+            <div className="bg-yellow-400 dark:bg-yellow-500 p-4 rounded-lg shadow-md mb-8">
+              <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
+                <Input
+                  type="url"
+                  placeholder="Paste YouTube URL here..."
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  className="flex-grow bg-white dark:bg-slate-800 border-2 border-yellow-500 dark:border-yellow-600 focus-visible:ring-yellow-700 h-11 text-base"
+                  disabled={isProcessingVideo}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && videoUrl.trim()) handleGetTranscript(); }}
+                />
+                <Button
+                  onClick={handleGetTranscript}
+                  disabled={isProcessingVideo || !videoUrl.trim()}
+                  className="w-full sm:w-auto bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-700 dark:hover:bg-yellow-800 text-white shadow-md px-6 h-11"
+                >
+                  {isProcessingVideo ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <FileTextIcon className="mr-2 h-5 w-5"/>}
+                  Get Transcript
+                </Button>
+              </div>
+            </div>
+         </div>
+      )}
 
       {error && (
         <Alert variant="destructive" className="mt-6 max-w-3xl mx-auto shadow-md">
@@ -965,7 +929,6 @@ export default function SummarizerPage() {
         </Card>
       )}
 
-      {/* Q&A UI for PDF */}
       {activeInputType === 'pdf' && uploadedPdfFile && !isProcessingPdf && !isParsingPdf && (pdfProcessingOutput || pdfQuestionHistory.length > 0) && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
           <CardHeader>
@@ -1033,7 +996,6 @@ export default function SummarizerPage() {
         </Card>
       )}
 
-      {/* Q&A UI for Audio */}
       {activeInputType === 'recording' && uploadedAudioFile && !isProcessingAudio && (audioProcessingOutput || audioQuestionHistory.length > 0) && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
           <CardHeader>
@@ -1075,7 +1037,6 @@ export default function SummarizerPage() {
         </Card>
       )}
 
-      {/* Q&A UI for Slides */}
       {activeInputType === 'powerpoint' && uploadedSlideFile && !isProcessingSlides && (slideProcessingOutput || slideQuestionHistory.length > 0) && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
           <CardHeader>
@@ -1115,49 +1076,87 @@ export default function SummarizerPage() {
         </Card>
       )}
 
-       {/* Q&A UI for Video */}
-      {activeInputType === 'video' && (videoUrl.trim() || uploadedLocalVideoFile) && !isProcessingVideo && (videoProcessingOutput || videoQuestionHistory.length > 0) && (
-        <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center text-xl sm:text-2xl">
-              <Film className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>Video Analysis: 
-              <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[150px] sm:max-w-xs" title={videoUrl || uploadedLocalVideoFile?.name}>
-                {videoUrl || uploadedLocalVideoFile?.name}
-              </span>
-            </CardTitle>
-            <CardDescription>AI summary and Q&A for your video.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {videoProcessingOutput?.response && (
-              <div>
-                <h3 className="font-semibold text-lg text-primary mb-1.5">{videoQuestionHistory.length === 0 && !currentVideoQuestion ? "Transcript Analysis:" : "Latest Answer:"}</h3>
-                <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">{videoProcessingOutput.response}</div>
+      {activeInputType === 'video' && videoProcessingOutput && (
+        <div className="mt-8 max-w-3xl mx-auto">
+          <Card className="shadow-lg bg-card/90 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-xl sm:text-2xl">
+                Transcript of {videoProcessingOutput.videoTitle || "Your Video"}
+              </CardTitle>
+              {videoProcessingOutput.authorName && (
+                <CardDescription>
+                  Author: {videoProcessingOutput.authorName} &middot; <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Watch on YouTube</a>
+                </CardDescription>
+              )}
+            </CardHeader>
+            <CardContent>
+              <Tabs value={videoResultTab} onValueChange={(value) => setVideoResultTab(value as any)} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="transcript">Transcript</TabsTrigger>
+                  <TabsTrigger value="ai">AI Summary & Q&A</TabsTrigger>
+                </TabsList>
+                <TabsContent value="transcript" className="mt-4">
+                  <div className="space-y-4">
+                    <div className="relative aspect-video w-full bg-slate-900 rounded-lg overflow-hidden shadow-inner">
+                      <NextImage src={`https://placehold.co/1280x720.png`} data-ai-hint="video player" alt={videoProcessingOutput.videoTitle || "Video thumbnail"} layout="fill" objectFit="cover" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <div className="w-16 h-16 bg-red-600/90 rounded-full flex items-center justify-center cursor-pointer hover:bg-red-500 transition-colors">
+                          <a href={videoUrl} target="_blank" rel="noopener noreferrer" aria-label="Play video on YouTube">
+                            <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <ScrollArea className="h-60 border rounded-md p-3 text-sm leading-relaxed bg-muted/30">
+                      {videoProcessingOutput.fullTranscript || "No transcript available."}
+                    </ScrollArea>
+                  </div>
+                </TabsContent>
+                <TabsContent value="ai" className="mt-4">
+                  <div className="space-y-4">
+                      <div>
+                        <h3 className="font-semibold text-lg text-primary mb-1.5">AI Analysis:</h3>
+                        <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner max-h-80 overflow-y-auto">
+                          {videoProcessingOutput.response}
+                        </div>
+                      </div>
+                      {videoQuestionHistory.length > 0 && (
+                        <div className="pt-4 border-t">
+                          <h3 className="font-semibold text-lg text-primary mb-2">Q&A History:</h3>
+                          <ScrollArea className="max-h-60 pr-2"><div className="space-y-4">{videoQuestionHistory.map(item => (<div key={item.id} className="text-sm"><p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p><p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p></div>))}</div></ScrollArea>
+                        </div>
+                      )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+              
+              <div className="mt-6 space-y-2">
+                  <Button className="w-full bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700" onClick={() => setVideoResultTab('ai')}>
+                      <Brain className="mr-2 h-4 w-4"/> Chat with AI
+                  </Button>
+                  <Button className="w-full bg-blue-500 hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600" onClick={handleGetTranscript}>
+                      <FileText className="mr-2 h-4 w-4"/> Re-Summarise with AI
+                  </Button>
+                  <Button variant="outline" className="w-full" onClick={handleCopyTranscript}>
+                      <Copy className="mr-2 h-4 w-4"/> Copy Transcript
+                  </Button>
+                  <Button variant="outline" className="w-full" disabled>
+                      <Shield className="mr-2 h-4 w-4"/> Remove Sponsor, Interaction and More
+                  </Button>
               </div>
-            )}
-            {videoProcessingOutput?.suggestions && videoProcessingOutput.suggestions.length > 0 && (
-              <div>
-                <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center"><Sparkles className="mr-2 h-4 w-4 text-accent"/>Suggested Questions:</h3>
-                <ul className="space-y-1.5">{videoProcessingOutput.suggestions.map((suggestion, idx) => (<li key={idx} className="text-xs"><Button variant="link" className="p-0 h-auto text-accent hover:text-accent/80 text-left" onClick={() => setCurrentVideoQuestion(suggestion)}><ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}</Button></li>))}</ul>
-              </div>
-            )}
-            {videoQuestionHistory.length > 0 && (
-              <div className="pt-4 border-t">
-                <h3 className="font-semibold text-lg text-primary mb-2">Q&A History:</h3>
-                <ScrollArea className="max-h-60 pr-2"><div className="space-y-4">{videoQuestionHistory.map(item => (<div key={item.id} className="text-sm"><p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p><p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p></div>))}</div></ScrollArea>
-              </div>
-            )}
-            {(videoProcessingOutput || videoQuestionHistory.length > 0) && ( 
-              <div className="pt-6 border-t">
-                 <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about the video:</h3>
-                <div className="flex items-center gap-2">
+
+              <div className="pt-6 border-t mt-6">
+                  <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about the video:</h3>
+                  <div className="flex items-center gap-2">
                   <Input value={currentVideoQuestion} onChange={(e) => setCurrentVideoQuestion(e.target.value)} placeholder="Type your question here..." className="flex-grow" disabled={isProcessingVideo} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentVideoQuestion.trim()) { e.preventDefault(); handleAskVideoQuestion(); } }}/>
                   <Button onClick={handleAskVideoQuestion} disabled={isProcessingVideo || !currentVideoQuestion.trim()}>{isProcessingVideo && currentVideoQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>} Ask</Button>
-                </div>
+                  </div>
               </div>
-            )}
-            <div className="text-xs text-muted-foreground pt-4 border-t mt-2"><Info className="inline h-3.5 w-3.5 mr-1.5 align-middle"/>AI responses are based on the video's public transcript. If no transcript is available, the AI cannot provide a summary.</div>
-          </CardContent>
-        </Card>
+
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
