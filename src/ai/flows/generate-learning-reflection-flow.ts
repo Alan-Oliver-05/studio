@@ -52,8 +52,10 @@ Education Focus: {{{studentProfile.educationCategory}}}
 {{#if studentProfile.educationQualification.competitiveExams.specificExam}}Competitive Exam: {{{studentProfile.educationQualification.competitiveExams.specificExam}}}{{/if}}
 {{#if studentProfile.educationQualification.universityExams.course}}University Course: {{{studentProfile.educationQualification.universityExams.course}}}{{/if}}
 
-Recent Learning Activity Summary:
-{{{recentActivitySummary}}}
+{{#if learnerContextSummary}}
+Recent Learning Context:
+{{{learnerContextSummary}}}
+{{/if}}
 
 Based on the learner's profile and their recent activity:
 1.  Identify and summarize one "biggest win" or significant positive aspect from their recent activity. This could be consistent engagement, exploring a new topic, completing tasks, etc.
