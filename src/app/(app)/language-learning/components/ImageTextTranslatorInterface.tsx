@@ -1,11 +1,11 @@
 
 "use client";
 
-import React, { useState, useRef, ChangeEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, useMemo } from 'react';
 import type { UserProfile, Message as MessageType } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardDescription, CardFooter, CardTitle } from '@/components/ui/card';
-import { Loader2, UploadCloud, Languages, Camera, Image as ImageIcon, FileText, ArrowRightLeft, Info, History, Star, ChevronDown } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardFooter, CardTitle } from '@/components/ui/card';
+import { Loader2, UploadCloud, Languages, Camera, Image as ImageIcon, FileText, ArrowRightLeft, Info, History, Star, ChevronDown, Check } from 'lucide-react';
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from '@/ai/flows/ai-guided-study-session';
 import { addMessageToConversation } from '@/lib/chat-storage';
 import { LANGUAGES } from '@/lib/constants';
@@ -13,12 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import NextImage from "next/image";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from '@/components/ui/input';
 
 interface ImageTextTranslatorInterfaceProps {
   userProfile: UserProfile;
@@ -26,30 +22,8 @@ interface ImageTextTranslatorInterfaceProps {
   topic: string;
 }
 
-const displayedTargetLanguages = [
-  { value: "ta", label: "Tamil" },
-  { value: "en", label: "English" },
-  { value: "es", label: "Spanish" },
-];
-
-const LanguageTabButton = ({ lang, isActive, onClick, isDropdownTrigger = false }: { lang: {value: string, label: string}, isActive?: boolean, onClick?: () => void, isDropdownTrigger?: boolean }) => (
-  <Button
-    variant="ghost"
-    size="sm"
-    onClick={onClick}
-    className={cn(
-      "text-sm px-3 py-1.5 h-auto rounded-md font-medium",
-      isActive ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/5",
-      isDropdownTrigger && "ml-1"
-    )}
-  >
-    {lang.label}
-    {isDropdownTrigger && <ChevronDown className="ml-1 h-4 w-4" />}
-  </Button>
-);
-
 const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> = ({ userProfile, conversationId, topic }) => {
-  const [targetLang, setTargetLang] = useState<string>(LANGUAGES.find(l=>l.label.toLowerCase() === userProfile.preferredLanguage.toLowerCase())?.value || displayedTargetLanguages[0].value);
+  const [targetLang, setTargetLang] = useState<string>(LANGUAGES.find(l=>l.label.toLowerCase() === userProfile.preferredLanguage.toLowerCase())?.value || 'en');
   const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null);
   const [uploadedImageDataUri, setUploadedImageDataUri] = useState<string | null>(null);
 
@@ -60,6 +34,15 @@ const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> 
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  
+  const [isLangPopoverOpen, setIsLangPopoverOpen] = useState(false);
+  const [languageSearch, setLanguageSearch] = useState("");
+
+  const filteredLanguages = useMemo(() =>
+    LANGUAGES.filter(lang =>
+      lang.label.toLowerCase().includes(languageSearch.toLowerCase())
+    ),
+  [languageSearch]);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -167,23 +150,61 @@ const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> 
     <Card className="w-full flex flex-col shadow-none border-0 min-h-[calc(100vh-25rem)] bg-transparent">
       <CardHeader className="pb-3 pt-2 border-b">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center">
-            <span className="text-sm font-medium text-muted-foreground mr-2">Translate to:</span>
-            {displayedTargetLanguages.map(lang => (
-              <LanguageTabButton key={lang.value} lang={lang} isActive={targetLang === lang.value} onClick={() => setTargetLang(lang.value)} />
-            ))}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                 <LanguageTabButton lang={{value: "more_target", label: ""}} isDropdownTrigger={true}/>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {LANGUAGES.filter(l => !displayedTargetLanguages.find(dtl => dtl.value === l.value)).map(lang => (
-                  <DropdownMenuItem key={lang.value} onSelect={() => setTargetLang(lang.value)}>
-                    {lang.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Translate to:</span>
+             <Popover open={isLangPopoverOpen} onOpenChange={setIsLangPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={isLangPopoverOpen}
+                  className="w-[200px] justify-between h-9"
+                >
+                  <span className="truncate">
+                  {targetLang
+                    ? LANGUAGES.find((language) => language.value === targetLang)?.label
+                    : "Select language..."}
+                  </span>
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-0">
+                <div className="p-2 border-b">
+                   <Input 
+                      placeholder="Search language..."
+                      value={languageSearch}
+                      onChange={(e) => setLanguageSearch(e.target.value)}
+                      className="h-9"
+                    />
+                </div>
+                <ScrollArea className="h-60">
+                  <div className="p-1">
+                  {filteredLanguages.length > 0 ? filteredLanguages.map((language) => (
+                    <Button
+                      variant="ghost"
+                      key={language.value}
+                      onClick={() => {
+                        setTargetLang(language.value);
+                        setIsLangPopoverOpen(false);
+                        setLanguageSearch("");
+                      }}
+                      className="w-full justify-start font-normal text-sm h-9"
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          targetLang === language.value ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <span className="truncate">{language.label}</span>
+                    </Button>
+                  )) : (
+                    <p className="p-2 text-center text-sm text-muted-foreground">No language found.</p>
+                  )}
+                  </div>
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
           </div>
           <Button
             onClick={handleTranslateImage}
@@ -280,5 +301,3 @@ const ImageTextTranslatorInterface: React.FC<ImageTextTranslatorInterfaceProps> 
 };
 
 export default ImageTextTranslatorInterface;
-
-    
