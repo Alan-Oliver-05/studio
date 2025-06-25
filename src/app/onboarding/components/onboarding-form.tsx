@@ -126,11 +126,18 @@ export function OnboardingForm() {
 
   const [isLangPopoverOpen, setIsLangPopoverOpen] = useState(false);
   const [languageSearch, setLanguageSearch] = useState("");
+  const [isCountryPopoverOpen, setIsCountryPopoverOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
 
   const filteredLanguages = useMemo(() => 
     LANGUAGES.filter(lang => 
       lang.label.toLowerCase().includes(languageSearch.toLowerCase())
     ), [languageSearch]);
+
+  const filteredCountries = useMemo(() =>
+    COUNTRIES.filter(c => 
+      c.label.toLowerCase().includes(countrySearch.toLowerCase())
+    ), [countrySearch]);
 
 
   const form = useForm<UserProfile>({
@@ -511,22 +518,55 @@ export function OnboardingForm() {
 
             {currentStep === "location" && (
               <div className="space-y-6">
-                <FormField
+                 <FormField
                   control={form.control}
                   name="country"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col">
                       <FormLabel>Country</FormLabel>
-                       <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select your country" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {COUNTRIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                       <Popover open={isCountryPopoverOpen} onOpenChange={setIsCountryPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn("w-full justify-between font-normal", !field.value && "text-muted-foreground")}
+                              >
+                                {field.value ? COUNTRIES.find(c => c.value === field.value)?.label : "Select your country"}
+                                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                             <div className="p-2 border-b">
+                                <Input
+                                  placeholder="Search country..."
+                                  value={countrySearch}
+                                  onChange={(e) => setCountrySearch(e.target.value)}
+                                  className="h-9"
+                                />
+                             </div>
+                             <ScrollArea className="h-72">
+                               <div className="p-1">
+                                {filteredCountries.map(country => (
+                                  <Button
+                                    variant="ghost"
+                                    key={country.value}
+                                    onClick={() => {
+                                      form.setValue("country", country.value);
+                                      setIsCountryPopoverOpen(false);
+                                      setCountrySearch("");
+                                    }}
+                                    className="w-full justify-start font-normal text-sm h-9"
+                                  >
+                                    <Check className={cn("mr-2 h-4 w-4", country.value === field.value ? "opacity-100" : "opacity-0")} />
+                                    <span className="truncate">{country.label}</span>
+                                  </Button>
+                                ))}
+                               </div>
+                             </ScrollArea>
+                          </PopoverContent>
+                       </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
