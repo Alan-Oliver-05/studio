@@ -48,9 +48,9 @@ Name: {{{studentProfile.name}}}
 Age: {{{studentProfile.age}}}
 Learning Style: {{{studentProfile.learningStyle}}}
 Education Focus: {{{studentProfile.educationCategory}}}
-{{#if studentProfile.educationQualification.boardExams.board}}Board: {{{studentProfile.educationQualification.boardExams.board}}} - {{{studentProfile.educationQualification.boardExams.standard}}}{{#if}}
-{{#if studentProfile.educationQualification.competitiveExams.specificExam}}Competitive Exam: {{{studentProfile.educationQualification.competitiveExams.specificExam}}}{{#if}}
-{{#if studentProfile.educationQualification.universityExams.course}}University Course: {{{studentProfile.educationQualification.universityExams.course}}}{{#if}}
+{{#if studentProfile.educationQualification.boardExams.board}}Board: {{{studentProfile.educationQualification.boardExams.board}}} - {{{studentProfile.educationQualification.boardExams.standard}}}{{/if}}
+{{#if studentProfile.educationQualification.competitiveExams.specificExam}}Competitive Exam: {{{studentProfile.educationQualification.competitiveExams.specificExam}}}{{/if}}
+{{#if studentProfile.educationQualification.universityExams.course}}University Course: {{{studentProfile.educationQualification.universityExams.course}}}{{/if}}
 
 Recent Learning Activity Summary:
 {{{recentActivitySummary}}}
