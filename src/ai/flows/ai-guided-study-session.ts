@@ -607,3 +607,82 @@ User has provided this text segment (from the document or as a query): "{{{quest
   If student answers MCQ, evaluate, feedback, new explanation/MCQ on related sub-topic from "retrieved" curriculum.
 {{/if}}
 `
+
+const prompt = ai.definePrompt({
+    name: 'aiGuidedStudySessionPrompt',
+    input: {schema: PromptInputSchema},
+    output: {schema: AIGuidedStudySessionOutputSchema},
+    prompt: aiGuidedStudySessionPromptText,
+    config: {
+        temperature: 0.3,
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+        ],
+    },
+    tools: [performWebSearch, getYouTubeTranscript]
+});
+
+export async function aiGuidedStudySession(input: AIGuidedStudySessionInput): Promise<AIGuidedStudySessionOutput> {
+    return aiGuidedStudySessionFlow(input);
+}
+
+const aiGuidedStudySessionFlow = ai.defineFlow(
+  {
+    name: 'aiGuidedStudySessionFlow',
+    inputSchema: AIGuidedStudySessionInputSchema,
+    outputSchema: AIGuidedStudySessionOutputSchema,
+  },
+  async (input) => {
+    
+    const isTopic = (topic: string, specificTopic: string) => specificTopic.toLowerCase().includes(topic.toLowerCase());
+
+    const enrichedInput = {
+        ...input,
+        isAiLearningAssistantChat: isTopic('AI Learning Assistant Chat', input.specificTopic),
+        isHomeworkHelp: isTopic('Homework Help', input.specificTopic),
+        
+        isLanguageTranslatorMode: isTopic('LanguageTranslatorMode', input.specificTopic),
+        isLanguageTextTranslationMode: isTopic('Language Text Translation', input.specificTopic),
+        isLanguageConversationMode: isTopic('Language Conversation Practice', input.specificTopic),
+        isLanguageCameraMode: isTopic('Language Camera Translation', input.specificTopic),
+        isLanguageDocumentTranslationMode: isTopic('Language Document Translation', input.specificTopic),
+
+        isVisualLearningFocus: isTopic('Visual Learning', input.specificTopic),
+        isVisualLearningGraphs: isTopic('Visual Learning - Graphs & Charts', input.specificTopic),
+        isVisualLearningDiagrams: isTopic('Visual Learning - Conceptual Diagrams', input.specificTopic),
+        isVisualLearningMindMaps: isTopic('Visual Learning - Mind Maps', input.specificTopic),
+
+        isPdfProcessingMode: isTopic('PDF Content Summarization & Q&A', input.specificTopic),
+        isInitialPdfSummarizationRequest: isTopic('PDF Content Summarization & Q&A', input.specificTopic) && input.question.toLowerCase().includes('summarize'),
+
+        isAudioProcessingMode: isTopic('Audio Content Summarization & Q&A', input.specificTopic),
+        isInitialAudioSummarizationRequest: isTopic('Audio Content Summarization & Q&A', input.specificTopic) && input.question.toLowerCase().includes('summarize'),
+        
+        isSlideProcessingMode: isTopic('Slide Content Summarization & Q&A', input.specificTopic),
+        isInitialSlideSummarizationRequest: isTopic('Slide Content Summarization & Q&A', input.specificTopic) && input.question.toLowerCase().includes('summarize'),
+
+        isVideoProcessingMode: isTopic('Video Content Summarization & Q&A', input.specificTopic),
+        isInitialVideoSummarizationRequest: isTopic('Video Content Summarization & Q&A', input.specificTopic) && (input.question.toLowerCase().includes('summarize') || input.question.toLowerCase().startsWith('http')),
+        
+        isCurriculumSpecificMode: !!(input.subject && input.lesson),
+    };
+    
+    try {
+        const { output } = await prompt(enrichedInput);
+        if (!output) {
+            throw new Error('AI response was empty.');
+        }
+        return output;
+    } catch (e) {
+        console.error("Error in aiGuidedStudySessionFlow:", e);
+        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred while processing your request.";
+        
+        if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("model is overloaded") || errorMessage.toLowerCase().includes("service unavailable")) {
+           throw new Error(`The AI model is currently busy or unavailable. This is usually a temporary issue. Please try again in a few moments.`);
+        }
+        
+        throw new Error(errorMessage);
+    }
+  }
+);
