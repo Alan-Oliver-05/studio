@@ -39,7 +39,7 @@ const inputTypeOptions: InputTypeOption[] = [
   { value: "pdf", label: "PDF", icon: FileTextIcon, title:"AI PDF Summarizer & Q&A", description: "Upload your PDF to get a summary based on its content, and then ask specific questions.", placeholder: "Upload your PDF document.", storageTopic: "PDF Content Summarization & Q&A" },
   { value: "recording", label: "Audio", icon: Mic2, title:"AI Audio Note Taker", description: "Unpack lectures and meetings. Upload an audio file, and the AI will provide a conceptual summary and answer questions based on the filename and topic.", placeholder: "Upload your audio file (e.g., .mp3, .wav).", storageTopic: "Audio Content Summarization & Q&A" },
   { value: "powerpoint", label: "Slides", icon: Presentation, title:"AI Slide Summarizer & Q&A", description: "Ace presentations. Upload PPT or PDF slides. If PDF, content is read. If PPT, AI conceptually analyzes from filename, detailing core messages and key takeaways.", placeholder: "Upload your PPT or PDF slide deck.", storageTopic: "Slide Content Summarization & Q&A" },
-  { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer & Q&A", description: "Learn faster. Paste a YouTube link or upload a local video file. The AI analyzes the video's concepts to provide summaries and answers. *This is a simulation of video analysis.*", placeholder: "https://www.youtube.com/watch?v=...", storageTopic: "Video Content Summarization & Q&A" },
+  { value: "video", label: "Video", icon: VideoIconLucide, title:"AI Video Summarizer & Q&A", description: "Learn faster. Paste a YouTube link to get a transcript summary and ask questions. You can also upload a local video file for conceptual analysis based on its filename.", placeholder: "https://www.youtube.com/watch?v=...", storageTopic: "Video Content Summarization & Q&A" },
 ];
 
 const MAX_CHARACTERS = 10000;
@@ -833,7 +833,7 @@ export default function SummarizerPage() {
                         {!uploadedLocalVideoFile && <p className="text-xs text-muted-foreground">Max file size: {MAX_LOCAL_VIDEO_SIZE_MB}MB</p>}
                     </div>
                 )}
-                 <p className="text-xs text-muted-foreground mt-2 text-center">AI will conceptually analyze the video based on URL or filename.</p>
+                 <p className="text-xs text-muted-foreground mt-2 text-center">AI will analyze YouTube URLs via transcript, and local videos conceptually by filename.</p>
             </div>
         );
       default:
@@ -1116,13 +1116,13 @@ export default function SummarizerPage() {
       )}
 
        {/* Q&A UI for Video */}
-      {activeInputType === 'video' && videoUrl.trim() && !isProcessingVideo && (videoProcessingOutput || videoQuestionHistory.length > 0) && (
+      {activeInputType === 'video' && (videoUrl.trim() || uploadedLocalVideoFile) && !isProcessingVideo && (videoProcessingOutput || videoQuestionHistory.length > 0) && (
         <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center text-xl sm:text-2xl">
               <Film className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-primary"/>Video Analysis: 
-              <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[150px] sm:max-w-xs" title={videoUrl}>
-                {videoUrl}
+              <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[150px] sm:max-w-xs" title={videoUrl || uploadedLocalVideoFile?.name}>
+                {videoUrl || uploadedLocalVideoFile?.name}
               </span>
             </CardTitle>
             <CardDescription>AI summary and Q&A for your video.</CardDescription>

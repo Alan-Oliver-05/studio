@@ -591,6 +591,7 @@ User has provided this text segment (from the document or as a query): "{{{quest
 
 const prompt = ai.definePrompt({
   name: 'aiGuidedStudySessionPrompt',
+  tools: [getYouTubeTranscript, performWebSearch],
   input: {schema: PromptInputSchema},
   output: {schema: AIGuidedStudySessionOutputSchema},
   prompt: aiGuidedStudySessionPromptText,
