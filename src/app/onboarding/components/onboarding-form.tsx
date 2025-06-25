@@ -29,13 +29,14 @@ import { useUserProfile } from "@/contexts/user-profile-context";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
 import { GENDERS, COUNTRIES, LANGUAGES, EDUCATION_CATEGORIES, BOARD_STANDARDS, UNIVERSITY_YEARS, CENTRAL_BOARDS, COMPETITIVE_EXAM_TYPES_CENTRAL, COMPETITIVE_EXAM_TYPES_STATE, LEARNING_STYLES, PROFESSIONAL_CERTIFICATION_EXAMS, PROFESSIONAL_CERTIFICATION_STAGES } from "@/lib/constants";
-import { ChevronLeft, ChevronRight, CheckCircle, CalendarIcon, Loader2, MessageSquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, CheckCircle, CalendarIcon, Loader2, MessageSquare, ChevronDown, Check } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format, parseISO, isValid } from "date-fns";
 import { generateOnboardingQuestions, GenerateOnboardingQuestionsInput } from "@/ai/flows/generate-onboarding-questions-flow";
 import { useToast } from "@/hooks/use-toast";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 const onboardingSteps = [
@@ -122,6 +123,14 @@ export function OnboardingForm() {
   const [probingQuestions, setProbingQuestions] = useState<string[]>([]);
   const [isShowingProbingQuestions, setIsShowingProbingQuestions] = useState(false);
   const [isGeneratingProbingQuestions, setIsGeneratingProbingQuestions] = useState(false);
+
+  const [isLangPopoverOpen, setIsLangPopoverOpen] = useState(false);
+  const [languageSearch, setLanguageSearch] = useState("");
+
+  const filteredLanguages = useMemo(() => 
+    LANGUAGES.filter(lang => 
+      lang.label.toLowerCase().includes(languageSearch.toLowerCase())
+    ), [languageSearch]);
 
 
   const form = useForm<UserProfile>({
@@ -539,18 +548,63 @@ export function OnboardingForm() {
                   control={form.control}
                   name="preferredLanguage"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col">
                       <FormLabel>Preferred Language for Learning</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select your preferred language" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {LANGUAGES.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                        <Popover open={isLangPopoverOpen} onOpenChange={setIsLangPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                  "w-full justify-between font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value
+                                  ? LANGUAGES.find((language) => language.value === field.value)?.label
+                                  : "Select your preferred language"}
+                                <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <div className="p-2 border-b">
+                                <Input 
+                                    placeholder="Search language..."
+                                    value={languageSearch}
+                                    onChange={(e) => setLanguageSearch(e.target.value)}
+                                    className="h-9"
+                                />
+                            </div>
+                            <ScrollArea className="h-72">
+                              <div className="p-1">
+                                {filteredLanguages.map((language) => (
+                                  <Button
+                                    variant="ghost"
+                                    key={language.value}
+                                    onClick={() => {
+                                      form.setValue("preferredLanguage", language.value);
+                                      setIsLangPopoverOpen(false);
+                                      setLanguageSearch("");
+                                    }}
+                                    className="w-full justify-start font-normal text-sm h-9"
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        language.value === field.value
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    <span className="truncate">{language.label}</span>
+                                  </Button>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          </PopoverContent>
+                        </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
