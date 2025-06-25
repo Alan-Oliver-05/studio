@@ -112,7 +112,6 @@ const PromptInputSchema = AIGuidedStudySessionInputSchema.extend({
     isSlideProcessingMode: z.boolean().optional(),
     isInitialSlideSummarizationRequest: z.boolean().optional(),
     isVideoProcessingMode: z.boolean().optional(),
-    isInitialVideoSummarizationRequest: z.boolean().optional(),
     isCurriculumSpecificMode: z.boolean().optional(),
 });
 
@@ -386,62 +385,31 @@ This method is standard for {{{studentProfile.educationQualification.boardExam.s
   {{/if}}
 
 {{else if isVideoProcessingMode}}
-  You are an AI Video Analysis RAG Agent. Your task is to analyze the content of a video based on the user's request: '{{{question}}}'.
+  You are an AI Video Analysis RAG Agent. Your primary function is to analyze the content of YouTube videos by fetching and processing their transcripts. Your purpose is to act as an intelligent tool that can summarize lengthy videos, generate detailed analysis, and create question-answering interfaces based on the video's content.
 
-  **Step 1: Determine the video source.**
-  - If the user's request appears to be a YouTube URL (e.g., starting with "https://www.youtube.com/..."), proceed to **Step 2A**.
-  - If the user's request is a sentence (e.g., "Summarize my video") and a filename '{{{originalFileName}}}' is provided, proceed to **Step 2B**.
+  The user has provided a YouTube URL or a follow-up question about a previously analyzed video. Your task is to use the 'getYouTubeTranscript' tool to obtain the video's content and then answer the user's request based *exclusively* on that transcript.
 
-  **Step 2A: YouTube URL Analysis**
-  1.  **Fetch Transcript & Metadata**: You MUST use the 'getYouTubeTranscript' tool with the 'videoUrl' parameter set to the user's provided URL to fetch its transcript, title, and author.
-  2.  **Process Result**:
-      *   If the tool returns a valid transcript:
-          *   Take the 'title' from the tool's output and place it in your 'videoTitle' output field.
-          *   Take the 'authorName' from the tool's output and place it in your 'authorName' output field.
-          *   Take the 'transcript' from the tool's output and place it in your 'fullTranscript' output field.
-          *   NOW, create a summary of the 'transcript' and place that summary inside the main 'response' field. Structure the summary like this:
+  **Step 1: Fetch Transcript & Metadata**
+  You MUST use the 'getYouTubeTranscript' tool with the 'videoUrl' parameter set to the user's provided URL ('{{{question}}}' for the initial request, or '{{{originalFileName}}}' for follow-up questions) to fetch its transcript, title, and author.
+
+  **Step 2: Process Tool Result**
+  - **If the tool returns an error** in its 'transcript' field (e.g., "Error: No transcript found..."), your entire 'response' field MUST be that specific error message. Do not attempt to answer or summarize.
+  - **If the tool returns a valid transcript**:
+      1.  Populate the 'videoTitle', 'authorName', and 'fullTranscript' fields in your final JSON output with the exact data returned by the tool.
+      2.  Examine the user's request ('{{{question}}}').
+          - If the request is a URL or contains "summarize", your 'response' MUST be a comprehensive summary of the full transcript. Structure it like this:
               ---
               **Summary:**
-              [Provide a comprehensive summary of the key points, arguments, and narrative flow of the transcript.]
+              [Provide a detailed summary of the key points, arguments, and narrative flow of the transcript.]
 
               **Key Topics Discussed:**
               - **[Topic 1]:** [Briefly explain this topic as covered in the transcript.]
               - **[Topic 2]:** [Briefly explain this topic, including any specific examples or data points from the transcript.]
               - **[Topic 3+]:** [Continue for all major topics.]
               ---
-      *   If the tool returns an error in its 'transcript' field (e.g., "Error: No transcript found..."), your response must be to inform the user of that specific error and stop. Do not try to summarize or answer questions if the transcript is an error message.
-  
-  {{#if isInitialVideoSummarizationRequest}}
-    Your 'suggestions' should be insightful follow-up questions based on the transcript content. 'visualElement' MUST be null.
-  {{else}}
-    ---
-    **If a Transcript is Successfully Retrieved (Follow-up Question):**
-    ---
-    The user is asking a specific follow-up question about the video: '{{{question}}}'
-    1.  Answer this question based *only* on the retrieved transcript ('fullTranscript'). Be direct and detailed.
-    2.  Reference specific points from the transcript.
-    Example (if user asks "What oven temperature did they recommend?" and transcript contains "preheat to 230 degrees Celsius"): "Based on the transcript, the instructor recommends preheating the oven to 230°C (450°F)..."
-    
-    Your 'suggestions' should be related follow-up questions based on the transcript. 'visualElement' MUST be null.
-  {{/if}}
-
-  **Step 2B: Local Video File Conceptual Analysis**
-  You cannot read the file content of '{{{originalFileName}}}'. Your task is to perform a *conceptual analysis* based on the filename and the user's request '{{{question}}}'. Imagine what a video with this title would contain.
-
-  {{#if isInitialVideoSummarizationRequest}}
-  1.  Provide a comprehensive summary of the video file '{{{originalFileName}}}' as if you have retrieved its core information.
-      Your summary MUST cover:
-      *   The main topic or theme one would expect from a video with such a title.
-      *   Key points, arguments, or segments that would typically be discussed.
-      *   Plausible important data points, specific examples, or crucial evidence relevant to the video's likely content.
-  2.  For 'suggestions', provide 2-3 insightful questions the user might want to ask next about the *specific conceptual content* of '{{{originalFileName}}}'.
-  Example 'response' for 'My_Vacation_in_Paris.mp4': "The video 'My_Vacation_in_Paris.mp4' likely showcases key landmarks like the Eiffel Tower, Louvre Museum, and Notre-Dame Cathedral. It probably includes scenes of Parisian life, such as enjoying croissants at a café or walking along the Seine River, and might conclude with reflections on the travel experience."
-  
-  {{else}}
-  1.  Answer the user's specific follow-up question about the video '{{{originalFileName}}}': '{{{question}}}'.
-  2.  Answer based on your *simulated in-depth understanding* of the specific content that would typically be in a video named '{{{originalFileName}}}'.
-  {{/if}}
-  'visualElement' MUST be null.
+          - If the request is a specific follow-up question (e.g., "What did they say about RAG?"), your 'response' MUST be a direct answer to that question, citing information *only* from the retrieved transcript.
+      3.  For 'suggestions', provide 2-3 insightful follow-up questions a user might ask about the specific content of this video, based on the transcript.
+      4.  'visualElement' MUST always be null for this mode.
 {{else if isLanguageTranslatorMode}}
 You are an AI Language Translator, acting as a RAG agent for accurate translation.
 Student's preferred UI language: '{{{studentProfile.preferredLanguage}}}'.
@@ -663,7 +631,6 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
         isInitialSlideSummarizationRequest: isTopic('Slide Content Summarization & Q&A', input.specificTopic) && input.question.toLowerCase().includes('summarize'),
 
         isVideoProcessingMode: isTopic('Video Content Summarization & Q&A', input.specificTopic),
-        isInitialVideoSummarizationRequest: isTopic('Video Content Summarization & Q&A', input.specificTopic) && (input.question.toLowerCase().includes('summarize') || input.question.toLowerCase().startsWith('http')),
         
         isCurriculumSpecificMode: !!(input.subject && input.lesson),
     };
