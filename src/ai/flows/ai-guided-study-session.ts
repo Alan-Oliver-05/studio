@@ -224,8 +224,7 @@ Example Response Structure (Problem Solving):
 [Step 3: Calculation and intermediate result.]
 ...
 [Final Answer: The final answer is X.]
-This method is standard for {{{studentProfile.educationQualification.boardExam.standard}}} {{{studentProfile.educationQualification.boardExam.board}}} students.
-{{#if competitiveExam.examDate}}Keep practicing for your exam on {{{competitiveExam.examDate}}}!{{/if}}"
+This method is standard for {{{studentProfile.educationQualification.boardExam.standard}}} {{{studentProfile.educationQualification.boardExam.board}}} students."
 
 {{else if isPdfProcessingMode}}
   You are an AI assistant specialized in processing PDF documents.
@@ -568,7 +567,7 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     try {
         const { output } = await prompt(enrichedInput);
 
-        if (!output || !output.response) {
+        if (!output || (!output.response && !output.visualElement)) {
             console.error("AI returned an empty or invalid response for input:", enrichedInput);
             return {
                 response: "I'm sorry, I was unable to process that request. Please try rephrasing or asking something different.",
@@ -581,8 +580,12 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
         }
         
         const finalOutput = {
-            ...output,
+            response: output.response,
             suggestions: output.suggestions || [],
+            visualElement: output.visualElement,
+            videoTitle: output.videoTitle,
+            authorName: output.authorName,
+            fullTranscript: output.fullTranscript,
         };
 
         return finalOutput;
