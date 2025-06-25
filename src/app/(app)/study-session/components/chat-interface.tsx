@@ -228,14 +228,29 @@ export function ChatInterface({
 
   // State for speech recognition
   const [isListening, setIsListening] = useState(false);
+  const [micPermission, setMicPermission] = useState<boolean | null>(null);
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if (!enableSpeech || typeof window === 'undefined') return;
+    
+    // Proactively check for microphone permission
+    if (micPermission === null) {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(() => setMicPermission(true))
+          .catch(() => {
+            setMicPermission(false);
+          });
+      } else {
+        setMicPermission(false);
+      }
+    }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       toast({ title: "Unsupported Browser", description: "Speech recognition is not supported here. Please try Chrome or Edge.", variant: "destructive" });
+      setMicPermission(false);
       return;
     }
 
@@ -264,13 +279,18 @@ export function ChatInterface({
     };
 
     recognition.onerror = (event: any) => {
-      toast({ title: "Speech Recognition Error", description: `Error: ${event.error}`, variant: "destructive" });
+      let errorMessage = `Speech Recognition Error: ${event.error}`;
+      if (event.error === 'not-allowed') {
+        errorMessage = "Microphone access denied. Please enable it in your browser settings.";
+        setMicPermission(false);
+      }
+      toast({ title: "Speech Recognition Error", description: errorMessage, variant: "destructive" });
       setIsListening(false);
     };
 
     recognitionRef.current = recognition;
 
-  }, [enableSpeech, context?.userLanguageCode, toast]);
+  }, [enableSpeech, context?.userLanguageCode, toast, micPermission]);
 
   useEffect(() => {
     const existingConversation = getConversationById(conversationId);
@@ -472,6 +492,15 @@ export function ChatInterface({
   };
 
   const toggleListening = () => {
+    if (micPermission === false) {
+      toast({
+        title: "Microphone Access Denied",
+        description: "Please enable microphone permissions for this site in your browser's settings.",
+        variant: "destructive",
+        duration: 7000,
+      });
+      return;
+    }
     if (!recognitionRef.current) {
         toast({title: "Mic Error", description: "Speech recognition not initialized.", variant: "destructive"});
         return;
@@ -480,9 +509,14 @@ export function ChatInterface({
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
-      setInput(""); // Clear input when starting to listen
-      recognitionRef.current.start();
-      setIsListening(true);
+      setInput("");
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error("Error starting speech recognition:", e);
+        toast({title: "Mic Start Error", description: "Could not start listening. Please try again.", variant: "destructive"});
+      }
     }
   };
 
@@ -948,11 +982,21 @@ export function ChatInterface({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button type="button" variant="ghost" size="icon" onClick={toggleListening} disabled={isLoading} className={cn("flex-shrink-0 text-muted-foreground", isListening && "text-destructive animate-pulse")}>
-                  {isListening ? <MicOff className="h-5 w-5"/> : <Mic className="h-5 w-5"/>}
-                </Button>
+                <span>
+                  <Button type="button" variant="ghost" size="icon" onClick={toggleListening} disabled={isLoading || micPermission !== true} className={cn("flex-shrink-0 text-muted-foreground", isListening && "text-destructive animate-pulse")}>
+                    {isListening ? <MicOff className="h-5 w-5"/> : <Mic className="h-5 w-5"/>}
+                  </Button>
+                </span>
               </TooltipTrigger>
-              <TooltipContent><p>{isListening ? "Stop listening" : `Speak in ${context?.userLanguageCode || 'default language'}`}</p></TooltipContent>
+              <TooltipContent>
+                {micPermission === false ? (
+                  <p>Mic access denied. Enable in browser settings.</p>
+                ) : isListening ? (
+                  <p>Stop listening</p>
+                ) : (
+                  <p>Speak in {context?.userLanguageCode || 'default language'}</p>
+                )}
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         )}
@@ -999,4 +1043,5 @@ export function ChatInterface({
 
 
     
+
 
