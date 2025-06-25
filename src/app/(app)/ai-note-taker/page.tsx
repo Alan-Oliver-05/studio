@@ -6,20 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIconLucide, FileUp, UploadCloud, Youtube, Key, Brain, Info, Sparkles, SendHorizonal, MessageSquare, ChevronRightSquare, Link as LinkIcon, Film, FolderClosed, Copy, Shield, Switch } from "lucide-react";
+import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIconLucide, FileUp, UploadCloud, Youtube, Key, Brain, Info, Sparkles, SendHorizonal, MessageSquare, ChevronRightSquare, Link as LinkIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { summarizeText, SummarizeTextInput, SummarizeTextOutput } from "@/ai/flows/summarize-text-flow";
 import { aiGuidedStudySession, AIGuidedStudySessionInput, AIGuidedStudySessionOutput } from "@/ai/flows/ai-guided-study-session";
 import { useUserProfile } from "@/contexts/user-profile-context";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { addMessageToConversation } from "@/lib/chat-storage";
 import type { Message as MessageType } from "@/types";
 import * as pdfjsLib from 'pdfjs-dist';
-import NextImage from "next/image";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
@@ -109,7 +105,6 @@ export default function SummarizerPage() {
   const [videoQuestionHistory, setVideoQuestionHistory] = useState<Array<{ question: string; answer: string; id: string }>>([]);
   const [currentVideoQuestion, setCurrentVideoQuestion] = useState<string>("");
   const [isProcessingVideo, setIsProcessingVideo] = useState<boolean>(false);
-  const [videoResultTab, setVideoResultTab] = useState<'transcript' | 'ai'>('transcript');
 
 
   const [isLoading, setIsLoadingState] = useState<boolean>(false); 
@@ -611,15 +606,13 @@ export default function SummarizerPage() {
       };
       const result = await aiGuidedStudySession(aiInput);
       setVideoProcessingOutput(result);
-      setVideoResultTab('transcript');
       
       const aiResponseMessage: MessageType = {
         id: crypto.randomUUID(), sender: 'ai', text: result.response, suggestions: result.suggestions, timestamp: Date.now(),
-        // Pass new fields to message for storage
         ...(result.videoTitle && { text: `Title: ${result.videoTitle}\n${result.response}` }),
       };
       addMessageToConversation(newConversationId, currentInputTypeConfig.storageTopic, aiResponseMessage, profile);
-      toast({ title: "Video Processed!", description: `Transcript and summary for the video is ready.` });
+      toast({ title: "Video Processed!", description: `Transcript and summary for "${result.videoTitle || 'the video'}" is ready.` });
     } catch (e) {
       console.error("Video Summarization error:", e);
       const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during video processing.";
@@ -667,15 +660,6 @@ export default function SummarizerPage() {
       toast({ title: "Video Q&A Failed", description: errorMessage, variant: "destructive" });
     } finally {
       setIsProcessingVideo(false);
-    }
-  };
-  
-  const handleCopyTranscript = () => {
-    if (videoProcessingOutput?.fullTranscript) {
-        navigator.clipboard.writeText(videoProcessingOutput.fullTranscript);
-        toast({ title: "Copied!", description: "The full video transcript has been copied to your clipboard." });
-    } else {
-        toast({ title: "No Transcript", description: "No transcript available to copy.", variant: "destructive" });
     }
   };
 
@@ -772,8 +756,21 @@ export default function SummarizerPage() {
             </div>
         );
       case "video":
-        // This is handled by the new top-level UI for video
-        return null;
+        return (
+          <div className="p-3 sm:p-4 border-2 border-dashed border-primary/30 rounded-xl bg-card shadow-sm space-y-3">
+             <div className="flex items-center gap-2">
+              <Youtube className="h-6 w-6 text-red-600 flex-shrink-0"/>
+              <Input
+                type="url"
+                placeholder={currentInputTypeConfig.placeholder}
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                className="w-full"
+                disabled={isLoading || isProcessingVideo}
+              />
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -817,62 +814,36 @@ export default function SummarizerPage() {
         </div>
       </div>
 
-      {activeInputType !== 'video' && (
-        <div className="max-w-3xl mx-auto">
-          {renderInputArea()}
-          <div className="mt-6 text-center">
-              <Button
-              onClick={handleMainGenerateClick}
-              disabled={isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo || isParsingPdf ||
-                (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
-                (activeInputType === "pdf" && (!uploadedPdfFile || !pdfTextContent)) ||
-                (activeInputType === "recording" && !uploadedAudioFile) ||
-                (activeInputType === "powerpoint" && !uploadedSlideFile)
-              }
-              size="lg"
-              className="px-8 py-3 text-base"
-              >
-              {(isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo || isParsingPdf) ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                  <Wand2 className="mr-2 h-5 w-5" />
-              )}
-              {activeInputType === 'text' ? "Generate Notes"
-                : activeInputType === 'pdf' ? "Summarize PDF & Start Q&A" 
-                : activeInputType === 'recording' ? "Summarize Audio & Start Q&A" 
-                : activeInputType === 'powerpoint' ? "Summarize Slides & Start Q&A"
-                : "Generate"
-              }
-              </Button>
-          </div>
+      <div className="max-w-3xl mx-auto">
+        {renderInputArea()}
+        <div className="mt-6 text-center">
+            <Button
+            onClick={handleMainGenerateClick}
+            disabled={isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo || isParsingPdf ||
+              (activeInputType === "text" && (!inputText.trim() || characterCount < 10 || characterCount > MAX_CHARACTERS)) ||
+              (activeInputType === "pdf" && (!uploadedPdfFile || !pdfTextContent)) ||
+              (activeInputType === "recording" && !uploadedAudioFile) ||
+              (activeInputType === "powerpoint" && !uploadedSlideFile) ||
+              (activeInputType === "video" && !videoUrl.trim())
+            }
+            size="lg"
+            className="px-8 py-3 text-base"
+            >
+            {(isLoading || isProcessingPdf || isProcessingAudio || isProcessingSlides || isProcessingVideo || isParsingPdf) ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+                <Wand2 className="mr-2 h-5 w-5" />
+            )}
+            {activeInputType === 'text' ? "Generate Notes"
+              : activeInputType === 'pdf' ? "Summarize PDF & Start Q&A" 
+              : activeInputType === 'recording' ? "Summarize Audio & Start Q&A" 
+              : activeInputType === 'powerpoint' ? "Summarize Slides & Start Q&A"
+              : activeInputType === 'video' ? "Get Transcript & Summary"
+              : "Generate"
+            }
+            </Button>
         </div>
-      )}
-
-      {activeInputType === 'video' && (
-         <div className="w-full">
-            <div className="bg-yellow-400 dark:bg-yellow-500 p-4 rounded-lg shadow-md mb-8">
-              <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
-                <Input
-                  type="url"
-                  placeholder="Paste YouTube URL here..."
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  className="flex-grow bg-white dark:bg-slate-800 border-2 border-yellow-500 dark:border-yellow-600 focus-visible:ring-yellow-700 h-11 text-base"
-                  disabled={isProcessingVideo}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && videoUrl.trim()) handleGetTranscript(); }}
-                />
-                <Button
-                  onClick={handleGetTranscript}
-                  disabled={isProcessingVideo || !videoUrl.trim()}
-                  className="w-full sm:w-auto bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-700 dark:hover:bg-yellow-800 text-white shadow-md px-6 h-11"
-                >
-                  {isProcessingVideo ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <FileTextIcon className="mr-2 h-5 w-5"/>}
-                  Get Transcript
-                </Button>
-              </div>
-            </div>
-         </div>
-      )}
+      </div>
 
       {error && (
         <Alert variant="destructive" className="mt-6 max-w-3xl mx-auto shadow-md">
@@ -1076,88 +1047,60 @@ export default function SummarizerPage() {
         </Card>
       )}
 
-      {activeInputType === 'video' && videoProcessingOutput && (
-        <div className="mt-8 max-w-3xl mx-auto">
-          <Card className="shadow-lg bg-card/90 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-xl sm:text-2xl">
-                Transcript of {videoProcessingOutput.videoTitle || "Your Video"}
-              </CardTitle>
-              {videoProcessingOutput.authorName && (
-                <CardDescription>
-                  Author: {videoProcessingOutput.authorName} &middot; <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Watch on YouTube</a>
-                </CardDescription>
-              )}
-            </CardHeader>
-            <CardContent>
-              <Tabs value={videoResultTab} onValueChange={(value) => setVideoResultTab(value as any)} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="transcript">Transcript</TabsTrigger>
-                  <TabsTrigger value="ai">AI Summary & Q&A</TabsTrigger>
-                </TabsList>
-                <TabsContent value="transcript" className="mt-4">
-                  <div className="space-y-4">
-                    <div className="relative aspect-video w-full bg-slate-900 rounded-lg overflow-hidden shadow-inner">
-                      <NextImage src={`https://placehold.co/1280x720.png`} data-ai-hint="video player" alt={videoProcessingOutput.videoTitle || "Video thumbnail"} layout="fill" objectFit="cover" />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                        <div className="w-16 h-16 bg-red-600/90 rounded-full flex items-center justify-center cursor-pointer hover:bg-red-500 transition-colors">
-                          <a href={videoUrl} target="_blank" rel="noopener noreferrer" aria-label="Play video on YouTube">
-                            <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <ScrollArea className="h-60 border rounded-md p-3 text-sm leading-relaxed bg-muted/30">
-                      {videoProcessingOutput.fullTranscript || "No transcript available."}
-                    </ScrollArea>
-                  </div>
-                </TabsContent>
-                <TabsContent value="ai" className="mt-4">
-                  <div className="space-y-4">
-                      <div>
-                        <h3 className="font-semibold text-lg text-primary mb-1.5">AI Analysis:</h3>
-                        <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner max-h-80 overflow-y-auto">
-                          {videoProcessingOutput.response}
-                        </div>
-                      </div>
-                      {videoQuestionHistory.length > 0 && (
-                        <div className="pt-4 border-t">
-                          <h3 className="font-semibold text-lg text-primary mb-2">Q&A History:</h3>
-                          <ScrollArea className="max-h-60 pr-2"><div className="space-y-4">{videoQuestionHistory.map(item => (<div key={item.id} className="text-sm"><p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p><p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p></div>))}</div></ScrollArea>
-                        </div>
-                      )}
-                  </div>
-                </TabsContent>
-              </Tabs>
-              
-              <div className="mt-6 space-y-2">
-                  <Button className="w-full bg-purple-600 hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-700" onClick={() => setVideoResultTab('ai')}>
-                      <Brain className="mr-2 h-4 w-4"/> Chat with AI
-                  </Button>
-                  <Button className="w-full bg-blue-500 hover:bg-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600" onClick={handleGetTranscript}>
-                      <FileText className="mr-2 h-4 w-4"/> Re-Summarise with AI
-                  </Button>
-                  <Button variant="outline" className="w-full" onClick={handleCopyTranscript}>
-                      <Copy className="mr-2 h-4 w-4"/> Copy Transcript
-                  </Button>
-                  <Button variant="outline" className="w-full" disabled>
-                      <Shield className="mr-2 h-4 w-4"/> Remove Sponsor, Interaction and More
-                  </Button>
+      {activeInputType === 'video' && (videoProcessingOutput || videoQuestionHistory.length > 0) && (
+        <Card className="mt-8 shadow-lg max-w-3xl mx-auto bg-card/90 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center text-xl sm:text-2xl">
+              <Youtube className="mr-2 h-5 w-5 sm:h-6 sm:w-6 text-red-500"/>
+              Video Analysis: <span className="ml-2 font-normal text-lg text-muted-foreground truncate max-w-[200px] sm:max-w-xs" title={videoProcessingOutput?.videoTitle || videoUrl}>{videoProcessingOutput?.videoTitle || "Your Video"}</span>
+            </CardTitle>
+             <CardDescription>
+                {videoProcessingOutput?.authorName && `Author: ${videoProcessingOutput.authorName}`}
+                <a href={videoUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-2">Watch on YouTube</a>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {videoProcessingOutput?.fullTranscript && (
+                <div>
+                  <h3 className="font-semibold text-lg text-primary mb-1.5">Transcript:</h3>
+                  <ScrollArea className="h-40 border rounded-md p-3 text-sm leading-relaxed bg-muted/30">
+                    {videoProcessingOutput.fullTranscript}
+                  </ScrollArea>
+                </div>
+            )}
+            {videoProcessingOutput?.response && (
+              <div>
+                <h3 className="font-semibold text-lg text-primary mb-1.5">
+                  {videoQuestionHistory.length === 0 && !currentVideoQuestion ? "AI Summary:" : "Latest Answer:"}
+                </h3>
+                <div className="p-3.5 border rounded-md bg-muted/30 whitespace-pre-wrap text-sm leading-relaxed shadow-inner">
+                  {videoProcessingOutput.response}
+                </div>
               </div>
-
-              <div className="pt-6 border-t mt-6">
-                  <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about the video:</h3>
-                  <div className="flex items-center gap-2">
-                  <Input value={currentVideoQuestion} onChange={(e) => setCurrentVideoQuestion(e.target.value)} placeholder="Type your question here..." className="flex-grow" disabled={isProcessingVideo} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentVideoQuestion.trim()) { e.preventDefault(); handleAskVideoQuestion(); } }}/>
-                  <Button onClick={handleAskVideoQuestion} disabled={isProcessingVideo || !currentVideoQuestion.trim()}>{isProcessingVideo && currentVideoQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>} Ask</Button>
-                  </div>
+            )}
+            {videoProcessingOutput?.suggestions && videoProcessingOutput.suggestions.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg text-primary mb-1.5 flex items-center"><Sparkles className="mr-2 h-4 w-4 text-accent"/>Suggested Questions:</h3>
+                <ul className="space-y-1.5">{videoProcessingOutput.suggestions.map((suggestion, idx) => (<li key={idx} className="text-xs"><Button variant="link" className="p-0 h-auto text-accent hover:text-accent/80 text-left" onClick={() => setCurrentVideoQuestion(suggestion)}><ChevronRightSquare className="inline h-3 w-3 mr-1 opacity-70 flex-shrink-0"/>{suggestion}</Button></li>))}</ul>
               </div>
-
-            </CardContent>
-          </Card>
-        </div>
+            )}
+            {videoQuestionHistory.length > 0 && (
+              <div className="pt-4 border-t">
+                <h3 className="font-semibold text-lg text-primary mb-2">Q&A History:</h3>
+                <ScrollArea className="max-h-60 pr-2"><div className="space-y-4">{videoQuestionHistory.map(item => (<div key={item.id} className="text-sm"><p className="font-medium text-muted-foreground flex items-center"><MessageSquare className="h-4 w-4 mr-1.5 text-accent"/>Q: {item.question}</p><p className="mt-1 pl-5 text-foreground whitespace-pre-wrap">A: {item.answer}</p></div>))}</div></ScrollArea>
+              </div>
+            )}
+            <div className="pt-6 border-t">
+               <h3 className="font-semibold text-lg text-primary mb-2">Ask a follow-up question about the video:</h3>
+              <div className="flex items-center gap-2">
+                <Input value={currentVideoQuestion} onChange={(e) => setCurrentVideoQuestion(e.target.value)} placeholder="Type your question here..." className="flex-grow" disabled={isProcessingVideo} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && currentVideoQuestion.trim()) { e.preventDefault(); handleAskVideoQuestion(); } }}/>
+                <Button onClick={handleAskVideoQuestion} disabled={isProcessingVideo || !currentVideoQuestion.trim()}>{isProcessingVideo && currentVideoQuestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <SendHorizonal className="mr-2 h-4 w-4"/>} Ask</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
+
     </div>
   );
 }
