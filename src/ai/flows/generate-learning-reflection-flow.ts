@@ -48,13 +48,15 @@ Name: {{{studentProfile.name}}}
 Age: {{{studentProfile.age}}}
 Learning Style: {{{studentProfile.learningStyle}}}
 Education Focus: {{{studentProfile.educationCategory}}}
-{{#if studentProfile.educationQualification.boardExams.board}}Board: {{{studentProfile.educationQualification.boardExams.board}}} - {{{studentProfile.educationQualification.boardExams.standard}}}{{/if}}
-{{#if studentProfile.educationQualification.competitiveExams.specificExam}}Competitive Exam: {{{studentProfile.educationQualification.competitiveExams.specificExam}}}{{/if}}
-{{#if studentProfile.educationQualification.universityExams.course}}University Course: {{{studentProfile.educationQualification.universityExams.course}}}{{/if}}
+{{#with studentProfile.educationQualification}}
+  {{#if boardExams.board}}Board: {{{boardExams.board}}} - {{{boardExams.standard}}}{{/if}}
+  {{#if competitiveExams.specificExam}}Competitive Exam: {{{competitiveExams.specificExam}}}{{/if}}
+  {{#if universityExams.course}}University Course: {{{universityExams.course}}}{{/if}}
+{{/with}}
 
-{{#if learnerContextSummary}}
+{{#if recentActivitySummary}}
 Recent Learning Context:
-{{{learnerContextSummary}}}
+{{{recentActivitySummary}}}
 {{/if}}
 
 Based on the learner's profile and their recent activity:
