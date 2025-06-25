@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for conducting AI-guided study sessions.
@@ -83,8 +84,8 @@ const VisualElementSchema = z.object({
 
 
 const AIGuidedStudySessionOutputSchema = z.object({
-  response: z.string().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. If an 'interactive_mind_map_canvas' is being set up from an uploaded document, this response should inform the user about the auto-generated initial structure. For Q&A about the map, this contains the textual explanation. For PDF/Audio/Slide/Video Summarization, this is the summary or answer to a question about the content."),
-  suggestions: z.array(z.string()).describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results. For PDF/Audio/Slide/Video Summarization, these could be suggested follow-up questions."),
+  response: z.string().optional().nullable().describe("The AI tutor's response to the student's question, including explanations, study materials, and examples tailored to their educational context and preferred language. If an 'interactive_mind_map_canvas' is being set up from an uploaded document, this response should inform the user about the auto-generated initial structure. For Q&A about the map, this contains the textual explanation. For PDF/Audio/Slide/Video Summarization, this is the summary or answer to a question about the content."),
+  suggestions: z.array(z.string()).optional().nullable().describe("A list of 2-3 real-time external source suggestions (like links to official educational board websites, reputable academic resources, or specific textbook names) for further study on the topic, relevant to the student's curriculum and country/region, ideally informed by web search results. For PDF/Audio/Slide/Video Summarization, these could be suggested follow-up questions."),
   visualElement: VisualElementSchema.optional().nullable().describe("An optional visual element to aid understanding. For interactive mind map canvas requests (via Visual Learning - Mind Maps mode), this MUST have type 'interactive_mind_map_canvas'. If based on an uploaded file, its 'content' field can include an 'initialNodes' array."),
   videoTitle: z.string().optional().nullable().describe("The title of the YouTube video, extracted from the tool output."),
   authorName: z.string().optional().nullable().describe("The author/channel name of the YouTube video, from the tool output."),
@@ -200,7 +201,7 @@ You are an AI Tutor Agent, a personalized educational assistant acting as a RAG 
 {{else if isHomeworkHelp}}
 You are an AI Tutor specializing in Homework Help, acting as a RAG (Retrieval Augmented Generation) agent.
 Your primary goal is to provide a direct, accurate answer or a clear, step-by-step solution to the student's homework question: "{{{question}}}".
-Student's Educational Context: {{#with studentProfile.educationQualification}}{{#if boardExam.board}}Board: {{{boardExam.board}}}, Standard: {{{boardExam.standard}}}{{#if boardExam.subjectSegment}}, Stream: {{{boardExam.subjectSegment}}}{{/if}}{{/if}}; {{#if competitiveExam.examType}}Exam: {{#if competitiveExam.specificExam}}{{{competitiveExam.specificExam}}} ({{/if}}{{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}}){{/if}}{{#if competitiveExam.stage}}, Stage: {{{competitiveExam.stage}}}{{/if}}{{#if competitiveExam.examDate}}, Date: {{{competitiveExam.examDate}}}{{/if}}{{/if}}; {{#if universityExam.universityName}}University: {{{universityExam.universityName}}}, Course: {{{universityExam.course}}}{{#if universityExam.currentYear}}, Year: {{{universityExam.currentYear}}}{{/if}}{{/if}}{{else}}General knowledge for age {{{studentProfile.age}}}.{{/with}}
+Student's Educational Context: {{#with studentProfile.educationQualification}}{{#if boardExam.board}}Board: {{{boardExam.board}}}, Standard: {{{boardExam.standard}}}{{#if boardExam.subjectSegment}}, Stream: {{{boardExam.subjectSegment}}}{{/if}}{{/if}}; {{#if competitiveExam.examType}}Exam: {{#if competitiveExam.specificExam}}{{{competitiveExam.specificExam}}} ({{/if}}{{{competitiveExam.examType}}}{{#if competitiveExam.specificExam}}){{/if}}{{#if competitiveExam.stage}}, Stage: {{{competitiveExam.stage}}}{{#if competitiveExam.examDate}}, Date: {{{competitiveExam.examDate}}}{{/if}}{{/if}}; {{#if universityExam.universityName}}University: {{{universityExam.universityName}}}, Course: {{{universityExam.course}}}{{#if universityExam.currentYear}}, Year: {{{universityExam.currentYear}}}{{/if}}{{/if}}{{else}}General knowledge for age {{{studentProfile.age}}}.{{/with}}
 
 1.  Analyze the Question: Understand what is being asked. Is it a factual question, a problem-solving task, a definition, etc.?
 2.  Image Context (If Provided): If an image is present ({{#if photoDataUri}}{{media url=photoDataUri}} This image contains the homework problem.{{else}}No image provided.{{/if}}), consider it the PRIMARY source of the question. Your answer must directly address the problem shown in the image.
@@ -566,10 +567,26 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
     
     try {
         const { output } = await prompt(enrichedInput);
-        if (!output) {
-            throw new Error('AI response was empty.');
+
+        if (!output || !output.response) {
+            console.error("AI returned an empty or invalid response for input:", enrichedInput);
+            return {
+                response: "I'm sorry, I was unable to process that request. Please try rephrasing or asking something different.",
+                suggestions: [],
+                visualElement: null,
+                videoTitle: null,
+                authorName: null,
+                fullTranscript: null,
+            };
         }
-        return output;
+        
+        const finalOutput = {
+            ...output,
+            suggestions: output.suggestions || [],
+        };
+
+        return finalOutput;
+
     } catch (e) {
         console.error("Error in aiGuidedStudySessionFlow:", e);
         const errorMessage = e instanceof Error ? e.message : "An unknown error occurred while processing your request.";
