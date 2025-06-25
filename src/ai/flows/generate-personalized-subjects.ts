@@ -134,7 +134,10 @@ const generatePersonalizedSubjectsFlow = ai.defineFlow(
           errorMessage = `The provided Google API Key is not valid. Please double-check your .env file and the key in your Google Cloud Console.`
        } else if (errorMessage.includes("PERMISSION_DENIED")) {
            errorMessage = `The AI model request was denied. This is likely due to API key restrictions. Please check Step 6 in HOW_TO_GET_KEYS.md to ensure your API key has no application or API restrictions.`
+       } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("model is overloaded") || errorMessage.toLowerCase().includes("service unavailable")) {
+           errorMessage = `The AI model is currently busy or unavailable. This is usually a temporary issue. Please try again in a few moments.`;
        }
+
 
        // Re-throw a more user-friendly error that can be caught by the UI
        throw new Error(`Failed to generate subjects. Reason: ${errorMessage}`);
@@ -145,6 +148,7 @@ const generatePersonalizedSubjectsFlow = ai.defineFlow(
     
     
     
+
 
 
 
