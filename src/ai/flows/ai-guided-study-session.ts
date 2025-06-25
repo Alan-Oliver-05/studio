@@ -674,22 +674,32 @@ const aiGuidedStudySessionFlow = ai.defineFlow(
       ...modeFlags,
     };
 
-    const { output } = await prompt(enhancedInput);
-
-    if (output) {
-      // Ensure visualElement is null if it's not a valid object, preventing issues downstream
-      if (output.visualElement && (typeof output.visualElement !== 'object' || !output.visualElement.type)) {
-        output.visualElement = null;
-      }
-      return output;
+    try {
+        const { output } = await prompt(enhancedInput);
+        if (output) {
+          if (output.visualElement && (typeof output.visualElement !== 'object' || !output.visualElement.type)) {
+            output.visualElement = null;
+          }
+          return output;
+        }
+        throw new Error("I'm sorry, I couldn't process that request. The AI returned an empty response.");
+    } catch (err) {
+        console.error("Error in aiGuidedStudySessionFlow:", err);
+        let errorMessage = err instanceof Error ? err.message : String(err);
+        
+        if (errorMessage.includes("API_KEY_SERVICE_BLOCKED") || (errorMessage.includes("403") && errorMessage.includes("generativelanguage.googleapis.com"))) {
+            errorMessage = `The AI model request was blocked. This is almost always because the "Vertex AI API" is not enabled in your Google Cloud project. Please check Step 4 in HOW_TO_GET_KEYS.md.`;
+        } else if (errorMessage.includes("API key not valid")) {
+            errorMessage = `The provided Google API Key is not valid. Please double-check your .env file and the key in your Google Cloud Console.`
+        } else if (errorMessage.includes("PERMISSION_DENIED")) {
+           errorMessage = `The AI model request was denied. This is likely due to API key restrictions. Please check Step 6 in HOW_TO_GET_KEYS.md to ensure your API key has no application or API restrictions.`
+       } else if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("model is overloaded") || errorMessage.toLowerCase().includes("service unavailable")) {
+           errorMessage = `The AI model is currently busy or unavailable. This is usually a temporary issue. Please try again in a few moments.`;
+       } else if (errorMessage.includes("Error: No transcript found")) {
+            errorMessage = `Could not retrieve a transcript for the provided YouTube URL. The creator may have disabled transcripts, or the video might not have them.`;
+       }
+        throw new Error(`${errorMessage}`);
     }
-    
-    // Fallback if the AI fails to generate any output
-    return {
-      response: "I'm sorry, I couldn't process that request. Could you please try rephrasing or asking something else?",
-      suggestions: [],
-      visualElement: null
-    };
   }
 );
 

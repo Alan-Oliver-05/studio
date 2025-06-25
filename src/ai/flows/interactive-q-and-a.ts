@@ -196,46 +196,49 @@ const interactiveQAndAFlow = ai.defineFlow(
       isCompletedStage: baseInput.currentStage === 'completed',
     };
 
-    const {output} = await prompt(stageEnhancedInput);
+    try {
+        const {output} = await prompt(stageEnhancedInput);
 
-    if (output && output.question && output.nextStage !== undefined && output.isStageComplete !== undefined) {
-        let feedbackString = (output.feedback && output.feedback.trim() !== "") ? output.feedback.trim() : undefined;
+        if (output && output.question && output.nextStage !== undefined && output.isStageComplete !== undefined) {
+            let feedbackString = (output.feedback && output.feedback.trim() !== "") ? output.feedback.trim() : undefined;
 
-        if (!feedbackString && !(stageEnhancedInput.isCompletedStage && output.nextStage === 'completed')) {
-            if (!inputUnsafe.studentAnswer) { // If no student answer, it's start of a stage/session
-                 switch(stageEnhancedInput.currentStage) {
-                    case 'initial_material': feedbackString = `Let's start with some foundational questions on '${stageEnhancedInput.topic}'.`; break;
-                    case 'deeper_material': feedbackString = `Great! Now, let's explore '${stageEnhancedInput.topic}' a bit more deeply.`; break;
-                    case 'out_of_syllabus': feedbackString = `Okay, let's see how '${stageEnhancedInput.topic}' connects to broader ideas.`; break;
-                    default: feedbackString = "Let's continue!";
-                 }
-            } else { // Student provided an answer, but AI didn't give feedback (which it should)
-                feedbackString = "Okay, let's move to the next question."; // Generic fallback
+            if (!feedbackString && !(stageEnhancedInput.isCompletedStage && output.nextStage === 'completed')) {
+                if (!inputUnsafe.studentAnswer) { // If no student answer, it's start of a stage/session
+                     switch(stageEnhancedInput.currentStage) {
+                        case 'initial_material': feedbackString = `Let's start with some foundational questions on '${stageEnhancedInput.topic}'.`; break;
+                        case 'deeper_material': feedbackString = `Great! Now, let's explore '${stageEnhancedInput.topic}' a bit more deeply.`; break;
+                        case 'out_of_syllabus': feedbackString = `Okay, let's see how '${stageEnhancedInput.topic}' connects to broader ideas.`; break;
+                        default: feedbackString = "Let's continue!";
+                     }
+                } else { // Student provided an answer, but AI didn't give feedback (which it should)
+                    feedbackString = "Okay, let's move to the next question."; // Generic fallback
+                }
             }
+
+
+            return {
+                question: output.question,
+                feedback: feedbackString,
+                isCorrect: output.isCorrect,
+                suggestions: output.suggestions || [],
+                nextStage: output.nextStage,
+                isStageComplete: output.isStageComplete,
+            };
         }
+        
+        console.warn("Interactive Q&A: AI output was malformed or missing critical fields. Input:", JSON.stringify(stageEnhancedInput), "Output:", JSON.stringify(output));
+        throw new Error("AI failed to return a valid response for this Q&A stage. Please try asking again.");
 
-
-        return {
-            question: output.question,
-            feedback: feedbackString,
-            isCorrect: output.isCorrect,
-            suggestions: output.suggestions || [],
-            nextStage: output.nextStage,
-            isStageComplete: output.isStageComplete,
-        };
+    } catch (err) {
+        console.error("Error in interactiveQAndAFlow:", err);
+        let errorMessage = err instanceof Error ? err.message : String(err);
+        
+        if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("model is overloaded") || errorMessage.toLowerCase().includes("service unavailable")) {
+           errorMessage = `The AI model is currently busy or unavailable. This is usually a temporary issue. Please try again in a few moments.`;
+        }
+        
+        throw new Error(`${errorMessage}`);
     }
-
-    console.warn("Interactive Q&A: AI output was malformed or missing critical fields. Input:", JSON.stringify(stageEnhancedInput), "Output:", JSON.stringify(output));
-    // Ensure to return a valid structure even on internal error.
-    // Provide a default question or error message for the user.
-    return {
-        question: `I'm having a bit of trouble with the stage logic for '${stageEnhancedInput.currentStage}' about ${stageEnhancedInput.topic}. Could you ask a question, or should we try to restart this topic?`,
-        feedback: "Apologies, there was an issue with processing the Q&A stage. Please try again.",
-        isCorrect: undefined,
-        suggestions: [],
-        nextStage: stageEnhancedInput.currentStage, // Stay in current stage on error
-        isStageComplete: false, // Don't complete stage on error
-    };
   }
 );
     
