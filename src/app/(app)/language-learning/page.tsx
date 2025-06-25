@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { getConversationById } from "@/lib/chat-storage";
 import type { UserProfile, InitialNodeData, LanguageLearningMode, ConversationSetupParams } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { LANGUAGES } from "@/lib/constants";
 
 
 const DynamicChatInterface = dynamic(() =>
