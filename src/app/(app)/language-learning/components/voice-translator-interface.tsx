@@ -1,23 +1,19 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { UserProfile, Message as MessageType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Loader2, Mic, MicOff, Volume2, AlertCircle, Settings2, Languages, Info, Sparkles, FileText, History, Star, ChevronDown, Send } from 'lucide-react';
+import { Loader2, Mic, MicOff, Volume2, AlertCircle, Settings2, Languages, Info, Sparkles, FileText, History, Star, ChevronDown, Check } from 'lucide-react';
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from '@/ai/flows/ai-guided-study-session';
-import { addMessageToConversation, getConversationById } from '@/lib/chat-storage';
+import { addMessageToConversation } from '@/lib/chat-storage';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { LANGUAGES } from '@/lib/constants';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from '@/components/ui/input';
 
 interface VoiceTranslatorInterfaceProps {
   userProfile: UserProfile;
@@ -32,29 +28,6 @@ declare global {
   }
 }
 
-const displayedTargetLanguages = [
-  { value: "en", label: "English" },
-  { value: "ta", label: "Tamil" },
-  { value: "es", label: "Spanish" },
-];
-
-const LanguageTabButton = ({ lang, isActive, onClick, isDropdownTrigger = false }: { lang: {value: string, label: string}, isActive?: boolean, onClick?: () => void, isDropdownTrigger?: boolean }) => (
-  <Button
-    variant="ghost"
-    size="sm"
-    onClick={onClick}
-    className={cn(
-      "text-xs px-2.5 py-1 h-auto rounded-md font-medium",
-      isActive ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/5",
-      isDropdownTrigger && "ml-1"
-    )}
-  >
-    {lang.label}
-    {isDropdownTrigger && <ChevronDown className="ml-1 h-3.5 w-3.5" />}
-  </Button>
-);
-
-
 const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ userProfile, conversationId, topic }) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -67,8 +40,16 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
   const { toast } = useToast();
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
   const translationScrollRef = useRef<HTMLDivElement>(null);
-  const [targetLang, setTargetLang] = useState<string>(LANGUAGES.find(l=>l.label.toLowerCase() === userProfile.preferredLanguage.toLowerCase())?.value || displayedTargetLanguages[0].value);
+  const [targetLang, setTargetLang] = useState<string>(LANGUAGES.find(l=>l.label.toLowerCase() === userProfile.preferredLanguage.toLowerCase())?.value || 'en');
+  
+  const [isLangPopoverOpen, setIsLangPopoverOpen] = useState(false);
+  const [languageSearch, setLanguageSearch] = useState("");
 
+  const filteredLanguages = useMemo(() =>
+    LANGUAGES.filter(lang =>
+      lang.label.toLowerCase().includes(languageSearch.toLowerCase())
+    ),
+  [languageSearch]);
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -269,28 +250,68 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
       <CardHeader className="pb-3 pt-2 border-b">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center">
-            <span className="text-sm font-medium text-muted-foreground mr-2">Translate from <span className="text-primary font-semibold">{sourceLangLabel}</span> to:</span>
-            {displayedTargetLanguages.map(lang => (
-              <LanguageTabButton key={lang.value} lang={lang} isActive={targetLang === lang.value} onClick={() => setTargetLang(lang.value)} />
-            ))}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                 <LanguageTabButton lang={{value: "more_target", label: ""}} isDropdownTrigger={true}/>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {LANGUAGES.filter(l => !displayedTargetLanguages.find(dtl => dtl.value === l.value)).map(lang => (
-                  <DropdownMenuItem key={lang.value} onSelect={() => setTargetLang(lang.value)}>
-                    {lang.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <span className="text-sm font-medium text-muted-foreground mr-2">From: <span className="text-primary font-semibold">{sourceLangLabel}</span></span>
+          </div>
+          <div className="flex items-center">
+            <span className="text-sm font-medium text-muted-foreground mr-2">To:</span>
+             <Popover open={isLangPopoverOpen} onOpenChange={setIsLangPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={isLangPopoverOpen}
+                  className="w-[180px] justify-between h-9"
+                >
+                  <span className="truncate">
+                  {targetLang
+                    ? LANGUAGES.find((language) => language.value === targetLang)?.label
+                    : "Select language..."}
+                  </span>
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0">
+                <div className="p-2 border-b">
+                   <Input 
+                      placeholder="Search language..."
+                      value={languageSearch}
+                      onChange={(e) => setLanguageSearch(e.target.value)}
+                      className="h-9"
+                    />
+                </div>
+                <ScrollArea className="h-60">
+                  <div className="p-1">
+                  {filteredLanguages.length > 0 ? filteredLanguages.map((language) => (
+                    <Button
+                      variant="ghost"
+                      key={language.value}
+                      onClick={() => {
+                        setTargetLang(language.value);
+                        setIsLangPopoverOpen(false);
+                        setLanguageSearch("");
+                      }}
+                      className="w-full justify-start font-normal text-sm h-9"
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          targetLang === language.value ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <span className="truncate">{language.label}</span>
+                    </Button>
+                  )) : (
+                    <p className="p-2 text-center text-sm text-muted-foreground">No language found.</p>
+                  )}
+                  </div>
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="flex-grow p-3 sm:p-4 space-y-3 sm:space-y-4 flex flex-col md:flex-row gap-3 sm:gap-4 items-stretch min-h-0">
-        {/* Left Panel - Voice Input / Transcript */}
         <div className="flex-1 flex flex-col p-3 sm:p-4 border rounded-xl bg-background shadow-sm min-h-[250px] md:min-h-0">
             <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold text-primary flex items-center"><Mic className="h-4 w-4 mr-1.5"/>Your Speech</h3>
@@ -322,7 +343,6 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
             )}
         </div>
 
-        {/* Right Panel - Translation Output */}
         <div className="flex-1 flex flex-col p-3 sm:p-4 border rounded-xl bg-background shadow-sm min-h-[250px] md:min-h-0">
             <h3 className="text-sm font-semibold text-primary mb-2 flex items-center"><Languages className="h-4 w-4 mr-1.5"/>Translation ({LANGUAGES.find(l => l.value === targetLang)?.label || targetLang})</h3>
             <ScrollArea ref={translationScrollRef} className="flex-grow border rounded-md p-2.5 bg-muted/30 min-h-[150px] text-sm shadow-inner">
@@ -368,4 +388,3 @@ const VoiceTranslatorInterface: React.FC<VoiceTranslatorInterfaceProps> = ({ use
 };
 
 export default VoiceTranslatorInterface;
-

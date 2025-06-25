@@ -1,24 +1,20 @@
 
 "use client";
 
-import React, { useState, useRef, ChangeEvent, useCallback } from 'react';
+import React, { useState, useRef, ChangeEvent, useCallback, useMemo } from 'react';
 import type { UserProfile, Message as MessageType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, UploadCloud, FileText, Languages, ArrowRightLeft, Info, History, Star, ChevronDown } from 'lucide-react';
+import { Loader2, UploadCloud, FileText, Languages, ArrowRightLeft, Info, History, Star, ChevronDown, Check } from 'lucide-react';
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from '@/ai/flows/ai-guided-study-session';
 import { addMessageToConversation } from '@/lib/chat-storage';
-import { LANGUAGES } from '@/lib/constants'; // Assuming LANGUAGES has value and label
+import { LANGUAGES } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from '@/components/ui/input';
 
 interface DocumentTranslatorInterfaceProps {
   userProfile: UserProfile;
@@ -26,40 +22,62 @@ interface DocumentTranslatorInterfaceProps {
   topic: string;
 }
 
-const displayedSourceLanguages = [
-  { value: "detect", label: "Detect language" },
-  { value: "en", label: "English" },
-  { value: "ta", label: "Tamil" },
-  { value: "es", label: "Spanish" },
-];
+const LanguageCombobox = ({
+  label,
+  value,
+  onValueChange,
+  languageList
+}: {
+  label: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  languageList: { value: string, label: string }[];
+}) => {
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
-const displayedTargetLanguages = [
-  { value: "ta", label: "Tamil" },
-  { value: "en", label: "English" },
-  { value: "es", label: "Spanish" },
-];
+  const filteredLanguages = useMemo(() =>
+    languageList.filter(lang =>
+      lang.label.toLowerCase().includes(search.toLowerCase())
+    ), [search, languageList]
+  );
 
-
-const LanguageTabButton = ({ lang, isActive, onClick, isDropdownTrigger = false }: { lang: {value: string, label: string}, isActive?: boolean, onClick?: () => void, isDropdownTrigger?: boolean }) => (
-  <Button
-    variant="ghost"
-    size="sm"
-    onClick={onClick}
-    className={cn(
-      "text-sm px-3 py-1.5 h-auto rounded-md font-medium",
-      isActive ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/5",
-      isDropdownTrigger && "ml-1"
-    )}
-  >
-    {lang.label}
-    {isDropdownTrigger && <ChevronDown className="ml-1 h-4 w-4" />}
-  </Button>
-);
-
+  return (
+    <div className="flex-1">
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" role="combobox" aria-expanded={popoverOpen} className="w-full justify-between h-9 font-normal">
+            <span className="truncate">
+              {value ? languageList.find(lang => lang.value === value)?.label : `Select ${label}...`}
+            </span>
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+          <div className="p-2 border-b">
+            <Input placeholder="Search language..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9"/>
+          </div>
+          <ScrollArea className="h-60">
+            <div className="p-1">
+              {filteredLanguages.length > 0 ? filteredLanguages.map((language) => (
+                <Button variant="ghost" key={language.value} onClick={() => { onValueChange(language.value); setPopoverOpen(false); setSearch(""); }} className="w-full justify-start font-normal text-sm h-9">
+                  <Check className={cn("mr-2 h-4 w-4", value === language.value ? "opacity-100" : "opacity-0")} />
+                  <span className="truncate">{language.label}</span>
+                </Button>
+              )) : (
+                <p className="p-2 text-center text-sm text-muted-foreground">No language found.</p>
+              )}
+            </div>
+          </ScrollArea>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
 
 const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = ({ userProfile, conversationId, topic }) => {
   const [sourceLang, setSourceLang] = useState<string>("detect");
-  const [targetLang, setTargetLang] = useState<string>(LANGUAGES.find(l=>l.label.toLowerCase() === userProfile.preferredLanguage.toLowerCase())?.value || displayedTargetLanguages[0].value);
+  const [targetLang, setTargetLang] = useState<string>(LANGUAGES.find(l=>l.label.toLowerCase() === userProfile.preferredLanguage.toLowerCase())?.value || 'en');
   const [originalFileName, setOriginalFileName] = useState<string | null>(null);
   const [originalFileContent, setOriginalFileContent] = useState<string>("");
   const [translatedContent, setTranslatedContent] = useState<string>("");
@@ -67,6 +85,8 @@ const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = 
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const sourceLanguagesWithDetect = useMemo(() => [{ value: "detect", label: "Detect Language" }, ...LANGUAGES], []);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -92,7 +112,7 @@ const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = 
       reader.onerror = () => {
         toast({ title: "File Read Error", description: `Error reading "${file.name}".`, variant: "destructive" });
       };
-      reader.readAsText(file); // Reading as text
+      reader.readAsText(file);
     }
   };
 
@@ -134,7 +154,6 @@ const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = 
         photoDataUri: undefined, 
       };
       
-      // Add originalFileName to prompt context if available
       (aiInput as any).originalFileName = originalFileName; 
 
       const result = await aiGuidedStudySession(aiInput);
@@ -164,72 +183,19 @@ const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = 
         toast({ title: "Cannot Swap", description: "Please select a specific source language to swap.", variant: "default"});
         return;
     }
-    const currentSourceIsDisplay = displayedSourceLanguages.some(l => l.value === sourceLang);
-    const currentTargetIsDisplay = displayedTargetLanguages.some(l => l.value === targetLang);
-
-    if (currentSourceIsDisplay && currentTargetIsDisplay) {
-        const tempSource = sourceLang;
-        setSourceLang(targetLang);
-        setTargetLang(tempSource);
-    } else {
-        // Fallback or more complex logic if languages are not in the small displayed lists
-        const allLangsPlusDetect = [...LANGUAGES, { value: "detect", label: "Detect language" }];
-        const sourceExists = allLangsPlusDetect.find(l => l.value === sourceLang);
-        const targetExists = LANGUAGES.find(l => l.value === targetLang);
-        if (sourceExists && targetExists && sourceLang !== "detect") {
-            setSourceLang(targetLang);
-            setTargetLang(sourceLang);
-        } else {
-            toast({ title: "Swap Not Possible", description: "Selected languages cannot be directly swapped with current options.", variant: "default"});
-        }
-    }
+    setSourceLang(targetLang);
+    setTargetLang(sourceLang);
   };
 
   return (
     <Card className="w-full flex flex-col shadow-none border-0 min-h-[calc(100vh-20rem)] bg-transparent">
       <CardHeader className="pb-3 pt-2 border-b">
-        <div className="flex items-center justify-between">
-          {/* Source Language Tabs */}
-          <div className="flex items-center">
-            {displayedSourceLanguages.map(lang => (
-              <LanguageTabButton key={lang.value} lang={lang} isActive={sourceLang === lang.value} onClick={() => setSourceLang(lang.value)} />
-            ))}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <LanguageTabButton lang={{value: "more_source", label: ""}} isDropdownTrigger={true}/>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {LANGUAGES.filter(l => !displayedSourceLanguages.find(dsl => dsl.value === l.value)).map(lang => (
-                  <DropdownMenuItem key={lang.value} onSelect={() => setSourceLang(lang.value)}>
-                    {lang.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          <Button variant="ghost" size="icon" onClick={handleSwapLanguages} className="text-muted-foreground hover:text-primary">
+        <div className="flex items-center justify-between gap-2">
+          <LanguageCombobox label="From" value={sourceLang} onValueChange={setSourceLang} languageList={sourceLanguagesWithDetect} />
+          <Button variant="ghost" size="icon" onClick={handleSwapLanguages} className="text-muted-foreground hover:text-primary flex-shrink-0">
             <ArrowRightLeft className="h-5 w-5" />
           </Button>
-
-          {/* Target Language Tabs */}
-          <div className="flex items-center">
-            {displayedTargetLanguages.map(lang => (
-              <LanguageTabButton key={lang.value} lang={lang} isActive={targetLang === lang.value} onClick={() => setTargetLang(lang.value)} />
-            ))}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                 <LanguageTabButton lang={{value: "more_target", label: ""}} isDropdownTrigger={true}/>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {LANGUAGES.filter(l => !displayedTargetLanguages.find(dtl => dtl.value === l.value)).map(lang => (
-                  <DropdownMenuItem key={lang.value} onSelect={() => setTargetLang(lang.value)}>
-                    {lang.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <LanguageCombobox label="To" value={targetLang} onValueChange={setTargetLang} languageList={LANGUAGES} />
         </div>
          <div className="mt-3 text-center">
             <Button
@@ -245,7 +211,6 @@ const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = 
       </CardHeader>
 
       <CardContent className="flex-grow p-4 space-y-4 flex flex-col md:flex-row gap-4 items-stretch">
-        {/* Left Panel - Upload/Input */}
         <div className="flex-1 flex flex-col p-4 border-2 border-dashed border-input rounded-lg bg-muted/30 items-center justify-start min-h-[300px] md:min-h-0">
           <div className="text-center mb-4">
             <UploadCloud className="h-16 w-16 text-primary opacity-70 mb-3 mx-auto" />
@@ -263,7 +228,6 @@ const DocumentTranslatorInterface: React.FC<DocumentTranslatorInterfaceProps> = 
           />
         </div>
 
-        {/* Right Panel - Translation Output / Browse */}
         <div className="flex-1 flex flex-col p-4 border rounded-lg bg-background shadow-sm min-h-[300px] md:min-h-0">
            <div className="text-center mb-4">
             <p className="text-sm font-medium text-muted-foreground mb-2">Or choose a file</p>

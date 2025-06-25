@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,21 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { LANGUAGES } from '@/lib/constants';
 import type { ConversationSetupParams } from '@/types';
-import { Bot, User, BarChartHorizontalBig, Sparkles } from 'lucide-react';
+import { Bot, User, BarChartHorizontalBig, Sparkles, ChevronDown, Check } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+
 
 interface ConversationPracticeSetupProps {
   onSetupComplete: (params: ConversationSetupParams) => void;
   userPreferredLanguage: string;
 }
-
-const commonLanguages = [
-  { value: "en", label: "English" },
-  { value: "es", label: "Spanish" },
-  { value: "fr", label: "French" },
-  { value: "de", label: "German" },
-  { value: "hi", label: "Hindi" },
-  { value: "ta", label: "Tamil" },
-];
 
 const difficultyLevels: { value: ConversationSetupParams['difficulty'], label: string }[] = [
   { value: "basic", label: "Basic" },
@@ -44,11 +39,67 @@ const predefinedScenarios = [
     "Other (Describe below)"
 ];
 
+const LanguageCombobox = ({
+  label,
+  value,
+  onValueChange,
+  icon: Icon
+}: {
+  label: string;
+  value: string;
+  onValueChange: (value: string) => void;
+  icon: React.ElementType;
+}) => {
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredLanguages = useMemo(() =>
+    LANGUAGES.filter(lang =>
+      lang.label.toLowerCase().includes(search.toLowerCase())
+    ), [search]
+  );
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={`${label}-language`} className="flex items-center">
+        <Icon className="w-4 h-4 mr-1.5 text-primary"/> {label}
+      </Label>
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" role="combobox" aria-expanded={popoverOpen} className="w-full justify-between h-10 font-normal">
+            <span className="truncate">
+              {value ? LANGUAGES.find(lang => lang.value === value)?.label : "Select language..."}
+            </span>
+            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+          <div className="p-2 border-b">
+            <Input placeholder="Search language..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9"/>
+          </div>
+          <ScrollArea className="h-60">
+            <div className="p-1">
+              {filteredLanguages.length > 0 ? filteredLanguages.map((language) => (
+                <Button variant="ghost" key={language.value} onClick={() => { onValueChange(language.value); setPopoverOpen(false); setSearch(""); }} className="w-full justify-start font-normal text-sm h-9">
+                  <Check className={cn("mr-2 h-4 w-4", value === language.value ? "opacity-100" : "opacity-0")} />
+                  <span className="truncate">{language.label}</span>
+                </Button>
+              )) : (
+                <p className="p-2 text-center text-sm text-muted-foreground">No language found.</p>
+              )}
+            </div>
+          </ScrollArea>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
+
 const ConversationPracticeSetup: React.FC<ConversationPracticeSetupProps> = ({ onSetupComplete, userPreferredLanguage }) => {
   const [scenario, setScenario] = useState(predefinedScenarios[0]);
   const [customScenario, setCustomScenario] = useState("");
-  const [userLanguage, setUserLanguage] = useState(userPreferredLanguage || commonLanguages[0].value);
-  const [aiLanguage, setAiLanguage] = useState(commonLanguages.find(l => l.value !== userLanguage)?.value || commonLanguages[1].value);
+  const [userLanguage, setUserLanguage] = useState(userPreferredLanguage || 'en');
+  const [aiLanguage, setAiLanguage] = useState('fr');
   const [difficulty, setDifficulty] = useState<ConversationSetupParams['difficulty']>('intermediate');
   const [userRole, setUserRole] = useState("");
   const [aiRole, setAiRole] = useState("");
@@ -121,29 +172,18 @@ const ConversationPracticeSetup: React.FC<ConversationPracticeSetupProps> = ({ o
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-            <div className="space-y-2">
-            <Label htmlFor="user-language" className="flex items-center"><User className="w-4 h-4 mr-1.5 text-primary"/> I will speak:</Label>
-            <Select onValueChange={setUserLanguage} value={userLanguage}>
-                <SelectTrigger id="user-language">
-                <SelectValue placeholder="Select your language" />
-                </SelectTrigger>
-                <SelectContent>
-                {LANGUAGES.map(lang => <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            </div>
-
-            <div className="space-y-2">
-            <Label htmlFor="ai-language" className="flex items-center"><Bot className="w-4 h-4 mr-1.5 text-accent"/> AI will speak:</Label>
-            <Select onValueChange={setAiLanguage} value={aiLanguage}>
-                <SelectTrigger id="ai-language">
-                <SelectValue placeholder="Select AI's language" />
-                </SelectTrigger>
-                <SelectContent>
-                {LANGUAGES.map(lang => <SelectItem key={lang.value} value={lang.value}>{lang.label}</SelectItem>)}
-                </SelectContent>
-            </Select>
-            </div>
+          <LanguageCombobox
+            label="I will speak:"
+            value={userLanguage}
+            onValueChange={setUserLanguage}
+            icon={User}
+          />
+          <LanguageCombobox
+            label="AI will speak:"
+            value={aiLanguage}
+            onValueChange={setAiLanguage}
+            icon={Bot}
+          />
         </div>
 
         <div className="space-y-2">
