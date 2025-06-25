@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIconLucide, FileUp, UploadCloud, Youtube, Key, Brain, Info, Sparkles, SendHorizonal, MessageSquare, ChevronRightSquare, Link as LinkIcon } from "lucide-react";
+import { Loader2, FileText as FileTextIcon, AlertTriangle, Wand2, Type, Mic2, Presentation, Video as VideoIconLucide, FileUp, UploadCloud, Youtube, Key, Brain, Info, Sparkles, SendHorizonal, MessageSquare, ChevronRightSquare, Link as LinkIcon, Scissors } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { summarizeText, SummarizeTextInput, SummarizeTextOutput } from "@/ai/flows/summarize-text-flow";
 import { aiGuidedStudySession, AIGuidedStudySessionInput, AIGuidedStudySessionOutput } from "@/ai/flows/ai-guided-study-session";
@@ -525,6 +525,25 @@ export default function SummarizerPage() {
     }
   };
 
+  const handleExtractBatam = () => {
+    const delimiter = "Batam";
+    const index = inputText.toLowerCase().indexOf(delimiter.toLowerCase());
+
+    if (index !== -1) {
+      setInputText(inputText.substring(0, index));
+      toast({
+        title: "Text Extracted",
+        description: `Text has been truncated up to the word "${delimiter}".`,
+      });
+    } else {
+      toast({
+        title: "Delimiter Not Found",
+        description: `The word "${delimiter}" was not found in the text.`,
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const handleMainGenerateClick = () => {
     if (activeInputType === "text") {
@@ -557,6 +576,9 @@ export default function SummarizerPage() {
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => {/* Placeholder for file upload */}} className="text-xs">
                   <FileUp className="mr-1.5 h-3.5 w-3.5" /> Upload .txt / .docx
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleExtractBatam} className="text-xs">
+                  <Scissors className="mr-1.5 h-3.5 w-3.5" /> Extract to "Batam"
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
