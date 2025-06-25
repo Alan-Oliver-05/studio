@@ -367,17 +367,18 @@ The AI will start the conversation.`;
                         topic={activeModeConfig.storageTopic} 
                         conversationId={currentConversationId}
                         initialSystemMessage={getInitialMessageForMode(activeModeConfig, profile, currentConversationParams)}
-                        placeholderText={`Speak in ${LANGUAGES.find(l=>l.value === currentConversationParams.userLanguage)?.label || currentConversationParams.userLanguage}...`}
+                        placeholderText={`Type or use mic to speak in ${LANGUAGES.find(l=>l.value === currentConversationParams.userLanguage)?.label || currentConversationParams.userLanguage}...`}
                         enableImageUpload={activeModeConfig.enableImageUpload}
-                        // Pass conversation params to AI via context or new prop if ChatInterface is adapted
-                        context={{ // Example of passing context, actual implementation depends on ChatInterface/AI flow
+                        enableSpeech={true}
+                        context={{
                             subject: "Language Practice",
                             lesson: currentConversationParams.scenario,
-                            // Potentially add more structured context for the AI flow
                             conversationScenario: currentConversationParams.scenario,
                             userLanguageRole: `${LANGUAGES.find(l=>l.value === currentConversationParams.userLanguage)?.label || currentConversationParams.userLanguage}-speaking ${currentConversationParams.userRole || 'user'}`,
                             aiLanguageRole: `${LANGUAGES.find(l=>l.value === currentConversationParams.aiLanguage)?.label || currentConversationParams.aiLanguage}-speaking ${currentConversationParams.aiRole || 'AI'}`,
                             conversationDifficulty: currentConversationParams.difficulty,
+                            userLanguageCode: currentConversationParams.userLanguage,
+                            aiLanguageCode: currentConversationParams.aiLanguage,
                         }}
                     />
                 )

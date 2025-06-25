@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, ImageIcon, Sparkles, BarChartBig, Link as LinkIcon, Check, AlertCircleIcon, ChevronRightSquare, Milestone, BrainCircuit, BookOpen } from "lucide-react";
+import { SendHorizonal, Bot, User, Loader2, Info, ImagePlus, Paperclip, XCircle, BarChart2, Zap, ImageIcon, Sparkles, BarChartBig, Link as LinkIcon, Check, AlertCircleIcon, ChevronRightSquare, Milestone, BrainCircuit, BookOpen, Mic, MicOff, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiGuidedStudySession, AIGuidedStudySessionInput } from "@/ai/flows/ai-guided-study-session";
 import { interactiveQAndA } from "@/ai/flows/interactive-q-and-a";
@@ -48,13 +48,21 @@ interface ChatInterfaceProps {
   context?: {
     subject: string;
     lesson: string;
+    // For conversation practice
+    conversationScenario?: string;
+    userLanguageRole?: string;
+    aiLanguageRole?: string;
+    conversationDifficulty?: 'basic' | 'intermediate' | 'advanced';
+    userLanguageCode?: string;
+    aiLanguageCode?: string;
   };
   initialInputQuery?: string;
   onInitialQueryConsumed?: () => void;
   enableImageUpload?: boolean;
+  enableSpeech?: boolean;
   initialQAStage?: QAS_Stage; 
   initialQuestionsInStage?: number; 
-  onMindMapConfigChange?: (config: { initialTopic?: string; initialNodes?: InitialNodeData[] } | null) => void; // New prop
+  onMindMapConfigChange?: (config: { initialTopic?: string; initialNodes?: InitialNodeData[] } | null) => void;
 }
 
 const renderVisualElementContent = (visualElement: VisualElement) => {
@@ -179,6 +187,12 @@ function findLastIndex<T>(array: T[], predicate: (value: T, index: number, obj: 
   return -1;
 }
 
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 
 export function ChatInterface({
   userProfile,
@@ -190,6 +204,7 @@ export function ChatInterface({
   initialInputQuery,
   onInitialQueryConsumed,
   enableImageUpload = true, 
+  enableSpeech = false,
   initialQAStage = 'initial_material', 
   initialQuestionsInStage = 0,
   onMindMapConfigChange, 
@@ -211,6 +226,51 @@ export function ChatInterface({
   const [currentClientStage, setCurrentClientStage] = useState<QAS_Stage>(initialQAStage);
   const [isTopicSessionCompleted, setIsTopicSessionCompleted] = useState<boolean>(false);
 
+  // State for speech recognition
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!enableSpeech || typeof window === 'undefined') return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast({ title: "Unsupported Browser", description: "Speech recognition is not supported here. Please try Chrome or Edge.", variant: "destructive" });
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = context?.userLanguageCode || 'en-US';
+
+    recognition.onresult = (event: any) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      if (finalTranscript) {
+        setInput(prev => (prev + finalTranscript + ' ').trim());
+      }
+    };
+    
+    recognition.onend = () => {
+        setIsListening(false);
+    };
+
+    recognition.onerror = (event: any) => {
+      toast({ title: "Speech Recognition Error", description: `Error: ${event.error}`, variant: "destructive" });
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+
+  }, [enableSpeech, context?.userLanguageCode, toast]);
 
   useEffect(() => {
     const existingConversation = getConversationById(conversationId);
@@ -411,6 +471,43 @@ export function ChatInterface({
     }
   };
 
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+        toast({title: "Mic Error", description: "Speech recognition not initialized.", variant: "destructive"});
+        return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      setInput(""); // Clear input when starting to listen
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  const speakText = (textToSpeak: string, langCode: string) => {
+    if (!textToSpeak || typeof window.speechSynthesis === 'undefined') {
+        toast({title: "Cannot Speak", description: "No text to speak or speech synthesis not supported.", variant: "destructive"});
+        return;
+    }
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    const voices = window.speechSynthesis.getVoices();
+    
+    // Prioritize exact match, then language match, then user's preferred language, then English
+    let targetVoice = voices.find(voice => voice.lang === langCode)
+                      || voices.find(voice => voice.lang.startsWith(langCode.split('-')[0]))
+                      || (userProfile && voices.find(voice => voice.lang.startsWith(userProfile.preferredLanguage.split('-')[0])))
+                      || voices.find(voice => voice.lang.startsWith('en'));
+
+    utterance.voice = targetVoice || null;
+    utterance.lang = targetVoice ? targetVoice.lang : langCode;
+    
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  };
+
+
   const handleSubmit = async (e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     if ((!input.trim() && !uploadedImage) || isLoading || !userProfile) return;
@@ -519,16 +616,12 @@ export function ChatInterface({
           specificTopic: aiFlowTopic, 
           question: userMessage.text.replace(`(Context from uploaded image: ${uploadedImageName})`, '').trim(),
           photoDataUri: effectivePhotoDataUri || undefined,
+          conversationScenario: context?.conversationScenario,
+          userLanguageRole: context?.userLanguageRole,
+          aiLanguageRole: context?.aiLanguageRole,
+          conversationDifficulty: context?.conversationDifficulty,
         };
         
-        // Pass conversation context for specific modes
-        if (topic === "Language Conversation Practice" && context && 'conversationScenario' in context) {
-            (aiInput as any).conversationScenario = (context as any).conversationScenario;
-            (aiInput as any).userLanguageRole = (context as any).userLanguageRole;
-            (aiInput as any).aiLanguageRole = (context as any).aiLanguageRole;
-            (aiInput as any).conversationDifficulty = (context as any).conversationDifficulty;
-        }
-
         const aiResponse = await aiGuidedStudySession(aiInput);
         if (!aiResponse || !aiResponse.response) throw new Error("AI response was empty or invalid.");
         aiResponseMessage = {
@@ -681,6 +774,12 @@ export function ChatInterface({
 
                 {!(message.sender === 'ai' && isInteractiveQAMode) && (
                   <p className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: message.text.replace(/\n/g, '<br />') }} />
+                )}
+                
+                {message.sender === 'ai' && enableSpeech && context?.aiLanguageCode && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-1 mt-1" onClick={() => speakText(message.text, context.aiLanguageCode!)}>
+                    <Volume2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
                 )}
 
                 {message.sender === "ai" && message.visualElement && !(message.visualElement.type === 'interactive_mind_map_canvas' && onMindMapConfigChange) && (
@@ -845,6 +944,18 @@ export function ChatInterface({
             disabled={isInputDisabled}
           />
         )}
+        {enableSpeech && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" onClick={toggleListening} disabled={isLoading} className={cn("flex-shrink-0 text-muted-foreground", isListening && "text-destructive animate-pulse")}>
+                  {isListening ? <MicOff className="h-5 w-5"/> : <Mic className="h-5 w-5"/>}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>{isListening ? "Stop listening" : `Speak in ${context?.userLanguageCode || 'default language'}`}</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
         <Input
           value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholderText}
           className="flex-grow text-sm h-10"
@@ -888,3 +999,4 @@ export function ChatInterface({
 
 
     
+
